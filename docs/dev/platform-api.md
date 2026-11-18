@@ -232,9 +232,10 @@ public sealed class Settings
 - Keys the running version does not know are kept and written back, so two versions can share one file.
 - Folders that are still at their default are not written to the file: the file carries no machine paths until the
   user picks a folder.
-- **Owned by the app, not by `Settings`:** window position and size (`WindowX`, `WindowY`, `WindowW`, `WindowH`,
-  `WindowMax`), `NlaHeight`, `LastScene`. They stay readable for settings-file compatibility. The Avalonia app keeps its own window and
-  panel state in `AppPaths.UiStateFile` and should not add UI state to `Settings`.
+- **Owned by the app:** window position, size and panel state live in `AppPaths.UiStateFile`. The retired WinForms
+  keys (`wx`, `wy`, `ww`, `wh`, `wmax`, `nlaHeight`) have no application-facing fields; loaded values are preserved
+  through the unknown-key round trip, and new settings files do not create them. `LastScene` remains a legacy field.
+  Do not add UI state to `Settings`.
 
 ## Avatars
 

@@ -37,6 +37,26 @@ namespace VRMR.Tests
         }
 
         [Fact]
+        public void RetiredWindowSettingsRoundTripWithoutBecomingDefaults()
+        {
+            using var tmp = new TempDir();
+            var paths = PathsWith(tmp, "{\"wx\":40,\"wy\":50,\"ww\":900,\"wh\":600,\"wmax\":true,\"nlaHeight\":250}");
+            var settings = Settings.Load(paths);
+            settings.ExportFps = 30;
+            settings.Save();
+            var saved = Json.ParseObject(File.ReadAllText(paths.SettingsFile));
+            Assert.Equal(40, saved.GetInt("wx"));
+            Assert.Equal(50, saved.GetInt("wy"));
+            Assert.Equal(900, saved.GetInt("ww"));
+            Assert.Equal(600, saved.GetInt("wh"));
+            Assert.True(saved.GetBool("wmax"));
+            Assert.Equal(250, saved.GetInt("nlaHeight"));
+            var defaults = new Settings(paths).ToJson();
+            foreach (string key in new[] { "wx", "wy", "ww", "wh", "wmax", "nlaHeight" })
+                Assert.False(defaults.ContainsKey(key));
+        }
+
+        [Fact]
         public void WithoutAFileTheDefaultsBelongToThePaths()
         {
             using (var tmp = new TempDir())
@@ -63,7 +83,7 @@ namespace VRMR.Tests
                 Assert.False(s.UseOscQuery);
                 Assert.Equal(9123, s.LegacyPort);
                 Assert.Equal(30, s.ExportFps);
-                Assert.Equal(40, s.WindowX);
+                Assert.Equal(40, s.ToJson().GetInt("wx"));
                 Assert.Equal(CalHeightMode.EyeHeight, s.CalibrationDefaults.Height);
                 Assert.Equal(1.55f, s.CalibrationDefaults.HeightValue, 4);
                 Assert.Equal("", s.FaceMeshPath); // the old default now means "the avatar's own face mesh"

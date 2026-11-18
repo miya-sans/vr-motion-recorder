@@ -68,7 +68,6 @@ namespace VRMR
 
         public int LegacyPort = 9001;
         public bool ListenLegacyPort = true; // also bind 9001 if free
-        public int NlaHeight = 300;
         public int OpenVRRate = 90;
 
         public bool
@@ -99,11 +98,6 @@ namespace VRMR
         public bool
             WatchCalibrations = true; // save every VRChat full-body calibration as a snapshot (calibration library)
 
-        public bool WindowMax;
-
-        // ---- Window and panel state of the previous UI. This is UI state, not a setting: the new app keeps its own in
-        // AppPaths.UiStateFile and does not use these. They stay readable and are written back unchanged.
-        public int WindowX = -1, WindowY = -1, WindowW = 1400, WindowH = 860;
 
         Dictionary<string, object>
             _loaded; // the file as it was read (after upgrading), for the keys this version does not know
@@ -211,13 +205,7 @@ namespace VRMR
             ShowHmdModel = d.GetBool("showHmdModel", ShowHmdModel);
             ShowPlayArea = d.GetBool("showPlayArea", ShowPlayArea);
             ShowBaseStations = d.GetBool("showBaseStations", ShowBaseStations);
-            WindowX = d.GetInt("wx", -1);
-            WindowY = d.GetInt("wy", -1);
-            WindowW = d.GetInt("ww", WindowW);
-            WindowH = d.GetInt("wh", WindowH);
-            WindowMax = d.GetBool("wmax");
             LastScene = d.GetStr("lastScene", LastScene);
-            NlaHeight = d.GetInt("nlaHeight", NlaHeight);
         }
 
         static string NonEmpty(string value, string fallback)
@@ -296,13 +284,7 @@ namespace VRMR
             d["showHmdModel"] = ShowHmdModel;
             d["showPlayArea"] = ShowPlayArea;
             d["showBaseStations"] = ShowBaseStations;
-            d["wx"] = WindowX;
-            d["wy"] = WindowY;
-            d["ww"] = WindowW;
-            d["wh"] = WindowH;
-            d["wmax"] = WindowMax;
             d["lastScene"] = LastScene;
-            d["nlaHeight"] = NlaHeight;
             return d;
         }
 
