@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
@@ -592,15 +593,17 @@ namespace VRMR
     /// <summary>Reads VRChat's OSCQuery tree over HTTP (current avatar + all parameter values).</summary>
     public static class VrcOscQueryClient
     {
-        public static Snapshot Fetch(IPAddress ip, int port, int timeoutMs = 1500)
+        public static Snapshot Fetch(IPAddress ip, int port, int timeoutMs = 1500,
+            CancellationToken cancellationToken = default)
         {
-            var req = (HttpWebRequest)WebRequest.Create($"http://{ip}:{port}/avatar");
-            req.Timeout = timeoutMs;
-            req.ReadWriteTimeout = timeoutMs;
-            req.Proxy = null;
+            using var handler = new HttpClientHandler { UseProxy = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(timeoutMs) };
+            var uri = new UriBuilder("http", ip.ToString(), port, "avatar").Uri;
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var response = client.Send(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
             string body;
-            using (var resp = req.GetResponse())
-            using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+            using (var sr = new StreamReader(response.Content.ReadAsStream(cancellationToken), Encoding.UTF8))
                 body = sr.ReadToEnd();
             var root = Json.ParseObject(body);
             var snap = new Snapshot();
