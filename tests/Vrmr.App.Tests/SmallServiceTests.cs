@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using VRMR.App.Controls;
 using VRMR.App.Services;
 using VRMR.App.ViewModels;
 using Xunit;
@@ -76,7 +78,9 @@ namespace VRMR.App.Tests
             using var host = tmp.NewHost(ui);
             host.Recording.Start();
             Assert.False(host.Recording.IsRecording);
-            Assert.Empty(Directory.Exists(tmp.TakesDir) ? Directory.GetFiles(tmp.TakesDir, "*.vrmr") : Array.Empty<string>());
+            Assert.Empty(Directory.Exists(tmp.TakesDir)
+                ? Directory.GetFiles(tmp.TakesDir, "*.vrmr")
+                : Array.Empty<string>());
             Assert.Equal(StatusKind.Warning, host.Status.Kind);
         }
     }
@@ -122,10 +126,16 @@ namespace VRMR.App.Tests
         [InlineData(65.25, "01:05.25")]
         [InlineData(59.999, "01:00.00")]
         [InlineData(-3, "00:00.00")]
-        public void TimeIsMinutesSecondsHundredths(double seconds, string expected) => Assert.Equal(expected, TimeText.Format(seconds));
+        public void TimeIsMinutesSecondsHundredths(double seconds, string expected)
+        {
+            Assert.Equal(expected, TimeText.Format(seconds));
+        }
 
         [Fact]
-        public void TimeWithoutFractionDropsIt() => Assert.Equal("02:07", TimeText.Format(127.9, false));
+        public void TimeWithoutFractionDropsIt()
+        {
+            Assert.Equal("02:07", TimeText.Format(127.9, false));
+        }
 
         [Fact]
         public void SearchMatchesEveryWordInNameAvatarOrWorld()
@@ -134,7 +144,7 @@ namespace VRMR.App.Tests
             {
                 new TakeInfo { Path = "a.vrmr", Name = "Dance one", Avatar = "Robot", World = "Studio" },
                 new TakeInfo { Path = "b.vrmr", Name = "Dance two", Avatar = "Cat", World = "Beach" },
-                new TakeInfo { Path = "c.vrmr", Name = "Walk", Avatar = "Robot", World = "Beach" },
+                new TakeInfo { Path = "c.vrmr", Name = "Walk", Avatar = "Robot", World = "Beach" }
             };
             Assert.Equal(3, TakeLibrary.Filter(items, "").Count());
             Assert.Equal(new[] { "a.vrmr", "b.vrmr" }, TakeLibrary.Filter(items, "dance").Select(i => i.Path));
@@ -146,7 +156,7 @@ namespace VRMR.App.Tests
         [Fact]
         public void CoverageSplitsWhereSamplesStop()
         {
-            var t = new double[] { 0, 0.1, 0.2, 2.0, 2.1, 5.0 };
+            double[] t = new[] { 0, 0.1, 0.2, 2.0, 2.1, 5.0 };
             var spans = TimelineData.Coverage(t, 0.5);
             Assert.Equal(3, spans.Count);
             Assert.Equal(new[] { 0, 0.2 }, spans[0]);
@@ -163,7 +173,7 @@ namespace VRMR.App.Tests
         [InlineData("90°", 90)]
         public void NumberFieldsReadDecimalCommasAndUnits(string text, double expected)
         {
-            Assert.True(Controls.NumberField.TryParse(text, out double v));
+            Assert.True(NumberField.TryParse(text, out double v));
             Assert.Equal(expected, v, 9);
         }
 
@@ -171,14 +181,20 @@ namespace VRMR.App.Tests
         [InlineData("")]
         [InlineData("abc")]
         [InlineData("cm 5")]
-        public void NumberFieldsRejectTextWithoutANumber(string text) => Assert.False(Controls.NumberField.TryParse(text, out _));
+        public void NumberFieldsRejectTextWithoutANumber(string text)
+        {
+            Assert.False(NumberField.TryParse(text, out _));
+        }
 
         [Theory]
         [InlineData(0f, 0f)]
         [InlineData(190f, -170f)]
         [InlineData(-190f, 170f)]
         [InlineData(360.001f, 0f)]
-        public void AnglesWrapToHalfTurns(float input, float expected) => Assert.Equal(expected, PlacementService.WrapDegrees(input), 2);
+        public void AnglesWrapToHalfTurns(float input, float expected)
+        {
+            Assert.Equal(expected, PlacementService.WrapDegrees(input), 2);
+        }
     }
 
     [Collection("app")]
@@ -191,7 +207,9 @@ namespace VRMR.App.Tests
             string file = Path.Combine(tmp.Root, "ui-state.json");
             var ui = new ManualDispatcher();
             var a = new UiStateStore(file, ui);
-            a.Set("fold.take.body", false); a.Set("panel.library.width", 300.0); a.Set("theme", "light");
+            a.Set("fold.take.body", false);
+            a.Set("panel.library.width", 300.0);
+            a.Set("theme", "light");
             a.Flush();
             var b = new UiStateStore(file, ui);
             Assert.False(b.GetBool("fold.take.body", true));
@@ -206,7 +224,7 @@ namespace VRMR.App.Tests
             using var tmp = new ScratchData();
             var ui = new ManualDispatcher();
             using var host = tmp.NewHost(ui);
-            var seen = new System.Collections.Generic.List<string>();
+            var seen = new List<string>();
             host.SettingsStore.Changed += seen.Add;
             host.SettingsStore.Update(nameof(Settings.Smoothing), s => s.Smoothing = 0.4f);
             host.SettingsStore.Update(nameof(Settings.Smoothing), s => s.Smoothing = 0.6f);
@@ -220,7 +238,8 @@ namespace VRMR.App.Tests
         {
             var ui = new ManualDispatcher();
             var status = new StatusService(ui);
-            int changes = 0; Toast toast = null;
+            int changes = 0;
+            Toast toast = null;
             status.Changed += () => changes++;
             status.ToastRaised += t => toast = t;
             status.Info("Saved");
@@ -232,6 +251,7 @@ namespace VRMR.App.Tests
                 Assert.Equal("Writing files", status.Current.Label);
                 Assert.Equal(0.5, status.Current.Fraction);
             }
+
             Assert.Null(status.Current);
             status.Notify("Done", StatusKind.Success);
             Assert.Equal("Done", toast.Text);
@@ -245,14 +265,19 @@ namespace VRMR.App.Tests
             var ui = new ManualDispatcher();
             int runs = 0;
             var d = new Debouncer(ui, TimeSpan.FromMilliseconds(300), () => runs++);
-            d.Trigger(); ui.Advance(0.2);
-            d.Trigger(); ui.Advance(0.2);
+            d.Trigger();
+            ui.Advance(0.2);
+            d.Trigger();
+            ui.Advance(0.2);
             Assert.Equal(0, runs);
             ui.Advance(0.2);
             Assert.Equal(1, runs);
-            d.Trigger(); d.Flush();
+            d.Trigger();
+            d.Flush();
             Assert.Equal(2, runs);
-            d.Trigger(); d.Cancel(); ui.Advance(1);
+            d.Trigger();
+            d.Cancel();
+            ui.Advance(1);
             Assert.Equal(2, runs);
         }
     }
@@ -265,10 +290,11 @@ namespace VRMR.App.Tests
         {
             // the export of one avatar's stretch solves a view of the take; an edit made meanwhile must stay on the take
             BodySolverSetup.Register();
-            var take = SyntheticTake.Create(3);
+            var take = SyntheticTake.Create();
             var own = take.Edits;
             var partEdits = TakeSession.CloneEdits(own);
-            partEdits.TrimIn = 1; partEdits.TrimOut = 2;
+            partEdits.TrimIn = 1;
+            partEdits.TrimOut = 2;
             var part = take.WithEdits(partEdits);
             Assert.Same(take.Streams, part.Streams);
             Assert.Same(take.Sync, part.Sync);

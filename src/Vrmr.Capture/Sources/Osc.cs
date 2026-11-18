@@ -10,30 +10,32 @@ namespace VRMR
     /// <summary>One decoded OSC message. Instances are reused by the receive thread: copy what you need.</summary>
     public sealed class OscMsg
     {
-        public string Address;
-        public int Argc;
-        public readonly char[] Tag = new char[32];
         public readonly float[] F = new float[32];
         public readonly int[] I = new int[32];
+        public readonly char[] Tag = new char[32];
+        public string Address;
+        public int Argc;
         public string S;
         public double Time;
 
-        public float Float(int i) => Tag[i] == 'f' ? F[i] : Tag[i] == 'i' ? I[i] : Tag[i] == 'T' ? 1f : 0f;
+        public float Float(int i)
+        {
+            return Tag[i] == 'f' ? F[i] : Tag[i] == 'i' ? I[i] : Tag[i] == 'T' ? 1f : 0f;
+        }
     }
 
     /// <summary>Low-allocation UDP OSC receiver (messages + bundles) running on its own thread.</summary>
     public sealed class OscReceiver : IDisposable
     {
-        readonly UdpClient _udp;
+        readonly Dictionary<ulong, string> _addrCache = new();
+        readonly OscMsg _msg = new();
         readonly Thread _thread;
-        volatile bool _stop;
-        readonly OscMsg _msg = new OscMsg();
-        readonly Dictionary<ulong, string> _addrCache = new Dictionary<ulong, string>();
-        public int Port { get; }
-        public long Packets, Messages, Errors;
+        readonly UdpClient _udp;
         public double LastPacketTime = -1;
-        public Action<OscMsg> OnMessage;
         public string Name;
+        public Action<OscMsg> OnMessage;
+        public long Packets, Messages, Errors;
+        volatile bool _stop;
 
         public OscReceiver(string name, int port, bool loopbackOnly = true)
         {
@@ -41,11 +43,29 @@ namespace VRMR
             _udp = new UdpClient(AddressFamily.InterNetwork);
             _udp.Client.ExclusiveAddressUse = true;
             _udp.Client.ReceiveBufferSize = 1 << 20;
-            try { const int SIO_UDP_CONNRESET = -1744830452; _udp.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null); } catch { }
+            try
+            {
+                const int SIO_UDP_CONNRESET = -1744830452;
+                _udp.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
+            }
+            catch { }
+
             _udp.Client.Bind(new IPEndPoint(loopbackOnly ? IPAddress.Loopback : IPAddress.Any, port));
             Port = ((IPEndPoint)_udp.Client.LocalEndPoint).Port;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "OSC rx " + name, Priority = ThreadPriority.AboveNormal };
+            _thread = new Thread(Loop)
+                { IsBackground = true, Name = "OSC rx " + name, Priority = ThreadPriority.AboveNormal };
             _thread.Start();
+        }
+
+        public int Port { get; }
+
+        public void Dispose()
+        {
+            _stop = true;
+            try { _udp.Close(); }
+            catch { }
+
+            _thread.Join(500);
         }
 
         public static bool IsPortFree(int port)
@@ -57,11 +77,13 @@ namespace VRMR
                     u.Client.ExclusiveAddressUse = true;
                     u.Client.Bind(new IPEndPoint(IPAddress.Loopback, port));
                 }
+
                 using (var u = new UdpClient(AddressFamily.InterNetwork))
                 {
                     u.Client.ExclusiveAddressUse = true;
                     u.Client.Bind(new IPEndPoint(IPAddress.Any, port));
                 }
+
                 return true;
             }
             catch { return false; }
@@ -70,14 +92,19 @@ namespace VRMR
         void Loop()
         {
             EfficiencyMode.ExemptCurrentThread();
-            var buf = new byte[65536];
+            byte[] buf = new byte[65536];
             EndPoint ep = new IPEndPoint(IPAddress.Any, 0);
             while (!_stop)
             {
                 int n;
                 try { n = _udp.Client.ReceiveFrom(buf, ref ep); }
-                catch (SocketException) { if (_stop) break; continue; }
+                catch (SocketException)
+                {
+                    if (_stop) break;
+                    continue;
+                }
                 catch (ObjectDisposedException) { break; }
+
                 double t = Clock.Now;
                 LastPacketTime = t;
                 Packets++;
@@ -100,8 +127,10 @@ namespace VRMR
                     Parse(b, i, sz, t);
                     i += sz;
                 }
+
                 return;
             }
+
             ParseMessage(b, off, len, t);
         }
 
@@ -113,7 +142,12 @@ namespace VRMR
             if (a1 >= end || a1 == a0) return;
             string addr = Intern(b, a0, a1 - a0);
             int i = Align(a1 + 1, off);
-            if (i >= end || b[i] != ',') { Deliver(addr, 0, t); return; }
+            if (i >= end || b[i] != ',')
+            {
+                Deliver(addr, 0, t);
+                return;
+            }
+
             int ts = i + 1, te = ts;
             while (te < end && b[te] != 0) te++;
             int argc = Math.Min(te - ts, 32);
@@ -127,70 +161,107 @@ namespace VRMR
                 {
                     case 'f':
                         if (i + 4 > end) return;
-                        _msg.F[k] = BitsToFloat((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]); i += 4; break;
+                        _msg.F[k] = BitsToFloat((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]);
+                        i += 4;
+                        break;
                     case 'i':
                         if (i + 4 > end) return;
-                        _msg.I[k] = (b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]; i += 4; break;
+                        _msg.I[k] = (b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3];
+                        i += 4;
+                        break;
                     case 'd':
                         if (i + 8 > end) return;
-                        long l = ((long)b[i] << 56) | ((long)b[i + 1] << 48) | ((long)b[i + 2] << 40) | ((long)b[i + 3] << 32) | ((long)b[i + 4] << 24) | ((long)b[i + 5] << 16) | ((long)b[i + 6] << 8) | b[i + 7];
-                        _msg.F[k] = (float)BitConverter.Int64BitsToDouble(l); _msg.Tag[k] = 'f'; i += 8; break;
+                        long l = ((long)b[i] << 56) | ((long)b[i + 1] << 48) | ((long)b[i + 2] << 40) |
+                                 ((long)b[i + 3] << 32) | ((long)b[i + 4] << 24) | ((long)b[i + 5] << 16) |
+                                 ((long)b[i + 6] << 8) | b[i + 7];
+                        _msg.F[k] = (float)BitConverter.Int64BitsToDouble(l);
+                        _msg.Tag[k] = 'f';
+                        i += 8;
+                        break;
                     case 's':
-                        {
-                            int s0 = i; while (i < end && b[i] != 0) i++;
-                            _msg.S = Encoding.UTF8.GetString(b, s0, i - s0);
-                            i = Align(i + 1, off);
-                            break;
-                        }
-                    case 'T': case 'F': case 'N': case 'I': break;
+                    {
+                        int s0 = i;
+                        while (i < end && b[i] != 0) i++;
+                        _msg.S = Encoding.UTF8.GetString(b, s0, i - s0);
+                        i = Align(i + 1, off);
+                        break;
+                    }
+                    case 'T':
+                    case 'F':
+                    case 'N':
+                    case 'I': break;
                     default: return; // unsupported (blob etc.)
                 }
             }
+
             Deliver(addr, argc, t);
         }
 
         void Deliver(string addr, int argc, double t)
         {
             Messages++;
-            _msg.Address = addr; _msg.Argc = argc; _msg.Time = t;
-            try { OnMessage?.Invoke(_msg); } catch (Exception ex) { Errors++; if (Errors < 5) AppLog.Warn("OSC handler: " + ex.Message); }
+            _msg.Address = addr;
+            _msg.Argc = argc;
+            _msg.Time = t;
+            try { OnMessage?.Invoke(_msg); }
+            catch (Exception ex)
+            {
+                Errors++;
+                if (Errors < 5) AppLog.Warn("OSC handler: " + ex.Message);
+            }
         }
 
-        static int Align(int i, int off) => off + (((i - off) + 3) & ~3);
+        static int Align(int i, int off)
+        {
+            return off + (((i - off) + 3) & ~3);
+        }
 
-        static unsafe float BitsToFloat(int bits) => *(float*)&bits;
+        static unsafe float BitsToFloat(int bits)
+        {
+            return *(float*)&bits;
+        }
 
         string Intern(byte[] b, int s, int n)
         {
             ulong h = 14695981039346656037UL;
-            for (int k = 0; k < n; k++) { h ^= b[s + k]; h *= 1099511628211UL; }
+            for (int k = 0; k < n; k++)
+            {
+                h ^= b[s + k];
+                h *= 1099511628211UL;
+            }
+
             h ^= (ulong)n << 56;
-            if (_addrCache.TryGetValue(h, out var str) && str.Length == n) return str;
+            if (_addrCache.TryGetValue(h, out string str) && str.Length == n) return str;
             str = Encoding.UTF8.GetString(b, s, n);
             if (_addrCache.Count < 100000) _addrCache[h] = str;
             return str;
-        }
-
-        public void Dispose()
-        {
-            _stop = true;
-            try { _udp.Close(); } catch { }
-            _thread.Join(500);
         }
     }
 
     /// <summary>Minimal OSC sender (used to replay face tracking / parameters back into VRChat).</summary>
     public sealed class OscSender : IDisposable
     {
-        readonly UdpClient _udp;
-        readonly IPEndPoint _ep;
         readonly byte[] _buf = new byte[1024];
+        readonly IPEndPoint _ep;
+        readonly UdpClient _udp;
 
         public OscSender(string host, int port)
         {
             _udp = new UdpClient(AddressFamily.InterNetwork);
-            try { const int SIO_UDP_CONNRESET = -1744830452; _udp.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null); } catch { }
+            try
+            {
+                const int SIO_UDP_CONNRESET = -1744830452;
+                _udp.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
+            }
+            catch { }
+
             _ep = new IPEndPoint(IPAddress.Parse(host), port);
+        }
+
+        public void Dispose()
+        {
+            try { _udp.Close(); }
+            catch { }
         }
 
         int WriteStr(int i, string s)
@@ -202,12 +273,41 @@ namespace VRMR
             return i;
         }
 
-        void WriteInt(ref int i, int v) { _buf[i++] = (byte)(v >> 24); _buf[i++] = (byte)(v >> 16); _buf[i++] = (byte)(v >> 8); _buf[i++] = (byte)v; }
-        static unsafe int FloatBits(float f) => *(int*)&f;
+        void WriteInt(ref int i, int v)
+        {
+            _buf[i++] = (byte)(v >> 24);
+            _buf[i++] = (byte)(v >> 16);
+            _buf[i++] = (byte)(v >> 8);
+            _buf[i++] = (byte)v;
+        }
 
-        public void SendFloat(string addr, float v) { int i = WriteStr(0, addr); i = WriteStr(i, ",f"); WriteInt(ref i, FloatBits(v)); Send(i); }
-        public void SendInt(string addr, int v) { int i = WriteStr(0, addr); i = WriteStr(i, ",i"); WriteInt(ref i, v); Send(i); }
-        public void SendBool(string addr, bool v) { int i = WriteStr(0, addr); i = WriteStr(i, v ? ",T" : ",F"); Send(i); }
+        static unsafe int FloatBits(float f)
+        {
+            return *(int*)&f;
+        }
+
+        public void SendFloat(string addr, float v)
+        {
+            int i = WriteStr(0, addr);
+            i = WriteStr(i, ",f");
+            WriteInt(ref i, FloatBits(v));
+            Send(i);
+        }
+
+        public void SendInt(string addr, int v)
+        {
+            int i = WriteStr(0, addr);
+            i = WriteStr(i, ",i");
+            WriteInt(ref i, v);
+            Send(i);
+        }
+
+        public void SendBool(string addr, bool v)
+        {
+            int i = WriteStr(0, addr);
+            i = WriteStr(i, v ? ",T" : ",F");
+            Send(i);
+        }
 
         public void SendParam(string name, ParamType type, float v)
         {
@@ -220,7 +320,10 @@ namespace VRMR
             }
         }
 
-        void Send(int len) { try { _udp.Send(_buf, len, _ep); } catch { } }
-        public void Dispose() { try { _udp.Close(); } catch { } }
+        void Send(int len)
+        {
+            try { _udp.Send(_buf, len, _ep); }
+            catch { }
+        }
     }
 }

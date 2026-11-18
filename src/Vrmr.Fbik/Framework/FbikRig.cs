@@ -8,7 +8,8 @@
 //    (device -> unscaled -> scaled -> bone control incoming), incl. HMD centre-eye offset and controller IK offsets.
 //  * IkAvatarStageCalibration.FullBodyCalibration (without the tracker-role classifier).
 //  * IkLocalPlayer.Simulate frame order: devices -> virtual spine -> bone sim -> IK destinations -> solve.
-using System;
+
+using System.Collections.Generic;
 
 namespace VRMR.Fbik
 {
@@ -17,87 +18,118 @@ namespace VRMR.Fbik
     {
         /// <summary>SteamVR/OpenVR controller raw pose (IkOpenVRInputController math).</summary>
         OpenVRController,
+
         /// <summary>OpenXR palm pose (IkOpenXRHandInput palm fallback math).</summary>
         OpenXRPalm,
+
         /// <summary>The pose already is the avatar hand bone's world pose (e.g. VRChat's wrist).</summary>
-        HandBone,
+        HandBone
     }
 
     public sealed class FbikRig
     {
-        public readonly IkAvatarModel Model;
-        public readonly FbikSettings Settings;
+        static readonly IkBoneTrackedRole[] ControlRoles =
+        {
+            IkBoneTrackedRole.CenterEye, IkBoneTrackedRole.Head, IkBoneTrackedRole.Neck, IkBoneTrackedRole.Chest,
+            IkBoneTrackedRole.Hips, IkBoneTrackedRole.Spine,
+            IkBoneTrackedRole.LeftUpperLeg, IkBoneTrackedRole.RightUpperLeg, IkBoneTrackedRole.LeftLowerLeg,
+            IkBoneTrackedRole.RightLowerLeg, IkBoneTrackedRole.LeftFoot, IkBoneTrackedRole.RightFoot,
+            IkBoneTrackedRole.LeftShoulder, IkBoneTrackedRole.RightShoulder, IkBoneTrackedRole.LeftUpperArm,
+            IkBoneTrackedRole.RightUpperArm, IkBoneTrackedRole.LeftLowerArm, IkBoneTrackedRole.RightLowerArm,
+            IkBoneTrackedRole.LeftHand, IkBoneTrackedRole.RightHand, IkBoneTrackedRole.LeftToes,
+            IkBoneTrackedRole.RightToes, IkBoneTrackedRole.Mouth
+        };
+
         public readonly IkBoneDriver Bones;
         public readonly FbikCalibration Calibration;
-        public readonly IkRigDriver Rig;
+        public readonly DeviceState[] Devices = new DeviceState[IkBoneDriver.RoleCount];
         public readonly IkFootDriver Feet;
+        public readonly IkAvatarModel Model;
+        public readonly IkRigDriver Rig;
+        public readonly IkTrackingHardware[] RoleHardware = new IkTrackingHardware[IkBoneDriver.RoleCount];
+        public readonly FbikSettings Settings;
         public readonly IkVirtualSpineDriver VirtualSpine;
 
-        // IkLocalPlayer.localToWorldMatrix (play space -> world) and the avatar root (child of the player at identity).
-        public Matrix4x4 localToWorldMatrix = Matrix4x4.identity;
-        public Vector3 PlayspacePosition = Vector3.zero;
-        public Quaternion PlayspaceRotation = Quaternion.identity;
-        public Vector3 AvatarRootPosition => PlayspacePosition;
-        public Quaternion AvatarRootRotation => PlayspaceRotation;
-        public bool HasGround = true;
+        // IkHeightDriver state
+        public float DeviceScale = 1f,
+            HeightModeGroundingOffset,
+            AppliedUniformScale,
+            AppliedUpScale = 1f,
+            ScaledToMatchValue = 1f;
+
         /// <summary>Ground plane point (world). Defaults to the play-space floor.</summary>
         public Vector3 GroundPoint = Vector3.zero;
-        public bool UseCustomGround;
-        /// <summary>VRMR port addition: estimate the floor from tracker heights at calibration (upstream default). Off when the floor is known.</summary>
-        public bool UseTrackedFloorEstimate = true;
+
+        public bool HasGenuinePlayerEyeHeight;
+        public bool HasGround = true;
+
+        /// <summary>IkInput.CenterEyeOffset of the HMD (head-local tracking-space offset to the centre eye).</summary>
+        public Vector3 HmdCenterEyeOffset = Vector3.zero;
+
         public bool IsLocomoting, IsProne, Seated;
         public bool IsVR = true;
         public float LandingCrouchEffect = 0f;
+
+        public IkScaleFitResult LastScaleFit = IkScaleFitResult.Invalid;
+
+        // OpenXR palm fallback (IkOpenXRHandInput).
+        public Vector3 LeftHandPalmCorrection = new(0, 0, -90), RightHandPalmCorrection = new(0, 0, -90);
+
+        /// <summary>
+        ///     SteamVR skeleton wrist bone (skeletonAction.bonePositions/boneRotations[wrist]) per hand; zero/identity until
+        ///     supplied (the upstream "not sampled" fallback).
+        /// </summary>
+        public Vector3 LeftWristLocalPosition = Vector3.zero, RightWristLocalPosition = Vector3.zero;
+
+        public Quaternion LeftWristLocalRotation = Quaternion.identity, RightWristLocalRotation = Quaternion.identity;
+
+        public Vector3 OpenXRLeftHandToIKPositionOffset = new(0, 0, -0.05f),
+            OpenXRRightHandToIKPositionOffset = new(0, 0, -0.05f);
+
+        public float PlayerCenterEyeVerticalOffset, PlayerHipHeight, PlayerEyeToHipDrop;
+
+        public float PlayerEyeHeight = IkHeightConstants.FallbackHeightInMeters,
+            PlayerArmSpan = IkHeightConstants.FallbackHeightInMeters;
+
+        public Vector3 PlayspacePosition = Vector3.zero;
+        public Quaternion PlayspaceRotation = Quaternion.identity;
         public float PlayspaceVerticalOffset = 0f; // IkLocalPlayspaceMover.VerticalOffset
 
-        // IkHeightDriver state
-        public float DeviceScale = 1f, HeightModeGroundingOffset = 0f, AppliedUniformScale = 0f, AppliedUpScale = 1f, ScaledToMatchValue = 1f;
-        /// <summary>VRMR port addition: no height-mode grounding lift. The caller puts the real floor at y = 0 and chooses the calibration head height itself (VRChat hangs the avatar from the headset at calibration instead of standing it on the floor).</summary>
-        public bool VrmrNoGrounding;
-        public float PlayerEyeHeight = IkHeightConstants.FallbackHeightInMeters, PlayerArmSpan = IkHeightConstants.FallbackHeightInMeters;
-        public float PlayerCenterEyeVerticalOffset = 0f, PlayerHipHeight = 0f, PlayerEyeToHipDrop = 0f;
-        public bool HasGenuinePlayerEyeHeight;
-        public float StatedEyeHeight = 0f; // IkStatedHeight.ImpliedEyeHeight (0 = not stated)
-        public float ScaledAvatarEyeHeight = IkHeightConstants.FallbackHeightInMeters, AvatarToDefaultRatioScaledWithAvatarScale = 1f;
-        public IkScaleFitResult LastScaleFit = IkScaleFitResult.Invalid;
-        bool? heldAutoLowerBody;
-        public IkBodyFitResult AppliedBodyFit => Rig.AppliedBodyFit;
-        public float SizingEyeHeight => IkCalibrationMath.SizingEyeHeight(PlayerEyeHeight, PlayerArmSpan, false, StatedEyeHeight);
+        public float ScaledAvatarEyeHeight = IkHeightConstants.FallbackHeightInMeters,
+            AvatarToDefaultRatioScaledWithAvatarScale = 1f;
 
-        // ---- devices ----------------------------------------------------------------------------------------
-        public struct DeviceState
-        {
-            public bool Present;       // a device is assigned to this role (IkInput with a role)
-            public bool HasPose;       // at least one valid pose received
-            public Vector3 RawPosition; // tracking space, Unity convention, metres (PhysicalDeviceCoord before lift)
-            public Quaternion RawRotation;
-            public IkHandSource HandSource;
-            public bool HasDeviceOffset;
-            public Vector3 DeviceOffsetPosition;
-            public Quaternion DeviceOffsetRotation;
-            public Vector3 UnscaledPosition; public Quaternion UnscaledRotation;
-            public Vector3 FinalScaledPosition; public Quaternion FinalScaledRotation;
-        }
-        public readonly DeviceState[] Devices = new DeviceState[IkBoneDriver.RoleCount];
-        public readonly IkTrackingHardware[] RoleHardware = new IkTrackingHardware[IkBoneDriver.RoleCount];
-        /// <summary>IkInput.CenterEyeOffset of the HMD (head-local tracking-space offset to the centre eye).</summary>
-        public Vector3 HmdCenterEyeOffset = Vector3.zero;
-        // OpenVR controller IK offsets (IkOpenVRInputController.Initialize).
-        public Vector3 leftHandToIKRotationOffset = new Vector3(80, 69, 150);
-        public Vector3 rightHandToIKRotationOffset = new Vector3(112, 80, 198);
-        public Vector3 leftHandToIKPositionOffset = new Vector3(0.02f, 0.08f, 0.02f);
-        public Vector3 rightHandToIKPositionOffset = new Vector3(-0.02f, 0.08f, 0.02f);
+        public float StatedEyeHeight = 0f; // IkStatedHeight.ImpliedEyeHeight (0 = not stated)
+        public bool UseCustomGround;
         public bool UseIKPositionOffset = true;
-        /// <summary>SteamVR skeleton wrist bone (skeletonAction.bonePositions/boneRotations[wrist]) per hand; zero/identity until supplied (the upstream "not sampled" fallback).</summary>
-        public Vector3 LeftWristLocalPosition = Vector3.zero, RightWristLocalPosition = Vector3.zero;
-        public Quaternion LeftWristLocalRotation = Quaternion.identity, RightWristLocalRotation = Quaternion.identity;
-        // OpenXR palm fallback (IkOpenXRHandInput).
-        public Vector3 LeftHandPalmCorrection = new Vector3(0, 0, -90), RightHandPalmCorrection = new Vector3(0, 0, -90);
-        public Vector3 OpenXRLeftHandToIKPositionOffset = new Vector3(0, 0, -0.05f), OpenXRRightHandToIKPositionOffset = new Vector3(0, 0, -0.05f);
+
+        /// <summary>
+        ///     VRMR port addition: estimate the floor from tracker heights at calibration (upstream default). Off when the
+        ///     floor is known.
+        /// </summary>
+        public bool UseTrackedFloorEstimate = true;
+
+        /// <summary>
+        ///     VRMR port addition: no height-mode grounding lift. The caller puts the real floor at y = 0 and chooses the
+        ///     calibration head height itself (VRChat hangs the avatar from the headset at calibration instead of standing it on
+        ///     the floor).
+        /// </summary>
+        public bool VrmrNoGrounding;
+
+        bool hasSolved;
+        bool? heldAutoLowerBody;
 
         Vector3[] lastSolvedPos;
         Quaternion[] lastSolvedRot;
-        bool hasSolved;
+
+        public Vector3 leftHandToIKPositionOffset = new(0.02f, 0.08f, 0.02f);
+
+        // OpenVR controller IK offsets (IkOpenVRInputController.Initialize).
+        public Vector3 leftHandToIKRotationOffset = new(80, 69, 150);
+
+        // IkLocalPlayer.localToWorldMatrix (play space -> world) and the avatar root (child of the player at identity).
+        public Matrix4x4 localToWorldMatrix = Matrix4x4.identity;
+        public Vector3 rightHandToIKPositionOffset = new(-0.02f, 0.08f, 0.02f);
+        public Vector3 rightHandToIKRotationOffset = new(112, 80, 198);
 
         public FbikRig(IkAvatarModel model, FbikSettings settings)
         {
@@ -109,11 +141,32 @@ namespace VRMR.Fbik
             Feet = new IkFootDriver(this);
             VirtualSpine = new IkVirtualSpineDriver(this);
             for (int i = 0; i < RoleHardware.Length; i++) RoleHardware[i] = IkTrackingHardware.Lighthouse;
-            for (int i = 0; i < Devices.Length; i++) { Devices[i].RawRotation = Quaternion.identity; Devices[i].DeviceOffsetRotation = Quaternion.identity; Devices[i].UnscaledRotation = Quaternion.identity; Devices[i].FinalScaledRotation = Quaternion.identity; }
+            for (int i = 0; i < Devices.Length; i++)
+            {
+                Devices[i].RawRotation = Quaternion.identity;
+                Devices[i].DeviceOffsetRotation = Quaternion.identity;
+                Devices[i].UnscaledRotation = Quaternion.identity;
+                Devices[i].FinalScaledRotation = Quaternion.identity;
+            }
+
             UpdatePlayspace();
             VirtualSpine.Initialize();
             AvatarCalibration();
         }
+
+        public Vector3 AvatarRootPosition => PlayspacePosition;
+        public Quaternion AvatarRootRotation => PlayspaceRotation;
+        public IkBodyFitResult AppliedBodyFit => Rig.AppliedBodyFit;
+
+        public float SizingEyeHeight =>
+            IkCalibrationMath.SizingEyeHeight(PlayerEyeHeight, PlayerArmSpan, false, StatedEyeHeight);
+
+        // ---- IkHeightDriver -------------------------------------------------------------------------------
+        bool HasHipsFBIKTracker => Bones.HipsControl.HasTracked;
+
+        bool HasLegFBIKTrackers => Bones.LeftFootControl.HasTracked || Bones.RightFootControl.HasTracked ||
+                                   Bones.LeftLowerLegControl.HasTracked || Bones.RightLowerLegControl.HasTracked ||
+                                   Bones.LeftUpperLegControl.HasTracked || Bones.RightUpperLegControl.HasTracked;
 
         public void SetPlayspace(Vector3 position, Quaternion rotation)
         {
@@ -121,6 +174,7 @@ namespace VRMR.Fbik
             PlayspaceRotation = Quaternion.Normalize(rotation);
             UpdatePlayspace();
         }
+
         void UpdatePlayspace()
         {
             localToWorldMatrix = Matrix4x4.TRS(PlayspacePosition, PlayspaceRotation, Vector3.one);
@@ -143,19 +197,13 @@ namespace VRMR.Fbik
             CapturePlayerHeight(false);
             ApplyScaleAndHeight();
         }
-        static readonly IkBoneTrackedRole[] ControlRoles =
-        {
-            IkBoneTrackedRole.CenterEye, IkBoneTrackedRole.Head, IkBoneTrackedRole.Neck, IkBoneTrackedRole.Chest, IkBoneTrackedRole.Hips, IkBoneTrackedRole.Spine,
-            IkBoneTrackedRole.LeftUpperLeg, IkBoneTrackedRole.RightUpperLeg, IkBoneTrackedRole.LeftLowerLeg, IkBoneTrackedRole.RightLowerLeg, IkBoneTrackedRole.LeftFoot, IkBoneTrackedRole.RightFoot,
-            IkBoneTrackedRole.LeftShoulder, IkBoneTrackedRole.RightShoulder, IkBoneTrackedRole.LeftUpperArm, IkBoneTrackedRole.RightUpperArm, IkBoneTrackedRole.LeftLowerArm, IkBoneTrackedRole.RightLowerArm,
-            IkBoneTrackedRole.LeftHand, IkBoneTrackedRole.RightHand, IkBoneTrackedRole.LeftToes, IkBoneTrackedRole.RightToes, IkBoneTrackedRole.Mouth,
-        };
+
         void CalculateTransformPositions()
         {
-            Quaternion rootRot = Quaternion.identity;
-            foreach (IkBoneTrackedRole role in ControlRoles)
+            var rootRot = Quaternion.identity;
+            foreach (var role in ControlRoles)
             {
-                IkBoneControl control = Bones.Find(role);
+                var control = Bones.Find(role);
                 Vector3 world;
                 Quaternion worldRot;
                 if (role == IkBoneTrackedRole.CenterEye)
@@ -170,7 +218,7 @@ namespace VRMR.Fbik
                     worldRot = rootRot;
                     control.Exists = false;
                 }
-                else if (IkBoneTrackedRoleCommonCheck.TryConvertToHumanoidRole(role, out HumanBodyBones human) && Model.Has(human))
+                else if (IkBoneTrackedRoleCommonCheck.TryConvertToHumanoidRole(role, out var human) && Model.Has(human))
                 {
                     world = Model.Pos(human);
                     worldRot = Model.Rot(human);
@@ -182,41 +230,76 @@ namespace VRMR.Fbik
                     worldRot = rootRot;
                     control.Exists = false;
                 }
+
                 SetInitialData(control, role, world, worldRot);
             }
         }
+
         /// <summary>Port-specific fallback for bones the avatar lacks (upstream uses its IkFallBackBoneData asset).</summary>
         Vector3 FallbackPosition(IkBoneTrackedRole role)
         {
-            Vector3 P(HumanBodyBones b) => Model.Pos(b);
-            bool H(HumanBodyBones b) => Model.Has(b);
+            Vector3 P(HumanBodyBones b)
+            {
+                return Model.Pos(b);
+            }
+
+            bool H(HumanBodyBones b)
+            {
+                return Model.Has(b);
+            }
+
             Vector3 head = P(HumanBodyBones.Head), hips = P(HumanBodyBones.Hips);
-            Vector3 chest = H(HumanBodyBones.UpperChest) ? P(HumanBodyBones.UpperChest) : H(HumanBodyBones.Chest) ? P(HumanBodyBones.Chest) : Vector3.Lerp(hips, head, 0.55f);
+            var chest = H(HumanBodyBones.UpperChest) ? P(HumanBodyBones.UpperChest) :
+                H(HumanBodyBones.Chest) ? P(HumanBodyBones.Chest) : Vector3.Lerp(hips, head, 0.55f);
             switch (role)
             {
                 case IkBoneTrackedRole.Neck: return Vector3.Lerp(chest, head, 0.6f);
-                case IkBoneTrackedRole.Chest: return Vector3.Lerp(H(HumanBodyBones.Spine) ? P(HumanBodyBones.Spine) : hips, H(HumanBodyBones.Neck) ? P(HumanBodyBones.Neck) : head, 0.45f);
+                case IkBoneTrackedRole.Chest:
+                    return Vector3.Lerp(H(HumanBodyBones.Spine) ? P(HumanBodyBones.Spine) : hips,
+                        H(HumanBodyBones.Neck) ? P(HumanBodyBones.Neck) : head, 0.45f);
                 case IkBoneTrackedRole.Spine: return Vector3.Lerp(hips, chest, 0.45f);
-                case IkBoneTrackedRole.LeftShoulder: return H(HumanBodyBones.LeftUpperArm) ? Vector3.Lerp(new Vector3(0f, P(HumanBodyBones.LeftUpperArm).y, P(HumanBodyBones.LeftUpperArm).z), P(HumanBodyBones.LeftUpperArm), 0.3f) : chest;
-                case IkBoneTrackedRole.RightShoulder: return H(HumanBodyBones.RightUpperArm) ? Vector3.Lerp(new Vector3(0f, P(HumanBodyBones.RightUpperArm).y, P(HumanBodyBones.RightUpperArm).z), P(HumanBodyBones.RightUpperArm), 0.3f) : chest;
-                case IkBoneTrackedRole.LeftToes: return H(HumanBodyBones.LeftFoot) ? new Vector3(P(HumanBodyBones.LeftFoot).x, Model.SoleHeight + 0.01f, P(HumanBodyBones.LeftFoot).z + 0.08f * Model.AuthoredEyeHeight) : hips;
-                case IkBoneTrackedRole.RightToes: return H(HumanBodyBones.RightFoot) ? new Vector3(P(HumanBodyBones.RightFoot).x, Model.SoleHeight + 0.01f, P(HumanBodyBones.RightFoot).z + 0.08f * Model.AuthoredEyeHeight) : hips;
+                case IkBoneTrackedRole.LeftShoulder:
+                    return H(HumanBodyBones.LeftUpperArm)
+                        ? Vector3.Lerp(
+                            new Vector3(0f, P(HumanBodyBones.LeftUpperArm).y, P(HumanBodyBones.LeftUpperArm).z),
+                            P(HumanBodyBones.LeftUpperArm), 0.3f)
+                        : chest;
+                case IkBoneTrackedRole.RightShoulder:
+                    return H(HumanBodyBones.RightUpperArm)
+                        ? Vector3.Lerp(
+                            new Vector3(0f, P(HumanBodyBones.RightUpperArm).y, P(HumanBodyBones.RightUpperArm).z),
+                            P(HumanBodyBones.RightUpperArm), 0.3f)
+                        : chest;
+                case IkBoneTrackedRole.LeftToes:
+                    return H(HumanBodyBones.LeftFoot)
+                        ? new Vector3(P(HumanBodyBones.LeftFoot).x, Model.SoleHeight + 0.01f,
+                            P(HumanBodyBones.LeftFoot).z + 0.08f * Model.AuthoredEyeHeight)
+                        : hips;
+                case IkBoneTrackedRole.RightToes:
+                    return H(HumanBodyBones.RightFoot)
+                        ? new Vector3(P(HumanBodyBones.RightFoot).x, Model.SoleHeight + 0.01f,
+                            P(HumanBodyBones.RightFoot).z + 0.08f * Model.AuthoredEyeHeight)
+                        : hips;
                 default: return new Vector3(0f, Model.AuthoredEyeHeight * 0.5f, 0f);
             }
         }
-        void SetInitialData(IkBoneControl bone, IkBoneTrackedRole role, Vector3 worldTpose, Quaternion worldTposeRotation)
+
+        void SetInitialData(IkBoneControl bone, IkBoneTrackedRole role, Vector3 worldTpose,
+            Quaternion worldTposeRotation)
         {
-            Vector3 outgoingPosition = worldTpose; // avatar root at the origin
+            var outgoingPosition = worldTpose; // avatar root at the origin
             outgoingPosition.y -= Model.SoleHeight * FbikSolverSetup.AppliedAvatarScale();
-            Quaternion outgoingRotation = worldTposeRotation;
+            var outgoingRotation = worldTposeRotation;
             if (IkBoneTrackedRoleCommonCheck.IsApartOfSpineVertical(role))
             {
                 outgoingPosition.x = 0;
             }
+
             bone.SetOutgoing(outgoingPosition, outgoingRotation);
             bone.SetTposeLocal(outgoingPosition, outgoingRotation);
             bone.SetTposeScaled(outgoingPosition, outgoingRotation);
         }
+
         void ComputeOffsets()
         {
             Bones.SetAndCreateLock(IkBoneTrackedRole.CenterEye, IkBoneTrackedRole.Head);
@@ -242,34 +325,37 @@ namespace VRMR.Fbik
             Bones.SetAndCreateLock(IkBoneTrackedRole.LeftFoot, IkBoneTrackedRole.LeftToes);
             Bones.SetAndCreateLock(IkBoneTrackedRole.RightFoot, IkBoneTrackedRole.RightToes);
         }
+
         /// <summary>IkHeightDriver.ApplyAvatarScale.</summary>
         void ApplyAvatarScale(float scaleFactor)
         {
             for (int i = 0; i < Bones.ControlsLength; i++)
             {
-                IkBoneControl c = Bones.Controls[i];
+                var c = Bones.Controls[i];
                 c.SetTposeScaled(c.TposeLocal.position * scaleFactor, c.TposeLocal.rotation);
                 c.ScaledOffset = c.Offset * scaleFactor;
             }
         }
 
-        // ---- IkHeightDriver -------------------------------------------------------------------------------
-        bool HasHipsFBIKTracker => Bones.HipsControl.HasTracked;
-        bool HasLegFBIKTrackers => Bones.LeftFootControl.HasTracked || Bones.RightFootControl.HasTracked || Bones.LeftLowerLegControl.HasTracked || Bones.RightLowerLegControl.HasTracked || Bones.LeftUpperLegControl.HasTracked || Bones.RightUpperLegControl.HasTracked;
         public IkSelectedHeightMode ResolveHeightMode(IkSelectedHeightMode mode)
         {
             if (mode != IkSelectedHeightMode.Auto)
             {
                 return mode;
             }
+
             bool hasLowerBodyTrackers = heldAutoLowerBody ?? (HasHipsFBIKTracker || HasLegFBIKTrackers);
             return hasLowerBodyTrackers ? IkSelectedHeightMode.EyeHeight : IkSelectedHeightMode.ArmSpan;
         }
+
         public float EstimatedPlayerArmSpan()
         {
-            float eye = StatedEyeHeight > 0f ? StatedEyeHeight : SanitizePositive(PlayerEyeHeight, IkHeightConstants.FallbackHeightInMeters);
+            float eye = StatedEyeHeight > 0f
+                ? StatedEyeHeight
+                : SanitizePositive(PlayerEyeHeight, IkHeightConstants.FallbackHeightInMeters);
             return IkCalibrationMath.SpanFromArmRatio(eye, Settings.ArmRatio);
         }
+
         IkScaleInputs CurrentScaleInputs()
         {
             bool fitEnabled = Settings.FBIKBodyFit;
@@ -287,23 +373,34 @@ namespace VRMR.Fbik
                 AvatarSpan = SanitizePositive(Model.AvatarArmSpan, IkHeightConstants.FallbackHeightInMeters),
                 AvatarShoulderWidth = Model.AvatarShoulderWidth,
                 AppliedUpScale = SanitizePositive(AppliedUpScale, 1f),
-                FitDeviation = fitEnabled ? Mathf.Clamp(Settings.FBIKBodyFitMaxDeviation, 0f, IkBodyFitCore.MaxDeviationCeiling) : 0f,
+                FitDeviation = fitEnabled
+                    ? Mathf.Clamp(Settings.FBIKBodyFitMaxDeviation, 0f, IkBodyFitCore.MaxDeviationCeiling)
+                    : 0f
             };
         }
-        static float SanitizePositive(float v, float fallback) => float.IsNaN(v) || float.IsInfinity(v) || v <= 0f ? fallback : v;
-        /// <summary>IkHeightDriver.ApplyScaleAndHeight: span estimate -> uniform scale -> body fit -> device scale/grounding -> height-changed callbacks -> offset reprojection.</summary>
+
+        static float SanitizePositive(float v, float fallback)
+        {
+            return float.IsNaN(v) || float.IsInfinity(v) || v <= 0f ? fallback : v;
+        }
+
+        /// <summary>
+        ///     IkHeightDriver.ApplyScaleAndHeight: span estimate -> uniform scale -> body fit -> device scale/grounding ->
+        ///     height-changed callbacks -> offset reprojection.
+        /// </summary>
         public void ApplyScaleAndHeight()
         {
             PlayerArmSpan = EstimatedPlayerArmSpan();
-            IkScaleState state = IkScaleResolver.Resolve(CurrentScaleInputs());
+            var state = IkScaleResolver.Resolve(CurrentScaleInputs());
             LastScaleFit = state.BestFit;
             AppliedUniformScale = state.UniformScale;
             Rig.RefreshBodyFit();
-            IkScaleInputs inputs = CurrentScaleInputs();
+            var inputs = CurrentScaleInputs();
             inputs.AppliedUpScale = AppliedUpScale;
             state = IkScaleResolver.Resolve(inputs);
             ScaledAvatarEyeHeight = SanitizePositive(state.ScaledAvatarEye, IkHeightConstants.FallbackHeightInMeters);
-            AvatarToDefaultRatioScaledWithAvatarScale = ScaledAvatarEyeHeight / IkHeightConstants.FallbackHeightInMeters;
+            AvatarToDefaultRatioScaledWithAvatarScale =
+                ScaledAvatarEyeHeight / IkHeightConstants.FallbackHeightInMeters;
             DeviceScale = SanitizePositive(state.DeviceScale, 1f);
             AppliedUniformScale = state.UniformScale;
             HeightModeGroundingOffset = VrmrNoGrounding ? 0f : state.GroundingOffset;
@@ -313,6 +410,7 @@ namespace VRMR.Fbik
             Feet.OnHeightChanged();
             Calibration.ReprojectTrackerOffsetsForCurrentAvatar();
         }
+
         /// <summary>IkHeightDriver.CapturePlayerHeight / IkLocalHeightCalculator.CalculatePlayerEyeHeight.</summary>
         public void CapturePlayerHeight(bool recaptureEyeHeight)
         {
@@ -320,12 +418,14 @@ namespace VRMR.Fbik
             {
                 CalculatePlayerEyeHeight();
             }
+
             PlayerEyeHeight = SanitizePositive(PlayerEyeHeight, IkHeightConstants.FallbackHeightInMeters);
             PlayerArmSpan = EstimatedPlayerArmSpan();
         }
+
         void CalculatePlayerEyeHeight()
         {
-            DeviceState hmd = Devices[(int)IkBoneTrackedRole.CenterEye];
+            var hmd = Devices[(int)IkBoneTrackedRole.CenterEye];
             PlayerCenterEyeVerticalOffset = HmdCenterEyeOffset.y;
             bool genuine = true;
             if (Seated)
@@ -351,29 +451,35 @@ namespace VRMR.Fbik
             else
             {
                 // Upstream falls back to the avatar eye height (desktop); the port prefers a stated eye height when given.
-                PlayerEyeHeight = StatedEyeHeight > 0f ? StatedEyeHeight : Model.AvatarEyeHeight > 0f ? Model.AvatarEyeHeight : IkHeightConstants.FallbackHeightInMeters;
+                PlayerEyeHeight = StatedEyeHeight > 0f ? StatedEyeHeight :
+                    Model.AvatarEyeHeight > 0f ? Model.AvatarEyeHeight : IkHeightConstants.FallbackHeightInMeters;
                 genuine = false;
             }
+
             if (PlayerEyeHeight <= 0f)
             {
                 PlayerEyeHeight = IkHeightConstants.FallbackHeightInMeters;
                 genuine = false;
             }
+
             HasGenuinePlayerEyeHeight = genuine;
         }
+
         bool TryGetTrackedFloor(float hmdY, out float floorY)
         {
-            var heights = new System.Collections.Generic.List<float>(16);
+            var heights = new List<float>(16);
             for (int r = 0; r < Devices.Length; r++)
             {
-                DeviceState d = Devices[r];
+                var d = Devices[r];
                 if (!d.Present || !d.HasPose || r == (int)IkBoneTrackedRole.CenterEye) continue;
-                Vector3 unscaled = d.RawPosition + new Vector3(0f, UnscaledVerticalLift(), 0f);
+                var unscaled = d.RawPosition + new Vector3(0f, UnscaledVerticalLift(), 0f);
                 if (unscaled.sqrMagnitude < 1e-4f) continue;
                 heights.Add(unscaled.y);
             }
+
             return IkCalibrationMath.TryEstimateFloorFromTrackers(heights, hmdY, out floorY);
         }
+
         void CalculatePlayerHipHeight()
         {
             if (Seated)
@@ -382,6 +488,7 @@ namespace VRMR.Fbik
                 PlayerHipHeight = 0f;
                 return;
             }
+
             DeviceState hips = Devices[(int)IkBoneTrackedRole.Hips], head = Devices[(int)IkBoneTrackedRole.CenterEye];
             if (!hips.Present || !hips.HasPose || !head.Present || !head.HasPose) return;
             float drop = head.RawPosition.y - hips.RawPosition.y;
@@ -396,10 +503,16 @@ namespace VRMR.Fbik
             if (!IsVR) return 0f;
             return PlayspaceVerticalOffset + HeightModeGroundingOffset;
         }
-        public bool RoleHasDevice(IkBoneTrackedRole role) => Devices[(int)role].Present;
-        public void SetDevicePose(IkBoneTrackedRole role, Vector3 trackingPosition, Quaternion trackingRotation, bool valid, IkHandSource handSource)
+
+        public bool RoleHasDevice(IkBoneTrackedRole role)
         {
-            ref DeviceState d = ref Devices[(int)role];
+            return Devices[(int)role].Present;
+        }
+
+        public void SetDevicePose(IkBoneTrackedRole role, Vector3 trackingPosition, Quaternion trackingRotation,
+            bool valid, IkHandSource handSource)
+        {
+            ref var d = ref Devices[(int)role];
             d.Present = true;
             d.HandSource = handSource;
             if (valid)
@@ -409,135 +522,159 @@ namespace VRMR.Fbik
                 d.HasPose = true;
             }
         }
+
         public void RemoveDevice(IkBoneTrackedRole role)
         {
-            Devices[(int)role] = new DeviceState { RawRotation = Quaternion.identity, DeviceOffsetRotation = Quaternion.identity, UnscaledRotation = Quaternion.identity, FinalScaledRotation = Quaternion.identity };
-            IkBoneControl c = Bones.Find(role);
+            Devices[(int)role] = new DeviceState
+            {
+                RawRotation = Quaternion.identity, DeviceOffsetRotation = Quaternion.identity,
+                UnscaledRotation = Quaternion.identity, FinalScaledRotation = Quaternion.identity
+            };
+            var c = Bones.Find(role);
             if (IkBoneTrackedRoleCommonCheck.CheckItsFBTracker(role))
             {
                 c.SetInverseOffset(Vector3.zero, Quaternion.identity);
                 c.UseInverseOffset = false;
                 Calibration.ClearSnapshot(role);
             }
+
             c.SetIncoming(Vector3.zero, Quaternion.identity);
             c.SetTracked(false);
         }
+
         public void SetDeviceOffset(IkBoneTrackedRole role, Vector3 position, Quaternion rotation)
         {
-            ref DeviceState d = ref Devices[(int)role];
+            ref var d = ref Devices[(int)role];
             d.DeviceOffsetPosition = position;
             d.DeviceOffsetRotation = rotation;
             d.HasDeviceOffset = !(position.sqrMagnitude <= 1e-10f && Mathf.Abs(rotation.w) >= 1f - 1e-7f);
         }
+
         /// <summary>One device poll (OnLatePollData): device -> unscaled -> scaled -> control incoming.</summary>
         public void PollDevices()
         {
             for (int r = 0; r < Devices.Length; r++)
             {
-                ref DeviceState d = ref Devices[r];
+                ref var d = ref Devices[r];
                 if (!d.Present || !d.HasPose) continue;
-                IkBoneTrackedRole role = (IkBoneTrackedRole)r;
-                IkBoneControl control = Bones.Controls[r];
-                Vector3 physical = d.RawPosition;
+                var role = (IkBoneTrackedRole)r;
+                var control = Bones.Controls[r];
+                var physical = d.RawPosition;
                 physical.y += UnscaledVerticalLift(); // ComputeUnscaledDeviceCoord
-                Quaternion physicalRot = d.RawRotation;
+                var physicalRot = d.RawRotation;
                 if (role == IkBoneTrackedRole.LeftHand || role == IkBoneTrackedRole.RightHand)
                 {
                     bool isLeft = role == IkBoneTrackedRole.LeftHand;
-                    ComputeHand(ref d, isLeft, physical, physicalRot, out Vector3 handPos, out Quaternion handRot);
+                    ComputeHand(ref d, isLeft, physical, physicalRot, out var handPos, out var handRot);
                     d.FinalScaledPosition = handPos;
                     d.FinalScaledRotation = handRot;
                     // ControlOnlyAsHand: only while the hand role holds a tracker.
                     if (control.HasTracked) control.SetIncoming(handPos, handRot);
                     continue;
                 }
+
                 // IkInput: UnscaledDeviceCoord = Physical (device offset applied at the final pose for non-controllers).
                 d.UnscaledPosition = physical;
                 d.UnscaledRotation = physicalRot;
-                IkCalibrationMath.ScaleDeviceCoord(physical, physicalRot, DeviceScale, Vector3.zero, Quaternion.identity, out Vector3 scaledPos, out Quaternion scaledRot);
-                Vector3 finalPos = scaledPos;
-                Quaternion finalRot = scaledRot;
+                IkCalibrationMath.ScaleDeviceCoord(physical, physicalRot, DeviceScale, Vector3.zero,
+                    Quaternion.identity, out var scaledPos, out var scaledRot);
+                var finalPos = scaledPos;
+                var finalRot = scaledRot;
                 if (d.HasDeviceOffset)
                 {
                     finalPos += finalRot * (d.DeviceOffsetPosition * DeviceScale);
                     finalRot *= d.DeviceOffsetRotation;
                 }
+
                 d.FinalScaledPosition = finalPos;
                 d.FinalScaledRotation = finalRot;
-                Vector3 scaledControlPositionOffset = Vector3.zero;
+                var scaledControlPositionOffset = Vector3.zero;
                 if (role == IkBoneTrackedRole.CenterEye)
                 {
                     scaledControlPositionOffset = scaledRot * (HmdCenterEyeOffset * DeviceScale);
                 }
+
                 if (control.HasTracked) control.SetIncoming(finalPos + scaledControlPositionOffset, finalRot);
             }
         }
-        void ComputeHand(ref DeviceState d, bool isLeft, Vector3 physical, Quaternion physicalRot, out Vector3 handPos, out Quaternion handRot)
+
+        void ComputeHand(ref DeviceState d, bool isLeft, Vector3 physical, Quaternion physicalRot, out Vector3 handPos,
+            out Quaternion handRot)
         {
-            Vector3 unscaledPos = physical;
-            Quaternion unscaledRot = physicalRot;
+            var unscaledPos = physical;
+            var unscaledRot = physicalRot;
             if (d.HasDeviceOffset)
             {
                 // ResolveUnscaledFromPhysical(true): controllers apply the device offset at source.
                 unscaledPos = physical + physicalRot * d.DeviceOffsetPosition;
                 unscaledRot = physicalRot * d.DeviceOffsetRotation;
             }
+
             float scale = DeviceScale;
             switch (d.HandSource)
             {
                 case IkHandSource.HandBone:
-                    {
-                        // Port-specific: the pose is the hand bone; the base solver's hand target is the landmark frame, bone = target * offset.
-                        Quaternion offset = isLeft ? Rig.IKJob.offsetRotationLeftHand : Rig.IKJob.offsetRotationRightHand;
-                        handPos = unscaledPos * scale;
-                        handRot = unscaledRot * Quaternion.Inverse(offset);
-                        d.UnscaledPosition = unscaledPos;
-                        d.UnscaledRotation = unscaledRot;
-                        return;
-                    }
+                {
+                    // Port-specific: the pose is the hand bone; the base solver's hand target is the landmark frame, bone = target * offset.
+                    var offset = isLeft ? Rig.IKJob.offsetRotationLeftHand : Rig.IKJob.offsetRotationRightHand;
+                    handPos = unscaledPos * scale;
+                    handRot = unscaledRot * Quaternion.Inverse(offset);
+                    d.UnscaledPosition = unscaledPos;
+                    d.UnscaledRotation = unscaledRot;
+                    return;
+                }
                 case IkHandSource.OpenXRPalm:
+                {
+                    var corrected = unscaledRot *
+                                    Quaternion.Euler(isLeft ? LeftHandPalmCorrection : RightHandPalmCorrection);
+                    handRot = corrected;
+                    handPos = unscaledPos * scale;
+                    if (UseIKPositionOffset)
                     {
-                        Quaternion corrected = unscaledRot * Quaternion.Euler(isLeft ? LeftHandPalmCorrection : RightHandPalmCorrection);
-                        handRot = corrected;
-                        handPos = unscaledPos * scale;
-                        if (UseIKPositionOffset)
-                        {
-                            handPos += handRot * ((isLeft ? OpenXRLeftHandToIKPositionOffset : OpenXRRightHandToIKPositionOffset) * scale);
-                        }
-                        d.UnscaledPosition = unscaledPos;
-                        d.UnscaledRotation = unscaledRot;
-                        return;
+                        handPos += handRot *
+                                   ((isLeft ? OpenXRLeftHandToIKPositionOffset : OpenXRRightHandToIKPositionOffset) *
+                                    scale);
                     }
+
+                    d.UnscaledPosition = unscaledPos;
+                    d.UnscaledRotation = unscaledRot;
+                    return;
+                }
                 default:
+                {
+                    // IkOpenVRInputController.UpdateHandPose
+                    var wristLocalPos = isLeft ? LeftWristLocalPosition : RightWristLocalPosition;
+                    var wristLocalRot = isLeft ? LeftWristLocalRotation : RightWristLocalRotation;
+                    var rotOffset = Quaternion.Euler(isLeft ? leftHandToIKRotationOffset : rightHandToIKRotationOffset);
+                    var wristWorldPosUnscaled = unscaledPos - unscaledRot * wristLocalPos;
+                    var posOffsetLocal = isLeft ? leftHandToIKPositionOffset : rightHandToIKPositionOffset;
+                    if (UseIKPositionOffset)
                     {
-                        // IkOpenVRInputController.UpdateHandPose
-                        Vector3 wristLocalPos = isLeft ? LeftWristLocalPosition : RightWristLocalPosition;
-                        Quaternion wristLocalRot = isLeft ? LeftWristLocalRotation : RightWristLocalRotation;
-                        Quaternion rotOffset = Quaternion.Euler(isLeft ? leftHandToIKRotationOffset : rightHandToIKRotationOffset);
-                        Vector3 wristWorldPosUnscaled = unscaledPos - (unscaledRot * wristLocalPos);
-                        Vector3 posOffsetLocal = isLeft ? leftHandToIKPositionOffset : rightHandToIKPositionOffset;
-                        if (UseIKPositionOffset)
-                        {
-                            wristWorldPosUnscaled += unscaledRot * posOffsetLocal;
-                        }
-                        Quaternion baseWristWorldRot = unscaledRot * wristLocalRot;
-                        Quaternion wristWorldRot = baseWristWorldRot * rotOffset;
-                        handPos = wristWorldPosUnscaled * scale;
-                        handRot = wristWorldRot;
-                        d.UnscaledPosition = wristWorldPosUnscaled;
-                        d.UnscaledRotation = unscaledRot;
-                        return;
+                        wristWorldPosUnscaled += unscaledRot * posOffsetLocal;
                     }
+
+                    var baseWristWorldRot = unscaledRot * wristLocalRot;
+                    var wristWorldRot = baseWristWorldRot * rotOffset;
+                    handPos = wristWorldPosUnscaled * scale;
+                    handRot = wristWorldRot;
+                    d.UnscaledPosition = wristWorldPosUnscaled;
+                    d.UnscaledRotation = unscaledRot;
+                    return;
+                }
             }
         }
-        /// <summary>Hands/HMD get their role (and rig layer) as soon as the device appears; full-body trackers only at calibration.</summary>
+
+        /// <summary>
+        ///     Hands/HMD get their role (and rig layer) as soon as the device appears; full-body trackers only at
+        ///     calibration.
+        /// </summary>
         void AssignNonFbRoles()
         {
             for (int r = 0; r < Devices.Length; r++)
             {
-                IkBoneTrackedRole role = (IkBoneTrackedRole)r;
+                var role = (IkBoneTrackedRole)r;
                 if (IkBoneTrackedRoleCommonCheck.CheckItsFBTracker(role)) continue;
-                IkBoneControl c = Bones.Controls[r];
+                var c = Bones.Controls[r];
                 bool want = Devices[r].Present && Devices[r].HasPose;
                 if (want != c.HasTracked) c.SetTracked(want);
             }
@@ -548,11 +685,13 @@ namespace VRMR.Fbik
         {
             // Upstream measures the player at avatar load (CapturePlayerHeight(false)) with the HMD already present;
             // the port does it on the first frame that has an HMD pose, unless a stated eye height was given.
-            if (!HasGenuinePlayerEyeHeight && StatedEyeHeight <= 0f && Devices[(int)IkBoneTrackedRole.CenterEye].Present && Devices[(int)IkBoneTrackedRole.CenterEye].HasPose)
+            if (!HasGenuinePlayerEyeHeight && StatedEyeHeight <= 0f &&
+                Devices[(int)IkBoneTrackedRole.CenterEye].Present && Devices[(int)IkBoneTrackedRole.CenterEye].HasPose)
             {
                 CapturePlayerHeight(false);
                 ApplyScaleAndHeight();
             }
+
             AssignNonFbRoles();
             PollDevices();
             VirtualSpine.Simulate(deltaTime);
@@ -560,6 +699,7 @@ namespace VRMR.Fbik
             Rig.SimulateIKDestinations(deltaTime);
             CacheSolvedPose();
         }
+
         void SimulateAndApplyWithoutLerp(float deltaTime)
         {
             AssignNonFbRoles();
@@ -567,15 +707,17 @@ namespace VRMR.Fbik
             VirtualSpine.Simulate(deltaTime);
             Bones.SimulateWithoutLerp(localToWorldMatrix, deltaTime);
         }
+
         void CacheSolvedPose()
         {
-            IkPoseSkeleton sk = Model.Skeleton;
+            var sk = Model.Skeleton;
             if (!sk.IsCreated) return;
             if (lastSolvedPos == null)
             {
                 lastSolvedPos = new Vector3[IkAvatarModel.HumanBoneCount];
                 lastSolvedRot = new Quaternion[IkAvatarModel.HumanBoneCount];
             }
+
             sk.Stream.InvalidateWorldCache();
             for (int b = 0; b < IkAvatarModel.HumanBoneCount; b++)
             {
@@ -583,13 +725,16 @@ namespace VRMR.Fbik
                 if (node < 0) continue;
                 sk.Stream.GetWorldPositionAndRotation(node, out lastSolvedPos[b], out lastSolvedRot[b]);
             }
+
             hasSolved = true;
         }
+
         public Vector3 BoneWorldPosition(HumanBodyBones bone)
         {
             if (hasSolved && Model.Has(bone)) return lastSolvedPos[(int)bone];
             return localToWorldMatrix.MultiplyPoint3x4(Model.Has(bone) ? Model.Pos(bone) : Vector3.zero);
         }
+
         public Quaternion BoneWorldRotation(HumanBodyBones bone)
         {
             if (hasSolved && Model.Has(bone)) return lastSolvedRot[(int)bone];
@@ -611,15 +756,17 @@ namespace VRMR.Fbik
                 SimulateAndApplyWithoutLerp(deltaTime);
                 for (int r = 0; r < Devices.Length; r++)
                 {
-                    IkBoneTrackedRole role = (IkBoneTrackedRole)r;
+                    var role = (IkBoneTrackedRole)r;
                     if (!IkBoneTrackedRoleCommonCheck.CheckItsFBTracker(role) || !Settings.EnableFBT) continue;
-                    ref DeviceState d = ref Devices[r];
+                    ref var d = ref Devices[r];
                     if (!d.Present || !d.HasPose) continue;
-                    IkBoneControl control = Bones.Controls[r];
-                    Calibration.CalculateOffset(control, role, d.FinalScaledPosition, d.FinalScaledRotation, d.UnscaledPosition, d.UnscaledRotation);
+                    var control = Bones.Controls[r];
+                    Calibration.CalculateOffset(control, role, d.FinalScaledPosition, d.FinalScaledRotation,
+                        d.UnscaledPosition, d.UnscaledRotation);
                     control.SetTracked(true);
                     control.SetIncoming(d.FinalScaledPosition, d.FinalScaledRotation);
                 }
+
                 SimulateAndApplyWithoutLerp(deltaTime);
                 Calibration.RecomputeFbikRotationCalibration();
                 Calibration.ComputeHints();
@@ -631,6 +778,7 @@ namespace VRMR.Fbik
                 {
                     ApplyScaleAndHeight();
                 }
+
                 Rig.ResetSmoothingState();
             }
             finally
@@ -638,21 +786,25 @@ namespace VRMR.Fbik
                 heldAutoLowerBody = null;
             }
         }
+
         bool HasFbTrackerCandidates()
         {
             for (int r = 0; r < Devices.Length; r++)
             {
-                if (IkBoneTrackedRoleCommonCheck.CheckItsFBTracker((IkBoneTrackedRole)r) && Devices[r].Present && Devices[r].HasPose) return true;
+                if (IkBoneTrackedRoleCommonCheck.CheckItsFBTracker((IkBoneTrackedRole)r) && Devices[r].Present &&
+                    Devices[r].HasPose) return true;
             }
+
             return false;
         }
+
         void UnassignFBTrackers()
         {
             for (int r = 0; r < Devices.Length; r++)
             {
-                IkBoneTrackedRole role = (IkBoneTrackedRole)r;
+                var role = (IkBoneTrackedRole)r;
                 if (!IkBoneTrackedRoleCommonCheck.CheckItsFBTracker(role)) continue;
-                IkBoneControl c = Bones.Controls[r];
+                var c = Bones.Controls[r];
                 if (!c.HasTracked && !c.UseInverseOffset) continue;
                 c.SetInverseOffset(Vector3.zero, Quaternion.identity);
                 c.UseInverseOffset = false;
@@ -660,6 +812,23 @@ namespace VRMR.Fbik
                 c.SetTracked(false);
                 Calibration.ClearSnapshot(role);
             }
+        }
+
+        // ---- devices ----------------------------------------------------------------------------------------
+        public struct DeviceState
+        {
+            public bool Present; // a device is assigned to this role (IkInput with a role)
+            public bool HasPose; // at least one valid pose received
+            public Vector3 RawPosition; // tracking space, Unity convention, metres (PhysicalDeviceCoord before lift)
+            public Quaternion RawRotation;
+            public IkHandSource HandSource;
+            public bool HasDeviceOffset;
+            public Vector3 DeviceOffsetPosition;
+            public Quaternion DeviceOffsetRotation;
+            public Vector3 UnscaledPosition;
+            public Quaternion UnscaledRotation;
+            public Vector3 FinalScaledPosition;
+            public Quaternion FinalScaledRotation;
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRMR.App.Composition;
@@ -10,28 +11,73 @@ using VRMR.App.Viewport;
 namespace VRMR.App.ViewModels
 {
     /// <summary>
-    /// The Takes workspace: the transport, the timeline, what the 3D view shows (the open take or the live devices)
-    /// and the view chips. It owns no data: the take session, the playback clock and the presenters do the work.
+    ///     The Takes workspace: the transport, the timeline, what the 3D view shows (the open take or the live devices)
+    ///     and the view chips. It owns no data: the take session, the playback clock and the presenters do the work.
     /// </summary>
     public partial class TakesWorkspaceViewModel : ObservableObject, IGestureSource
     {
+        /// <summary>The inspector's tabs.</summary>
+        public const int TakeTab = 0, ExportTab = 1, DevicesTab = 2;
+
+        readonly PlaybackClock _clock;
         readonly AppHost _host;
         readonly TakeSession _session;
-        readonly PlaybackClock _clock;
         readonly SettingsStore _settings;
-        IViewport _view;
-        List<double[]> _segments = new List<double[]>();
+        [ObservableProperty] bool _canPlay;
+        [ObservableProperty] bool _canRedo;
+        [ObservableProperty] bool _canUndo;
+        [ObservableProperty] string _emptyText = "";
+        [ObservableProperty] string _emptyTitle = "";
         bool _framed, _active = true;
+        [ObservableProperty] bool _hasBaseStations;
+        [ObservableProperty] bool _hasHeadset;
+        [ObservableProperty] bool _hasPlayArea;
+        [ObservableProperty] bool _hasSelection;
+
+        [ObservableProperty] bool _hasTake;
+
+        /// <summary>
+        ///     Which inspector tab shows. It follows what the view shows (Devices with Live, Take with a take) until the user
+        ///     picks one.
+        /// </summary>
+        [ObservableProperty] int _inspectorTab;
+
+        [ObservableProperty] bool _isLive;
+        [ObservableProperty] bool _isPlaying;
+        [ObservableProperty] bool _isSolving;
         IDisposable _liveWatch;
+        [ObservableProperty] bool _loop = true;
+        List<double[]> _segments = new();
+        [ObservableProperty] bool _showBaseStations;
+        [ObservableProperty] bool _showDevices;
+        [ObservableProperty] bool _showEmpty;
+        [ObservableProperty] bool _showHeadset;
+        [ObservableProperty] bool _showMesh;
+        [ObservableProperty] bool _showPlayArea;
+        [ObservableProperty] bool _showSkeleton;
+        [ObservableProperty] bool _solveFailed;
+        [ObservableProperty] double _solveProgress;
+        [ObservableProperty] string _solveText = "";
+        [ObservableProperty] int _speedIndex = 2;
+        [ObservableProperty] string _timeText = "";
+        [ObservableProperty] string _timeTip;
+        IViewport _view;
 
         public TakesWorkspaceViewModel(AppHost host)
         {
-            _host = host; _session = host.Session; _clock = host.Clock; _settings = host.SettingsStore;
+            _host = host;
+            _session = host.Session;
+            _clock = host.Clock;
+            _settings = host.SettingsStore;
             Timeline = new TimelineViewModel(_session, _clock, host.Ui);
             PlacementTool = new PlacementTool(host.Placement, host.TakePresenter, _session, _clock);
             var s = _settings.Value;
-            _showMesh = s.PreviewMesh; _showSkeleton = s.PreviewSkeleton; _showDevices = s.ShowDevices; _showHeadset = s.ShowHmdModel;
-            _showPlayArea = s.ShowPlayArea; _showBaseStations = s.ShowBaseStations;
+            _showMesh = s.PreviewMesh;
+            _showSkeleton = s.PreviewSkeleton;
+            _showDevices = s.ShowDevices;
+            _showHeadset = s.ShowHmdModel;
+            _showPlayArea = s.ShowPlayArea;
+            _showBaseStations = s.ShowBaseStations;
             _isLive = true;
 
             _session.TakeChanged += OnTakeChanged;
@@ -39,14 +85,30 @@ namespace VRMR.App.ViewModels
             _session.EditsChanged += OnEditsChanged;
             _session.SolveChanged += OnSolveChanged;
             _session.DirtyChanged += () => OnPropertyChanged(nameof(TakeTitle));
-            _session.History.Changed += () => { CanUndo = _session.History.CanUndo; CanRedo = _session.History.CanRedo; };
+            _session.History.Changed += () =>
+            {
+                CanUndo = _session.History.CanUndo;
+                CanRedo = _session.History.CanRedo;
+            };
             _clock.PlayheadChanged += OnPlayheadChanged;
-            _clock.StateChanged += () => { IsPlaying = _clock.Playing; UpdateAnimating(); };
+            _clock.StateChanged += () =>
+            {
+                IsPlaying = _clock.Playing;
+                UpdateAnimating();
+            };
             Timeline.SelectionChanged += () => HasSelection = Timeline.HasSelection;
             Timeline.Scrubbed += () => { IsLive = false; };
             host.Recording.StateChanged += OnRecordingChanged;
-            host.Recording.Stopped += rec => { if (_active) _session.Show(rec); };
-            PlacementTool.Changed += () => { _view?.SceneChanged(); OnPropertyChanged(nameof(GizmoOn)); OnPropertyChanged(nameof(GizmoTurns)); };
+            host.Recording.Stopped += rec =>
+            {
+                if (_active) _session.Show(rec);
+            };
+            PlacementTool.Changed += () =>
+            {
+                _view?.SceneChanged();
+                OnPropertyChanged(nameof(GizmoOn));
+                OnPropertyChanged(nameof(GizmoTurns));
+            };
             Inspector = new TakeInspectorViewModel(host, this);
             Devices = new DevicesViewModel(host);
             _inspectorTab = host.CaptureOn ? DevicesTab : TakeTab;
@@ -58,49 +120,9 @@ namespace VRMR.App.ViewModels
         public PlacementTool PlacementTool { get; }
         public TakeInspectorViewModel Inspector { get; }
         public DevicesViewModel Devices { get; }
-
-        /// <summary>The inspector's tabs.</summary>
-        public const int TakeTab = 0, ExportTab = 1, DevicesTab = 2;
-
-        /// <summary>Which inspector tab shows. It follows what the view shows (Devices with Live, Take with a take) until the user picks one.</summary>
-        [ObservableProperty] int _inspectorTab;
         public bool ShowTakeTab => InspectorTab == TakeTab;
         public bool ShowExportTab => InspectorTab == ExportTab;
         public bool ShowDevicesTab => InspectorTab == DevicesTab;
-
-        partial void OnInspectorTabChanged(int value)
-        {
-            OnPropertyChanged(nameof(ShowTakeTab)); OnPropertyChanged(nameof(ShowExportTab)); OnPropertyChanged(nameof(ShowDevicesTab));
-            Devices.SetVisible(value == DevicesTab && _active);
-        }
-
-        [ObservableProperty] bool _hasTake;
-        [ObservableProperty] bool _canPlay;
-        [ObservableProperty] bool _isPlaying;
-        [ObservableProperty] bool _isLive;
-        [ObservableProperty] bool _loop = true;
-        [ObservableProperty] int _speedIndex = 2;
-        [ObservableProperty] string _timeText = "";
-        [ObservableProperty] string _timeTip;
-        [ObservableProperty] bool _canUndo;
-        [ObservableProperty] bool _canRedo;
-        [ObservableProperty] bool _hasSelection;
-        [ObservableProperty] bool _showMesh;
-        [ObservableProperty] bool _showSkeleton;
-        [ObservableProperty] bool _showDevices;
-        [ObservableProperty] bool _showHeadset;
-        [ObservableProperty] bool _showPlayArea;
-        [ObservableProperty] bool _showBaseStations;
-        [ObservableProperty] bool _hasPlayArea;
-        [ObservableProperty] bool _hasBaseStations;
-        [ObservableProperty] bool _hasHeadset;
-        [ObservableProperty] string _solveText = "";
-        [ObservableProperty] bool _isSolving;
-        [ObservableProperty] double _solveProgress;
-        [ObservableProperty] bool _solveFailed;
-        [ObservableProperty] string _emptyTitle = "";
-        [ObservableProperty] string _emptyText = "";
-        [ObservableProperty] bool _showEmpty;
 
         /// <summary>Speed labels for the transport.</summary>
         public IReadOnlyList<string> SpeedLabels { get; } = new[] { "0.25×", "0.5×", "1×", "1.5×", "2×" };
@@ -110,6 +132,19 @@ namespace VRMR.App.ViewModels
 
         public bool GizmoOn => PlacementTool.Active;
         public bool GizmoTurns => PlacementTool.Turn;
+
+        public IDisposable BeginGesture()
+        {
+            return _session.Gesture();
+        }
+
+        partial void OnInspectorTabChanged(int value)
+        {
+            OnPropertyChanged(nameof(ShowTakeTab));
+            OnPropertyChanged(nameof(ShowExportTab));
+            OnPropertyChanged(nameof(ShowDevicesTab));
+            Devices.SetVisible(value == DevicesTab && _active);
+        }
 
         // ------------------------------------------------------------------------------------------ the view
 
@@ -127,8 +162,22 @@ namespace VRMR.App.ViewModels
         public void SetActive(bool active)
         {
             _active = active;
-            if (!active) { _clock.Playing = false; if (_view != null) { _view.Tool = null; _view.Animating = false; } }
-            else { if (_view != null) _view.Tool = PlacementTool.Active ? PlacementTool : null; Present(); UpdateAnimating(); }
+            if (!active)
+            {
+                _clock.Playing = false;
+                if (_view != null)
+                {
+                    _view.Tool = null;
+                    _view.Animating = false;
+                }
+            }
+            else
+            {
+                if (_view != null) _view.Tool = PlacementTool.Active ? PlacementTool : null;
+                Present();
+                UpdateAnimating();
+            }
+
             Devices.SetVisible(active && InspectorTab == DevicesTab);
         }
 
@@ -136,17 +185,47 @@ namespace VRMR.App.ViewModels
         {
             if (_view == null) return;
             var o = _view.Options;
-            o.Mesh = ShowMesh; o.Skeleton = ShowSkeleton; o.Devices = ShowDevices; o.Headset = ShowHeadset; o.PlayArea = ShowPlayArea; o.BaseStations = ShowBaseStations;
+            o.Mesh = ShowMesh;
+            o.Skeleton = ShowSkeleton;
+            o.Devices = ShowDevices;
+            o.Headset = ShowHeadset;
+            o.PlayArea = ShowPlayArea;
+            o.BaseStations = ShowBaseStations;
             o.Recording = _host.Recording.IsRecording;
             _view.SceneChanged();
         }
 
-        partial void OnShowMeshChanged(bool value) => SaveChip(nameof(Settings.PreviewMesh), s => s.PreviewMesh = value);
-        partial void OnShowSkeletonChanged(bool value) => SaveChip(nameof(Settings.PreviewSkeleton), s => s.PreviewSkeleton = value);
-        partial void OnShowDevicesChanged(bool value) => SaveChip(nameof(Settings.ShowDevices), s => s.ShowDevices = value);
-        partial void OnShowHeadsetChanged(bool value) => SaveChip(nameof(Settings.ShowHmdModel), s => s.ShowHmdModel = value);
-        partial void OnShowPlayAreaChanged(bool value) { SaveChip(nameof(Settings.ShowPlayArea), s => s.ShowPlayArea = value); Present(); }
-        partial void OnShowBaseStationsChanged(bool value) { SaveChip(nameof(Settings.ShowBaseStations), s => s.ShowBaseStations = value); Present(); }
+        partial void OnShowMeshChanged(bool value)
+        {
+            SaveChip(nameof(Settings.PreviewMesh), s => s.PreviewMesh = value);
+        }
+
+        partial void OnShowSkeletonChanged(bool value)
+        {
+            SaveChip(nameof(Settings.PreviewSkeleton), s => s.PreviewSkeleton = value);
+        }
+
+        partial void OnShowDevicesChanged(bool value)
+        {
+            SaveChip(nameof(Settings.ShowDevices), s => s.ShowDevices = value);
+        }
+
+        partial void OnShowHeadsetChanged(bool value)
+        {
+            SaveChip(nameof(Settings.ShowHmdModel), s => s.ShowHmdModel = value);
+        }
+
+        partial void OnShowPlayAreaChanged(bool value)
+        {
+            SaveChip(nameof(Settings.ShowPlayArea), s => s.ShowPlayArea = value);
+            Present();
+        }
+
+        partial void OnShowBaseStationsChanged(bool value)
+        {
+            SaveChip(nameof(Settings.ShowBaseStations), s => s.ShowBaseStations = value);
+            Present();
+        }
 
         void SaveChip(string what, Action<Settings> change)
         {
@@ -161,8 +240,19 @@ namespace VRMR.App.ViewModels
             bool recording = _host.Recording.IsRecording;
             bool shown = false;
             if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view);
-            if (!shown && (IsLive || recording || _session.Take == null)) { _host.LivePresenter.Show(_view, keepAvatar: _session.Take != null && !IsLive); shown = true; }
-            if (!shown) { _view.Scene.Overlay = ""; _view.Scene.OverlayRight = _session.Take?.Name ?? ""; _view.SceneChanged(); }
+            if (!shown && (IsLive || recording || _session.Take == null))
+            {
+                _host.LivePresenter.Show(_view, _session.Take != null && !IsLive);
+                shown = true;
+            }
+
+            if (!shown)
+            {
+                _view.Scene.Overlay = "";
+                _view.Scene.OverlayRight = _session.Take?.Name ?? "";
+                _view.SceneChanged();
+            }
+
             UpdateChipAvailability();
             UpdateEmptyState();
         }
@@ -171,8 +261,15 @@ namespace VRMR.App.ViewModels
         {
             var scene = _view.Scene;
             bool stations = false, headset = false;
-            foreach (var m in scene.Markers) { stations |= m.Kind == MarkerKind.BaseStation; headset |= m.Kind == MarkerKind.Headset; }
-            HasPlayArea = scene.PlayArea != null; HasBaseStations = stations; HasHeadset = headset;
+            foreach (var m in scene.Markers)
+            {
+                stations |= m.Kind == MarkerKind.BaseStation;
+                headset |= m.Kind == MarkerKind.Headset;
+            }
+
+            HasPlayArea = scene.PlayArea != null;
+            HasBaseStations = stations;
+            HasHeadset = headset;
         }
 
         void UpdateEmptyState()
@@ -182,22 +279,50 @@ namespace VRMR.App.ViewModels
             if (take != null && !IsLive)
             {
                 var clip = _session.Clip;
-                if (_session.Solve == SolveState.Failed) { ShowEmpty = true; EmptyTitle = "This take could not be solved"; EmptyText = FriendlySolveError(_session.SolveError); }
-                else if (clip == null) { ShowEmpty = true; EmptyTitle = _session.Opening ? "Opening…" : "Solving…"; EmptyText = "The body appears here as soon as the solve is done."; }
-                else if (clip.Profile == null) { ShowEmpty = true; EmptyTitle = "No avatar to solve onto"; EmptyText = "Add your avatar's base model under Settings → Avatars, or pick one for this take in the inspector."; }
+                if (_session.Solve == SolveState.Failed)
+                {
+                    ShowEmpty = true;
+                    EmptyTitle = "This take could not be solved";
+                    EmptyText = FriendlySolveError(_session.SolveError);
+                }
+                else if (clip == null)
+                {
+                    ShowEmpty = true;
+                    EmptyTitle = _session.Opening ? "Opening…" : "Solving…";
+                    EmptyText = "The body appears here as soon as the solve is done.";
+                }
+                else if (clip.Profile == null)
+                {
+                    ShowEmpty = true;
+                    EmptyTitle = "No avatar to solve onto";
+                    EmptyText =
+                        "Add your avatar's base model under Settings → Avatars, or pick one for this take in the inspector.";
+                }
                 else ShowEmpty = false;
             }
             else if (nothing)
             {
                 ShowEmpty = true;
-                if (!_host.CaptureOn) { EmptyTitle = "Pick a take"; EmptyText = "Choose a take in the library to see it here. Live sources are off in this session."; }
-                else { EmptyTitle = "Waiting for VRChat or SteamVR"; EmptyText = "Join VRChat with OSC on, or start SteamVR: your devices appear here. Or pick a take in the library."; }
+                if (!_host.CaptureOn)
+                {
+                    EmptyTitle = "Pick a take";
+                    EmptyText = "Choose a take in the library to see it here. Live sources are off in this session.";
+                }
+                else
+                {
+                    EmptyTitle = "Waiting for VRChat or SteamVR";
+                    EmptyText =
+                        "Join VRChat with OSC on, or start SteamVR: your devices appear here. Or pick a take in the library.";
+                }
             }
             else ShowEmpty = false;
         }
 
-        static string FriendlySolveError(string error) =>
-            (string.IsNullOrEmpty(error) ? "The solver stopped with an error." : error.TrimEnd('.') + ".") + " Try another calibration source or avatar in the inspector; the details are in the log (Settings → About).";
+        static string FriendlySolveError(string error)
+        {
+            return (string.IsNullOrEmpty(error) ? "The solver stopped with an error." : error.TrimEnd('.') + ".") +
+                   " Try another calibration source or avatar in the inspector; the details are in the log (Settings → About).";
+        }
 
         // ------------------------------------------------------------------------------------------ pacing
 
@@ -206,12 +331,24 @@ namespace VRMR.App.ViewModels
             if (_view == null) return;
             bool recording = _host.Recording.IsRecording;
             bool live = (IsLive || recording) && _host.Live.HasLiveMotion;
-            _view.FrameCap = recording ? (_settings.Value.PreviewWhileRecording ? 15 : 4) : 60;
+            _view.FrameCap = recording ? _settings.Value.PreviewWhileRecording ? 15 : 4 : 60;
             _view.Animating = _active && (_clock.Playing || live);
             // while Live is on but nothing arrives yet, look once a second whether a source came up (no redraws meanwhile)
             bool watch = _active && _host.CaptureOn && (IsLive || recording) && !live;
-            if (watch && _liveWatch == null) _liveWatch = _host.Ui.Every(TimeSpan.FromSeconds(1), () => { if (_host.Live.HasLiveMotion) { Present(); UpdateAnimating(); } });
-            else if (!watch) { _liveWatch?.Dispose(); _liveWatch = null; }
+            if (watch && _liveWatch == null)
+                _liveWatch = _host.Ui.Every(TimeSpan.FromSeconds(1), () =>
+                {
+                    if (_host.Live.HasLiveMotion)
+                    {
+                        Present();
+                        UpdateAnimating();
+                    }
+                });
+            else if (!watch)
+            {
+                _liveWatch?.Dispose();
+                _liveWatch = null;
+            }
         }
 
         void OnFrameTick(TimeSpan elapsed)
@@ -224,7 +361,7 @@ namespace VRMR.App.ViewModels
             }
             else if (IsLive || _host.Recording.IsRecording)
             {
-                _host.LivePresenter.Show(_view, keepAvatar: false);
+                _host.LivePresenter.Show(_view, false);
                 UpdateChipAvailability();
                 if (!_host.Live.HasLiveMotion) UpdateAnimating();
             }
@@ -250,7 +387,11 @@ namespace VRMR.App.ViewModels
         {
             CanPlay = _session.Clip != null;
             Present();
-            if (_session.Clip?.Profile != null && !_framed && _view != null && !IsLive) { _view.FrameAll(); _framed = true; }
+            if (_session.Clip?.Profile != null && !_framed && _view != null && !IsLive)
+            {
+                _view.FrameAll();
+                _framed = true;
+            }
         }
 
         void OnEditsChanged(string what)
@@ -267,12 +408,17 @@ namespace VRMR.App.ViewModels
             SolveProgress = st == SolveState.Solving ? _session.SolveProgress : 0;
             SolveFailed = st == SolveState.Failed;
             var clip = _session.Clip;
-            SolveText = _session.Opening ? "Opening…"
-                : st == SolveState.Solving ? $"Solving… {_session.SolveProgress * 100:0}%"
-                : st == SolveState.Waiting ? "Solving…"
-                : st == SolveState.Failed ? "Solve failed"
-                : st == SolveState.Done && clip != null ? $"{TakePresenter.BodySourceText(clip.BodySource)} · {clip.Frames} frames at {clip.Fps:0} fps · {_session.SolveMilliseconds} ms"
-                : "";
+            SolveText = _session.Opening
+                ? "Opening…"
+                : st == SolveState.Solving
+                    ? $"Solving… {_session.SolveProgress * 100:0}%"
+                    : st == SolveState.Waiting
+                        ? "Solving…"
+                        : st == SolveState.Failed
+                            ? "Solve failed"
+                            : st == SolveState.Done && clip != null
+                                ? $"{TakePresenter.BodySourceText(clip.BodySource)} · {clip.Frames} frames at {clip.Fps:0} fps · {_session.SolveMilliseconds} ms"
+                                : "";
             if (_view != null && (st == SolveState.Failed || _session.Opening)) UpdateEmptyState();
         }
 
@@ -284,7 +430,12 @@ namespace VRMR.App.ViewModels
 
         void OnRecordingChanged()
         {
-            if (_host.Recording.IsRecording) { _clock.Playing = false; IsLive = true; }
+            if (_host.Recording.IsRecording)
+            {
+                _clock.Playing = false;
+                IsLive = true;
+            }
+
             ApplyViewOptions();
             Present();
             UpdateAnimating();
@@ -299,8 +450,15 @@ namespace VRMR.App.ViewModels
             UpdateAnimating();
         }
 
-        partial void OnLoopChanged(bool value) => _clock.Loop = value;
-        partial void OnSpeedIndexChanged(int value) => _clock.Speed = PlaybackClock.Speeds[Math.Max(0, Math.Min(PlaybackClock.Speeds.Length - 1, value))];
+        partial void OnLoopChanged(bool value)
+        {
+            _clock.Loop = value;
+        }
+
+        partial void OnSpeedIndexChanged(int value)
+        {
+            _clock.Speed = PlaybackClock.Speeds[Math.Max(0, Math.Min(PlaybackClock.Speeds.Length - 1, value))];
+        }
 
         void RecomputeSegments()
         {
@@ -311,8 +469,12 @@ namespace VRMR.App.ViewModels
         void UpdateTimeText()
         {
             var take = _session.Take;
-            TimeText = take == null ? "" : $"{Services.TimeText.Format(_clock.Playhead)} / {Services.TimeText.Format(take.Duration)}";
-            TimeTip = take != null && Math.Abs(take.EditedDuration - take.Duration) > 0.005 ? $"Length after trims and cuts: {Services.TimeText.Format(take.EditedDuration)}" : "Playhead / length of the take";
+            TimeText = take == null
+                ? ""
+                : $"{Services.TimeText.Format(_clock.Playhead)} / {Services.TimeText.Format(take.Duration)}";
+            TimeTip = take != null && Math.Abs(take.EditedDuration - take.Duration) > 0.005
+                ? $"Length after trims and cuts: {Services.TimeText.Format(take.EditedDuration)}"
+                : "Playhead / length of the take";
         }
 
         // ------------------------------------------------------------------------------------------ commands
@@ -323,17 +485,40 @@ namespace VRMR.App.ViewModels
             if (_session.Take == null || _session.Clip == null) return;
             IsLive = false;
             if (_clock.Playing) _clock.Pause();
-            else { _host.FaceReplay.Restart(); _clock.Play(_segments); }
+            else
+            {
+                _host.FaceReplay.Restart();
+                _clock.Play(_segments);
+            }
         }
 
         [RelayCommand]
-        void SeekStart() { if (_session.Take == null) return; IsLive = false; _clock.Seek(_session.Take.Edits.TrimIn, _session.Take.Duration); }
+        void SeekStart()
+        {
+            if (_session.Take == null) return;
+            IsLive = false;
+            _clock.Seek(_session.Take.Edits.TrimIn, _session.Take.Duration);
+        }
 
         [RelayCommand]
-        void SeekEnd() { if (_session.Take == null) return; IsLive = false; _clock.Seek(Timeline.TrimOut, _session.Take.Duration); }
+        void SeekEnd()
+        {
+            if (_session.Take == null) return;
+            IsLive = false;
+            _clock.Seek(Timeline.TrimOut, _session.Take.Duration);
+        }
 
-        [RelayCommand] void StepBack() => Step(-1);
-        [RelayCommand] void StepForward() => Step(1);
+        [RelayCommand]
+        void StepBack()
+        {
+            Step(-1);
+        }
+
+        [RelayCommand]
+        void StepForward()
+        {
+            Step(1);
+        }
 
         void Step(int frames)
         {
@@ -342,35 +527,75 @@ namespace VRMR.App.ViewModels
             _clock.Step(frames, _session.Clip.Fps, _session.Take.Duration);
         }
 
-        [RelayCommand] void SetIn() => Timeline.SetIn();
-        [RelayCommand] void SetOut() => Timeline.SetOut();
+        [RelayCommand]
+        void SetIn()
+        {
+            Timeline.SetIn();
+        }
+
+        [RelayCommand]
+        void SetOut()
+        {
+            Timeline.SetOut();
+        }
 
         [RelayCommand]
         void Cut()
         {
             if (_session.Take == null) return;
-            if (!Timeline.CutSelection()) _host.Status.Info("Select a range first: drag in the lanes of the timeline, then cut.");
+            if (!Timeline.CutSelection())
+                _host.Status.Info("Select a range first: drag in the lanes of the timeline, then cut.");
         }
 
         [RelayCommand]
         void Keep()
         {
             if (_session.Take == null) return;
-            if (!Timeline.KeepSelection()) _host.Status.Info("Select a range first: drag in the lanes of the timeline, then keep only that part.");
+            if (!Timeline.KeepSelection())
+                _host.Status.Info("Select a range first: drag in the lanes of the timeline, then keep only that part.");
         }
 
-        [RelayCommand] void ResetEdits() => Timeline.ResetEdits();
-        [RelayCommand] void Undo() => _session.Undo();
-        [RelayCommand] void Redo() => _session.Redo();
+        [RelayCommand]
+        void ResetEdits()
+        {
+            Timeline.ResetEdits();
+        }
 
         [RelayCommand]
-        void OriginHere() { IsLive = false; _host.Placement.OriginHere(); _host.Status.Info(_host.Placement.LastAction); }
+        void Undo()
+        {
+            _session.Undo();
+        }
 
         [RelayCommand]
-        void TurnLeft() { IsLive = false; _host.Placement.Turn(-90); _host.Status.Info(_host.Placement.LastAction); }
+        void Redo()
+        {
+            _session.Redo();
+        }
 
         [RelayCommand]
-        void TurnRight() { IsLive = false; _host.Placement.Turn(90); _host.Status.Info(_host.Placement.LastAction); }
+        void OriginHere()
+        {
+            IsLive = false;
+            _host.Placement.OriginHere();
+            _host.Status.Info(_host.Placement.LastAction);
+        }
+
+        [RelayCommand]
+        void TurnLeft()
+        {
+            IsLive = false;
+            _host.Placement.Turn(-90);
+            _host.Status.Info(_host.Placement.LastAction);
+        }
+
+        [RelayCommand]
+        void TurnRight()
+        {
+            IsLive = false;
+            _host.Placement.Turn(90);
+            _host.Status.Info(_host.Placement.LastAction);
+        }
 
         [RelayCommand]
         void CalibrateHere()
@@ -381,11 +606,29 @@ namespace VRMR.App.ViewModels
             _host.Status.Info($"Calibrating at {Services.TimeText.Format(t)}");
         }
 
-        [RelayCommand] void ToggleLive() => IsLive = !IsLive;
-        [RelayCommand] void FrameAll() => _view?.FrameAll();
+        [RelayCommand]
+        void ToggleLive()
+        {
+            IsLive = !IsLive;
+        }
 
-        [RelayCommand] System.Threading.Tasks.Task Save() => _session.SaveAsync();
-        [RelayCommand] System.Threading.Tasks.Task Revert() => _session.RevertAsync();
+        [RelayCommand]
+        void FrameAll()
+        {
+            _view?.FrameAll();
+        }
+
+        [RelayCommand]
+        Task Save()
+        {
+            return _session.SaveAsync();
+        }
+
+        [RelayCommand]
+        Task Revert()
+        {
+            return _session.RevertAsync();
+        }
 
         /// <summary>Switches the placement gizmo on or off, in move or turn mode.</summary>
         public void SetGizmo(bool on, bool? turn = null)
@@ -393,10 +636,14 @@ namespace VRMR.App.ViewModels
             if (turn.HasValue) PlacementTool.Turn = turn.Value;
             PlacementTool.Active = on;
             if (on) IsLive = false;
-            if (_view != null) { _view.Tool = on && _active ? PlacementTool : null; _view.SceneChanged(); }
-            OnPropertyChanged(nameof(GizmoOn)); OnPropertyChanged(nameof(GizmoTurns));
-        }
+            if (_view != null)
+            {
+                _view.Tool = on && _active ? PlacementTool : null;
+                _view.SceneChanged();
+            }
 
-        public IDisposable BeginGesture() => _session.Gesture();
+            OnPropertyChanged(nameof(GizmoOn));
+            OnPropertyChanged(nameof(GizmoTurns));
+        }
     }
 }

@@ -10,17 +10,20 @@ namespace VRMR.App.Services
     }
 
     /// <summary>
-    /// While a take plays, sends its recorded face parameters to VRChat so the replay shows on the avatar in game.
-    /// Off unless the user switches it on; values are only sent when they changed.
+    ///     While a take plays, sends its recorded face parameters to VRChat so the replay shows on the avatar in game.
+    ///     Off unless the user switches it on; values are only sent when they changed.
     /// </summary>
     public sealed class FaceReplayService : IDisposable
     {
         readonly Func<IParameterSender> _connect;
-        readonly Dictionary<string, float> _sent = new Dictionary<string, float>();
-        IParameterSender _sender;
+        readonly Dictionary<string, float> _sent = new();
         bool _enabled;
+        IParameterSender _sender;
 
-        /// <param name="connect">Opens the sender when replay is switched on; null when sending is not available (no live sources).</param>
+        /// <param name="connect">
+        ///     Opens the sender when replay is switched on; null when sending is not available (no live
+        ///     sources).
+        /// </param>
         public FaceReplayService(Func<IParameterSender> connect) { _connect = connect; }
 
         /// <summary>False when the app runs without live sources: nothing can be sent.</summary>
@@ -34,13 +37,27 @@ namespace VRMR.App.Services
                 if (value && !Available) return;
                 if (_enabled == value) return;
                 _enabled = value;
-                if (!value) { _sender?.Dispose(); _sender = null; }
+                if (!value)
+                {
+                    _sender?.Dispose();
+                    _sender = null;
+                }
+
                 _sent.Clear();
             }
         }
 
+        public void Dispose()
+        {
+            _sender?.Dispose();
+            _sender = null;
+        }
+
         /// <summary>Playback (re)started: send every value again.</summary>
-        public void Restart() => _sent.Clear();
+        public void Restart()
+        {
+            _sent.Clear();
+        }
 
         /// <summary>Sends the face parameters of a take at a source time (shifted by the take's face offset).</summary>
         public void Send(Recording take, double time)
@@ -59,9 +76,10 @@ namespace VRMR.App.Services
         }
 
         /// <summary>Face tracking parameters by their name prefix.</summary>
-        public static bool IsFaceParameter(string name) => name.StartsWith("FT/", StringComparison.Ordinal) || name.StartsWith("v2/", StringComparison.Ordinal);
-
-        public void Dispose() { _sender?.Dispose(); _sender = null; }
+        public static bool IsFaceParameter(string name)
+        {
+            return name.StartsWith("FT/", StringComparison.Ordinal) || name.StartsWith("v2/", StringComparison.Ordinal);
+        }
     }
 
     /// <summary>The sender for VRChat's OSC input port on this computer.</summary>
@@ -69,7 +87,15 @@ namespace VRMR.App.Services
     {
         readonly OscSender _osc;
         public OscParameterSender(int port) { _osc = new OscSender("127.0.0.1", port); }
-        public void Send(string name, ParamType type, float value) => _osc.SendParam(name, type, value);
-        public void Dispose() => _osc.Dispose();
+
+        public void Send(string name, ParamType type, float value)
+        {
+            _osc.SendParam(name, type, value);
+        }
+
+        public void Dispose()
+        {
+            _osc.Dispose();
+        }
     }
 }

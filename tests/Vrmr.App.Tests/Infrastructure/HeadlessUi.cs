@@ -5,26 +5,37 @@ using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 
 namespace VRMR.App.Tests
 {
-    /// <summary>The app as the UI tests start it: the real <see cref="App"/> (theme and styles) on the headless platform, drawn with Skia so frames can be captured.</summary>
+    /// <summary>
+    ///     The app as the UI tests start it: the real <see cref="App" /> (theme and styles) on the headless platform,
+    ///     drawn with Skia so frames can be captured.
+    /// </summary>
     public static class TestAppBuilder
     {
-        public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
-            .UseSkia()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
-            .WithInterFont();
+        public static AppBuilder BuildAvaloniaApp()
+        {
+            return AppBuilder.Configure<App>()
+                .UseSkia()
+                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+                .WithInterFont();
+        }
     }
 
     /// <summary>Runs test code on the one headless UI thread of the test process.</summary>
     public static class HeadlessUi
     {
-        static readonly Lazy<HeadlessUnitTestSession> Session = new Lazy<HeadlessUnitTestSession>(() => HeadlessUnitTestSession.StartNew(typeof(TestAppBuilder)));
+        static readonly Lazy<HeadlessUnitTestSession> Session = new(() =>
+            HeadlessUnitTestSession.StartNew(typeof(TestAppBuilder)));
 
         /// <summary>Runs an action on the UI thread and waits for it.</summary>
-        public static void Run(Action action) => Session.Value.Dispatch(action, CancellationToken.None).GetAwaiter().GetResult();
+        public static void Run(Action action)
+        {
+            Session.Value.Dispatch(action, CancellationToken.None).GetAwaiter().GetResult();
+        }
 
         /// <summary>On the UI thread: lets posted work, timers and layout run until the condition holds. Returns false on timeout.</summary>
         public static bool WaitFor(Func<bool> condition, int timeoutMs = 20000)
@@ -42,7 +53,8 @@ namespace VRMR.App.Tests
         static void Pump(int ms)
         {
             var frame = new DispatcherFrame();
-            var timer = new System.Threading.Timer(_ => Dispatcher.UIThread.Post(() => frame.Continue = false, DispatcherPriority.Send), null, ms, Timeout.Infinite);
+            var timer = new Timer(_ => Dispatcher.UIThread.Post(() => frame.Continue = false, DispatcherPriority.Send),
+                null, ms, Timeout.Infinite);
             Dispatcher.UIThread.PushFrame(frame);
             timer.Dispose();
         }
@@ -55,8 +67,11 @@ namespace VRMR.App.Tests
             Dispatcher.UIThread.RunJobs();
         }
 
-        /// <summary>On the UI thread: draws the window and saves the frame as a PNG when a shots folder is set (VRMR_SHOTS). Returns the frame.</summary>
-        public static Avalonia.Media.Imaging.WriteableBitmap Capture(Window window, string name)
+        /// <summary>
+        ///     On the UI thread: draws the window and saves the frame as a PNG when a shots folder is set (VRMR_SHOTS).
+        ///     Returns the frame.
+        /// </summary>
+        public static WriteableBitmap Capture(Window window, string name)
         {
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -67,6 +82,7 @@ namespace VRMR.App.Tests
                 Directory.CreateDirectory(dir);
                 frame.Save(Path.Combine(dir, name + ".png"));
             }
+
             return frame;
         }
     }

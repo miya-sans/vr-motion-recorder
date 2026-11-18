@@ -7,6 +7,7 @@
 // Read in SolveRalivSpineIK (FbikSolver.Spine.cs). Default (override off) = upstream behaviour.
 // Thread-static (set by the caller right before each solve on the same thread): instance fields in a second
 // partial declaration would make the struct layout order undefined (CS0282).
+
 using System;
 
 namespace VRMR.Fbik
@@ -16,6 +17,7 @@ namespace VRMR.Fbik
         [ThreadStatic] public static bool VrmrHipsFollowOverride;
         [ThreadStatic] public static float VrmrHipsFollow;
 
-        static float TrackedHipsFollow => VrmrHipsFollowOverride ? Mathf.Clamp01(VrmrHipsFollow) : TrackedHipsPositionFollow;
+        static float TrackedHipsFollow =>
+            VrmrHipsFollowOverride ? Mathf.Clamp01(VrmrHipsFollow) : TrackedHipsPositionFollow;
     }
 }

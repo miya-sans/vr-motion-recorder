@@ -6,11 +6,13 @@
              x:DataType="vm:ShellViewModel">
   <!-- The keyboard map and the three things a new user needs to know. Opens with F1 or the ? button, closes with Esc. -->
   <Border Background="{DynamicResource ScrimBrush}" PointerPressed="OnScrimPressed">
-    <Border x:Name="Card" Classes="popover" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="760" Padding="{DynamicResource Pad4}">
+    <Border x:Name="Card" Classes="popover" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="760"
+            Padding="{DynamicResource Pad4}">
       <StackPanel Spacing="12">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Text="Keyboard and mouse" Classes="page" VerticalAlignment="Center" />
-          <c:IconButton Grid.Column="1" Icon="{DynamicResource Icon.Close}" Command="{Binding ToggleHelpCommand}" ToolTip.Tip="Close (Esc)" />
+          <c:IconButton Grid.Column="1" Icon="{DynamicResource Icon.Close}" Command="{Binding ToggleHelpCommand}"
+                        ToolTip.Tip="Close (Esc)" />
         </Grid>
         <Grid ColumnDefinitions="*,24,*" x:Name="Columns">
           <StackPanel x:Name="LeftColumn" Spacing="4" />

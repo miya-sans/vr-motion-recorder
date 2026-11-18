@@ -4,7 +4,10 @@ namespace VRMR.Tests
 {
     public class MathTests
     {
-        static void Near(Vec3 a, Vec3 b, float eps = 1e-5f) => Assert.True((a - b).Length < eps, $"{a.x},{a.y},{a.z} vs {b.x},{b.y},{b.z}");
+        static void Near(Vec3 a, Vec3 b, float eps = 1e-5f)
+        {
+            Assert.True((a - b).Length < eps, $"{a.x},{a.y},{a.z} vs {b.x},{b.y},{b.z}");
+        }
 
         [Fact]
         public void YawRotationTurnsForwardToTheRight()

@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -13,7 +12,10 @@ namespace VRMR.App.Views.Takes
         public TakeInspectorView()
         {
             InitializeComponent();
-            DataContextChanged += (o, e) => { if (DataContext is TakeInspectorViewModel vm) vm.PickUnityModel = PickUnityModelAsync; };
+            DataContextChanged += (o, e) =>
+            {
+                if (DataContext is TakeInspectorViewModel vm) vm.PickUnityModel = PickUnityModelAsync;
+            };
         }
 
         /// <summary>Puts the keyboard focus into the name box (F2).</summary>
@@ -41,8 +43,13 @@ namespace VRMR.App.Views.Takes
             if (top == null) return null;
             var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Pick your avatar's model inside a Unity project (its rig must be Humanoid)", AllowMultiple = false,
-                FileTypeFilter = new[] { new FilePickerFileType("Humanoid model") { Patterns = new[] { "*.fbx", "*.FBX", "*.meta", "*.blend" } } },
+                Title = "Pick your avatar's model inside a Unity project (its rig must be Humanoid)",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Humanoid model")
+                        { Patterns = new[] { "*.fbx", "*.FBX", "*.meta", "*.blend" } }
+                }
             });
             return files.Count > 0 ? files[0].TryGetLocalPath() : null;
         }

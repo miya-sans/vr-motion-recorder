@@ -71,7 +71,8 @@ namespace VRMR.App.Tests
             var c = new PlaybackClock { Playhead = 0.5 };
             c.Play(segs);
             Assert.Equal(3, c.Playhead, 6);
-            c.Playhead = 8; c.Playing = false;
+            c.Playhead = 8;
+            c.Playing = false;
             c.Play(segs);
             Assert.Equal(3, c.Playhead, 6);
         }
@@ -107,8 +108,11 @@ namespace VRMR.App.Tests
             int moved = 0, state = 0;
             c.PlayheadChanged += () => moved++;
             c.StateChanged += () => state++;
-            c.Playhead = 2; c.Playhead = 2;
-            c.Playing = true; c.Playing = true; c.Pause();
+            c.Playhead = 2;
+            c.Playhead = 2;
+            c.Playing = true;
+            c.Playing = true;
+            c.Pause();
             Assert.Equal(1, moved);
             Assert.Equal(2, state);
         }

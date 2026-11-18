@@ -1,81 +1,95 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
 
 namespace VRMR
 {
     public sealed class FbxExportOptions
     {
-        public string TakeName = "Take 001";
-        public bool IncludeFace = true;
-        public string FaceMeshName = "Body";
-        public Dictionary<string, string> ShapeRename; // output shape -> avatar blendshape name
-        public bool IncludeCamera = true;
-        public bool IncludeTrackers = false;
-        public int FrameStep = 1;
-        /// <summary>Write the motion onto the avatar's own FBX (its skinned meshes, materials and face-tracking shapes) when
-        /// one is found for the clip's avatar; otherwise (or when false) the armature + a face carrier mesh.</summary>
-        public bool AvatarMesh = true;
-        /// <summary>Avatar FBX: each material's color texture is copied into this folder (once; the export's shared
-        /// textures\&lt;avatar&gt; folder) and referenced from the FBX by relative path, which Blender and Unity both follow.
-        /// Textures already inside the same Unity project as the export are referenced where they are. Null: the original
-        /// files are referenced.</summary>
-        public string TextureDir;
-        /// <summary>Also embed the images in the FBX (Blender uses them wherever the file goes; Unity only after its manual
-        /// "Extract Textures", so the files are what Unity uses). Off by default: it adds the images' size to every FBX.</summary>
-        public bool EmbedTextures = false;
         /// <summary>The avatar FBX to use (null = the clip avatar's: the library's face-tracking FBX, else the Unity model).</summary>
         public string AvatarFbx;
+
+        /// <summary>
+        ///     Write the motion onto the avatar's own FBX (its skinned meshes, materials and face-tracking shapes) when
+        ///     one is found for the clip's avatar; otherwise (or when false) the armature + a face carrier mesh.
+        /// </summary>
+        public bool AvatarMesh = true;
+
+        /// <summary>
+        ///     Also embed the images in the FBX (Blender uses them wherever the file goes; Unity only after its manual
+        ///     "Extract Textures", so the files are what Unity uses). Off by default: it adds the images' size to every FBX.
+        /// </summary>
+        public bool EmbedTextures = false;
+
+        public string FaceMeshName = "Body";
+        public int FrameStep = 1;
+        public bool IncludeCamera = true;
+        public bool IncludeFace = true;
+        public bool IncludeTrackers = false;
+        public Dictionary<string, string> ShapeRename; // output shape -> avatar blendshape name
+        public string TakeName = "Take 001";
+
+        /// <summary>
+        ///     Avatar FBX: each material's color texture is copied into this folder (once; the export's shared
+        ///     textures\&lt;avatar&gt; folder) and referenced from the FBX by relative path, which Blender and Unity both follow.
+        ///     Textures already inside the same Unity project as the export are referenced where they are. Null: the original
+        ///     files are referenced.
+        /// </summary>
+        public string TextureDir;
     }
 
     /// <summary>What an FBX export wrote.</summary>
     public sealed class FbxExportResult
     {
+        public readonly List<string> Notes = new();
+        public long EmbeddedBytes;
+        public int Meshes, Vertices, AnimatedBones, FaceShapes, FaceChannels;
+
         /// <summary>"avatar" (the avatar's own FBX with the motion) or "armature" (armature + face carrier).</summary>
         public string Mode = "armature";
+
         public string SourceFbx = "";
-        public int Meshes, Vertices, AnimatedBones, FaceShapes, FaceChannels;
-        public int TexturedMaterials, UntexturedMaterials, EmbeddedImages, CopiedImages; public long EmbeddedBytes; public string TextureDir;
-        public readonly List<string> Notes = new List<string>();
-        public override string ToString() => Mode == "avatar"
-            ? $"{Path.GetFileName(SourceFbx)}: {Meshes} meshes, {Vertices} vertices, {AnimatedBones} bones animated, {FaceShapes} face shapes on {FaceChannels} shape keys"
-            : $"armature only ({AnimatedBones} bones), face carrier {FaceShapes} shapes";
+        public string TextureDir;
+        public int TexturedMaterials, UntexturedMaterials, EmbeddedImages, CopiedImages;
+
+        public override string ToString()
+        {
+            return Mode == "avatar"
+                ? $"{Path.GetFileName(SourceFbx)}: {Meshes} meshes, {Vertices} vertices, {AnimatedBones} bones animated, {FaceShapes} face shapes on {FaceChannels} shape keys"
+                : $"armature only ({AnimatedBones} bones), face carrier {FaceShapes} shapes";
+        }
     }
 
     /// <summary>
-    /// Writes a BakedClip as a binary FBX: the avatar's own armature (exact bone names, hierarchy and rest pose),
-    /// humanoid bone rotations + hips translation as one take, an optional face "carrier" mesh whose blendshape
-    /// channels carry the face animation, plus optional camera/tracker empties.
-    /// Y-up, meters (UnitScaleFactor 100), right-handed (Unity's left-handed data is mirrored on X; Unity mirrors back on import).
+    ///     Writes a BakedClip as a binary FBX: the avatar's own armature (exact bone names, hierarchy and rest pose),
+    ///     humanoid bone rotations + hips translation as one take, an optional face "carrier" mesh whose blendshape
+    ///     channels carry the face animation, plus optional camera/tracker empties.
+    ///     Y-up, meters (UnitScaleFactor 100), right-handed (Unity's left-handed data is mirrored on X; Unity mirrors back on
+    ///     import).
     /// </summary>
     public static partial class FbxExporter
     {
         const long KTimeSecond = 46186158000L;
 
-        sealed class Ctx
+        static double[] V(Vec3 v)
         {
-            long _next = 1000000;
-            /// <summary>Ids already taken (when adding to an existing file).</summary>
-            public HashSet<long> Used;
-            public long Id() { while (Used != null && Used.Contains(_next)) _next++; return _next++; }
-            public FbxNode Objects, Connections;
-            public int ModelCount, AttrCount, CurveNodeCount, CurveCount, GeomCount, DeformerCount;
-            public void OO(long child, long parent) => Connections.Add("C", "OO", child, parent);
-            public void OP(long child, long parent, string prop) => Connections.Add("C", "OP", child, parent, prop);
+            return new double[] { v.x, v.y, v.z };
         }
 
-        static double[] V(Vec3 v) => new double[] { v.x, v.y, v.z };
-
-        /// <summary>Writes the clip as an FBX: on the avatar's own FBX when there is one (<see cref="FbxExportOptions.AvatarMesh"/>),
-        /// else the armature + face carrier. Never changes the source FBX.</summary>
+        /// <summary>
+        ///     Writes the clip as an FBX: on the avatar's own FBX when there is one (<see cref="FbxExportOptions.AvatarMesh" />),
+        ///     else the armature + face carrier. Never changes the source FBX.
+        /// </summary>
         public static FbxExportResult Export(BakedClip clip, string path, FbxExportOptions opt)
         {
             var res = new FbxExportResult();
             if (opt.AvatarMesh)
             {
                 string src = !string.IsNullOrEmpty(opt.AvatarFbx) ? opt.AvatarFbx : SkinnedAvatar.FbxFor(clip.Profile);
-                if (src == null) res.Notes.Add("No FBX of the avatar was found (library entry or Unity model): armature + face carrier only.");
+                if (src == null)
+                    res.Notes.Add(
+                        "No FBX of the avatar was found (library entry or Unity model): armature + face carrier only.");
                 else
                 {
                     try
@@ -84,12 +98,16 @@ namespace VRMR
                     }
                     catch (Exception ex)
                     {
-                        res.Notes.Add($"Could not use the avatar's FBX ({Path.GetFileName(src)}): {ex.Message}. Armature + face carrier only.");
+                        res.Notes.Add(
+                            $"Could not use the avatar's FBX ({Path.GetFileName(src)}): {ex.Message}. Armature + face carrier only.");
                         AppLog.Warn("FBX export on the avatar's FBX failed: " + ex);
                     }
-                    res.Mode = "armature"; res.Meshes = res.Vertices = res.AnimatedBones = res.FaceShapes = res.FaceChannels = 0;
+
+                    res.Mode = "armature";
+                    res.Meshes = res.Vertices = res.AnimatedBones = res.FaceShapes = res.FaceChannels = 0;
                 }
             }
+
             ExportArmature(clip, path, opt, res);
             return res;
         }
@@ -110,8 +128,10 @@ namespace VRMR
             long stackId = ctx.Id(), layerId = ctx.Id();
             var stack = ctx.Objects.Add("AnimationStack", stackId, FbxBinaryWriter.Name(opt.TakeName, "AnimStack"), "");
             var sp = stack.Add("Properties70");
-            sp.P("LocalStart", "KTime", "Time", "", 0L); sp.P("LocalStop", "KTime", "Time", "", stop);
-            sp.P("ReferenceStart", "KTime", "Time", "", 0L); sp.P("ReferenceStop", "KTime", "Time", "", stop);
+            sp.P("LocalStart", "KTime", "Time", "", 0L);
+            sp.P("LocalStop", "KTime", "Time", "", stop);
+            sp.P("ReferenceStart", "KTime", "Time", "", 0L);
+            sp.P("ReferenceStop", "KTime", "Time", "", stop);
             ctx.Objects.Add("AnimationLayer", layerId, FbxBinaryWriter.Name("BaseLayer", "AnimLayer"), "");
             ctx.OO(layerId, stackId);
 
@@ -119,15 +139,23 @@ namespace VRMR
             var arm = prof.ArmatureNodes();
             int root = prof.RootIndex;
             var inArm = new HashSet<int>(arm);
-            var isBone = new bool[prof.Nodes.Count];
+            bool[] isBone = new bool[prof.Nodes.Count];
             int hips = prof.Human[HumanBones.Hips];
             foreach (int i in arm)
-                for (int a = i; a >= 0; a = prof.Nodes[a].Parent) if (a == hips) { isBone[i] = true; break; }
+                for (int a = i; a >= 0; a = prof.Nodes[a].Parent)
+                    if (a == hips)
+                    {
+                        isBone[i] = true;
+                        break;
+                    }
 
             int nn = prof.Nodes.Count;
-            var wp = new Vec3[nn]; var wr = new Quat[nn]; var lp = new Vec3[nn]; var lr = new Quat[nn];
+            var wp = new Vec3[nn];
+            var wr = new Quat[nn];
+            var lp = new Vec3[nn];
+            var lr = new Quat[nn];
             // sample local transforms for animated nodes
-            var animated = arm.Where(i => i != root && (prof.HumanOfNode(i) >= 0)).ToList();
+            var animated = arm.Where(i => i != root && prof.HumanOfNode(i) >= 0).ToList();
             var rotKeys = animated.ToDictionary(i => i, i => new Vec3[frameIdx.Count]);
             var posKey = new Vec3[frameIdx.Count];
             for (int k = 0; k < frameIdx.Count; k++)
@@ -138,6 +166,7 @@ namespace VRMR
                     var e = MathX.UnityToFbxRot(lr[i]).ToEulerXYZ();
                     rotKeys[i][k] = k > 0 ? MathX.UnwrapEuler(e, rotKeys[i][k - 1]) : e;
                 }
+
                 if (hips >= 0) posKey[k] = MathX.UnityToFbxPos(lp[hips]);
             }
 
@@ -156,7 +185,8 @@ namespace VRMR
                 var rr = MathX.UnityToFbxRot(nd.LocalRot).ToEulerXYZ();
                 p.P("Lcl Translation", "Lcl Translation", "", "A", (double)rt.x, (double)rt.y, (double)rt.z);
                 p.P("Lcl Rotation", "Lcl Rotation", "", "A", (double)rr.x, (double)rr.y, (double)rr.z);
-                p.P("Lcl Scaling", "Lcl Scaling", "", "A", (double)nd.LocalScale.x, (double)nd.LocalScale.y, (double)nd.LocalScale.z);
+                p.P("Lcl Scaling", "Lcl Scaling", "", "A", (double)nd.LocalScale.x, (double)nd.LocalScale.y,
+                    (double)nd.LocalScale.z);
                 p.P("DefaultAttributeIndex", "int", "Integer", "", 0);
                 p.P("InheritType", "enum", "", "", 1);
                 m.Add("Shading", true);
@@ -165,12 +195,14 @@ namespace VRMR
                 if (isBone[i])
                 {
                     long aid = ctx.Id();
-                    var na = ctx.Objects.Add("NodeAttribute", aid, FbxBinaryWriter.Name(nd.Name, "NodeAttribute"), "LimbNode");
+                    var na = ctx.Objects.Add("NodeAttribute", aid, FbxBinaryWriter.Name(nd.Name, "NodeAttribute"),
+                        "LimbNode");
                     na.Add("Properties70").P("Size", "double", "Number", "", 3.0);
                     na.Add("TypeFlags", "Skeleton");
                     ctx.OO(aid, mid);
                     ctx.AttrCount++;
                 }
+
                 int parent = nd.Parent;
                 ctx.OO(mid, parent == root || parent < 0 ? 0L : modelIds[parent]);
             }
@@ -184,6 +216,7 @@ namespace VRMR
                 AddCurveNode(ctx, layerId, mid, "R", "Lcl Rotation", ktimes, keys);
                 if (i == hips) AddCurveNode(ctx, layerId, mid, "T", "Lcl Translation", ktimes, posKey);
             }
+
             // following VRChat's avatar scaling (BakedClip.ScaleCurve): the armature's top nodes scale with it
             if (clip.ScaleCurve != null)
                 foreach (int i in arm)
@@ -198,59 +231,72 @@ namespace VRMR
             if (opt.IncludeFace && clip.Face.Count > 0)
             {
                 var shapes = clip.Face.Keys.ToList();
-                res.FaceShapes = shapes.Count; res.FaceChannels = shapes.Count;
+                res.FaceShapes = shapes.Count;
+                res.FaceChannels = shapes.Count;
                 float eyeY = prof.EyeHeight * clip.Scale;
                 long gid = ctx.Id(), mid = ctx.Id(), bsId = ctx.Id();
-                var verts = new double[] { -0.005, eyeY, 0.1, 0.005, eyeY, 0.1, 0, eyeY + 0.008, 0.1 };
+                double[] verts = new[] { -0.005, eyeY, 0.1, 0.005, eyeY, 0.1, 0, eyeY + 0.008, 0.1 };
                 var g = ctx.Objects.Add("Geometry", gid, FbxBinaryWriter.Name(opt.FaceMeshName, "Geometry"), "Mesh");
                 g.Add("Properties70");
                 g.Add("GeometryVersion", 124);
                 g.Add("Vertices", verts);
                 g.Add("PolygonVertexIndex", new[] { 0, 1, -3 });
                 var len = g.Add("LayerElementNormal", 0);
-                len.Add("Version", 102); len.Add("Name", ""); len.Add("MappingInformationType", "ByPolygonVertex"); len.Add("ReferenceInformationType", "Direct");
+                len.Add("Version", 102);
+                len.Add("Name", "");
+                len.Add("MappingInformationType", "ByPolygonVertex");
+                len.Add("ReferenceInformationType", "Direct");
                 len.Add("Normals", new double[] { 0, 0, 1, 0, 0, 1, 0, 0, 1 });
                 var layer = g.Add("Layer", 0);
                 layer.Add("Version", 100);
-                var le = layer.Add("LayerElement"); le.Add("Type", "LayerElementNormal"); le.Add("TypedIndex", 0);
+                var le = layer.Add("LayerElement");
+                le.Add("Type", "LayerElementNormal");
+                le.Add("TypedIndex", 0);
                 ctx.GeomCount++;
                 var m = ctx.Objects.Add("Model", mid, FbxBinaryWriter.Name(opt.FaceMeshName, "Model"), "Mesh");
                 m.Add("Version", 232);
                 var mp = m.Add("Properties70");
                 mp.P("DefaultAttributeIndex", "int", "Integer", "", 0);
                 mp.P("InheritType", "enum", "", "", 1);
-                m.Add("Shading", true); m.Add("Culling", "CullingOff");
+                m.Add("Shading", true);
+                m.Add("Culling", "CullingOff");
                 ctx.ModelCount++;
-                ctx.OO(mid, 0L); ctx.OO(gid, mid);
-                var bs = ctx.Objects.Add("Deformer", bsId, FbxBinaryWriter.Name(opt.FaceMeshName, "Deformer"), "BlendShape");
+                ctx.OO(mid, 0L);
+                ctx.OO(gid, mid);
+                var bs = ctx.Objects.Add("Deformer", bsId, FbxBinaryWriter.Name(opt.FaceMeshName, "Deformer"),
+                    "BlendShape");
                 bs.Add("Version", 100);
                 ctx.DeformerCount++;
                 ctx.OO(bsId, gid);
                 int si = 0;
-                foreach (var s in shapes)
+                foreach (string s in shapes)
                 {
-                    string name = opt.ShapeRename != null && opt.ShapeRename.TryGetValue(s, out var rn) ? rn : s;
+                    string name = opt.ShapeRename != null && opt.ShapeRename.TryGetValue(s, out string rn) ? rn : s;
                     long chId = ctx.Id(), shId = ctx.Id();
-                    var ch = ctx.Objects.Add("Deformer", chId, FbxBinaryWriter.Name(name, "SubDeformer"), "BlendShapeChannel");
+                    var ch = ctx.Objects.Add("Deformer", chId, FbxBinaryWriter.Name(name, "SubDeformer"),
+                        "BlendShapeChannel");
                     ch.Add("Version", 100);
                     ch.Add("DeformPercent", 0.0);
-                    ch.Add("FullWeights", new double[] { 100.0 });
+                    ch.Add("FullWeights", new[] { 100.0 });
                     ch.Add("Properties70").P("DeformPercent", "Number", "", "A", 0.0);
                     ctx.DeformerCount++;
                     var sh = ctx.Objects.Add("Geometry", shId, FbxBinaryWriter.Name(name, "Geometry"), "Shape");
                     sh.Add("Version", 100);
                     sh.Add("Indexes", new[] { si % 3 });
-                    sh.Add("Vertices", new double[] { 0, 0.0002 * (1 + si / 3 % 7), 0 });
+                    sh.Add("Vertices", new[] { 0, 0.0002 * (1 + si / 3 % 7), 0 });
                     sh.Add("Normals", new double[] { 0, 0, 0 });
                     ctx.GeomCount++;
-                    ctx.OO(chId, bsId); ctx.OO(shId, chId);
-                    var vals = clip.Face[s];
-                    var pct = frameIdx.Select(f => vals[f] * 100f).ToArray();
+                    ctx.OO(chId, bsId);
+                    ctx.OO(shId, chId);
+                    float[] vals = clip.Face[s];
+                    float[] pct = frameIdx.Select(f => vals[f] * 100f).ToArray();
                     long cn = ctx.Id(), cv = ctx.Id();
-                    var cnode = ctx.Objects.Add("AnimationCurveNode", cn, FbxBinaryWriter.Name("DeformPercent", "AnimCurveNode"), "");
+                    var cnode = ctx.Objects.Add("AnimationCurveNode", cn,
+                        FbxBinaryWriter.Name("DeformPercent", "AnimCurveNode"), "");
                     cnode.Add("Properties70").P("d|DeformPercent", "Number", "", "A", (double)pct[0]);
                     ctx.CurveNodeCount++;
-                    ctx.OO(cn, layerId); ctx.OP(cn, chId, "DeformPercent");
+                    ctx.OO(cn, layerId);
+                    ctx.OP(cn, chId, "DeformPercent");
                     AddCurve(ctx, cv, ktimes, pct);
                     ctx.OP(cv, cn, "d|DeformPercent");
                     si++;
@@ -258,9 +304,14 @@ namespace VRMR
             }
 
             // ---- camera / trackers as animated empties (world space)
-            if (opt.IncludeCamera && clip.Camera != null) AddEmpty(ctx, layerId, "VRChatCamera", frameIdx, ktimes, f => clip.Camera[f], clip.Scale);
+            if (opt.IncludeCamera && clip.Camera != null)
+                AddEmpty(ctx, layerId, "VRChatCamera", frameIdx, ktimes, f => clip.Camera[f], clip.Scale);
             if (opt.IncludeTrackers)
-                foreach (var kv in clip.Trackers) { var arr = kv.Value; AddEmpty(ctx, layerId, "Tracker_" + kv.Key, frameIdx, ktimes, f => arr[f], clip.Scale); }
+                foreach (var kv in clip.Trackers)
+                {
+                    var arr = kv.Value;
+                    AddEmpty(ctx, layerId, "Tracker_" + kv.Key, frameIdx, ktimes, f => arr[f], clip.Scale);
+                }
 
             // ---- assemble document
             var top = new List<FbxNode>();
@@ -292,21 +343,25 @@ namespace VRMR
         }
 
         /// <summary>An animated empty at the scene root (world pose per frame, Unity space; positions divided by metersPerUnit).</summary>
-        static void AddEmpty(Ctx ctx, long layerId, string name, List<int> frameIdx, long[] ktimes, Func<int, Pose> get, double metersPerUnit)
+        static void AddEmpty(Ctx ctx, long layerId, string name, List<int> frameIdx, long[] ktimes, Func<int, Pose> get,
+            double metersPerUnit)
         {
             long mid = ctx.Id();
             var m = ctx.Objects.Add("Model", mid, FbxBinaryWriter.Name(name, "Model"), "Null");
             m.Add("Version", 232);
             float inv = (float)(1.0 / metersPerUnit);
             var first = get(frameIdx[0]);
-            var p0 = MathX.UnityToFbxPos(first.pos) * inv; var r0 = MathX.UnityToFbxRot(first.rot).ToEulerXYZ();
+            var p0 = MathX.UnityToFbxPos(first.pos) * inv;
+            var r0 = MathX.UnityToFbxRot(first.rot).ToEulerXYZ();
             var p = m.Add("Properties70");
             p.P("Lcl Translation", "Lcl Translation", "", "A", (double)p0.x, (double)p0.y, (double)p0.z);
             p.P("Lcl Rotation", "Lcl Rotation", "", "A", (double)r0.x, (double)r0.y, (double)r0.z);
-            m.Add("Shading", true); m.Add("Culling", "CullingOff");
+            m.Add("Shading", true);
+            m.Add("Culling", "CullingOff");
             ctx.ModelCount++;
             ctx.OO(mid, 0L);
-            var tk = new Vec3[frameIdx.Count]; var rk = new Vec3[frameIdx.Count];
+            var tk = new Vec3[frameIdx.Count];
+            var rk = new Vec3[frameIdx.Count];
             for (int k = 0; k < frameIdx.Count; k++)
             {
                 var ps = get(frameIdx[k]);
@@ -314,11 +369,13 @@ namespace VRMR
                 var e = MathX.UnityToFbxRot(ps.rot).ToEulerXYZ();
                 rk[k] = k > 0 ? MathX.UnwrapEuler(e, rk[k - 1]) : e;
             }
+
             AddCurveNode(ctx, layerId, mid, "T", "Lcl Translation", ktimes, tk);
             AddCurveNode(ctx, layerId, mid, "R", "Lcl Rotation", ktimes, rk);
         }
 
-        static void AddCurveNode(Ctx ctx, long layerId, long modelId, string shortName, string prop, long[] ktimes, Vec3[] keys)
+        static void AddCurveNode(Ctx ctx, long layerId, long modelId, string shortName, string prop, long[] ktimes,
+            Vec3[] keys)
         {
             long cn = ctx.Id();
             var node = ctx.Objects.Add("AnimationCurveNode", cn, FbxBinaryWriter.Name(shortName, "AnimCurveNode"), "");
@@ -332,7 +389,7 @@ namespace VRMR
             for (int c = 0; c < 3; c++)
             {
                 long cv = ctx.Id();
-                var vals = keys.Select(k => c == 0 ? k.x : c == 1 ? k.y : k.z).ToArray();
+                float[] vals = keys.Select(k => c == 0 ? k.x : c == 1 ? k.y : k.z).ToArray();
                 AddCurve(ctx, cv, ktimes, vals);
                 ctx.OP(cv, cn, c == 0 ? "d|X" : c == 1 ? "d|Y" : "d|Z");
             }
@@ -359,14 +416,26 @@ namespace VRMR
             h.Add("EncryptionType", 0);
             var ct = h.Add("CreationTimeStamp");
             var now = DateTime.Now;
-            ct.Add("Version", 1000); ct.Add("Year", now.Year); ct.Add("Month", now.Month); ct.Add("Day", now.Day);
-            ct.Add("Hour", now.Hour); ct.Add("Minute", now.Minute); ct.Add("Second", now.Second); ct.Add("Millisecond", now.Millisecond);
+            ct.Add("Version", 1000);
+            ct.Add("Year", now.Year);
+            ct.Add("Month", now.Month);
+            ct.Add("Day", now.Day);
+            ct.Add("Hour", now.Hour);
+            ct.Add("Minute", now.Minute);
+            ct.Add("Second", now.Second);
+            ct.Add("Millisecond", now.Millisecond);
             h.Add("Creator", "VR Motion Recorder");
             var si = h.Add("SceneInfo", FbxBinaryWriter.Name("GlobalInfo", "SceneInfo"), "UserData");
             si.Add("Type", "UserData");
             si.Add("Version", 100);
             var md = si.Add("MetaData");
-            md.Add("Version", 100); md.Add("Title", ""); md.Add("Subject", ""); md.Add("Author", ""); md.Add("Keywords", ""); md.Add("Revision", ""); md.Add("Comment", "");
+            md.Add("Version", 100);
+            md.Add("Title", "");
+            md.Add("Subject", "");
+            md.Add("Author", "");
+            md.Add("Keywords", "");
+            md.Add("Revision", "");
+            md.Add("Comment", "");
             var p = si.Add("Properties70");
             p.P("DocumentUrl", "KString", "Url", "", "/foobar.fbx");
             p.P("SrcDocumentUrl", "KString", "Url", "", "/foobar.fbx");
@@ -389,15 +458,23 @@ namespace VRMR
             var g = new FbxNode("GlobalSettings");
             g.Add("Version", 1000);
             var p = g.Add("Properties70");
-            p.P("UpAxis", "int", "Integer", "", 1); p.P("UpAxisSign", "int", "Integer", "", 1);
-            p.P("FrontAxis", "int", "Integer", "", 2); p.P("FrontAxisSign", "int", "Integer", "", 1);
-            p.P("CoordAxis", "int", "Integer", "", 0); p.P("CoordAxisSign", "int", "Integer", "", 1);
-            p.P("OriginalUpAxis", "int", "Integer", "", 1); p.P("OriginalUpAxisSign", "int", "Integer", "", 1);
+            p.P("UpAxis", "int", "Integer", "", 1);
+            p.P("UpAxisSign", "int", "Integer", "", 1);
+            p.P("FrontAxis", "int", "Integer", "", 2);
+            p.P("FrontAxisSign", "int", "Integer", "", 1);
+            p.P("CoordAxis", "int", "Integer", "", 0);
+            p.P("CoordAxisSign", "int", "Integer", "", 1);
+            p.P("OriginalUpAxis", "int", "Integer", "", 1);
+            p.P("OriginalUpAxisSign", "int", "Integer", "", 1);
             p.P("UnitScaleFactor", "double", "Number", "", 100.0);
             p.P("OriginalUnitScaleFactor", "double", "Number", "", 100.0);
             p.P("AmbientColor", "ColorRGB", "Color", "", 0.0, 0.0, 0.0);
             p.P("DefaultCamera", "KString", "", "", "Producer Perspective");
-            int mode = Math.Abs(fps - 30) < 0.01 ? 6 : Math.Abs(fps - 60) < 0.01 ? 3 : Math.Abs(fps - 24) < 0.01 ? 11 : Math.Abs(fps - 120) < 0.01 ? 1 : Math.Abs(fps - 50) < 0.01 ? 4 : 14;
+            int mode = Math.Abs(fps - 30) < 0.01 ? 6 :
+                Math.Abs(fps - 60) < 0.01 ? 3 :
+                Math.Abs(fps - 24) < 0.01 ? 11 :
+                Math.Abs(fps - 120) < 0.01 ? 1 :
+                Math.Abs(fps - 50) < 0.01 ? 4 : 14;
             p.P("TimeMode", "enum", "", "", mode);
             p.P("TimeProtocol", "enum", "", "", 2);
             p.P("SnapOnFrameMode", "enum", "", "", 0);
@@ -422,7 +499,7 @@ namespace VRMR
                 Tuple.Create("AnimationCurveNode", c.CurveNodeCount, "FbxAnimCurveNode"),
                 Tuple.Create("AnimationCurve", c.CurveCount, (string)null),
                 Tuple.Create("Geometry", c.GeomCount, "FbxMesh"),
-                Tuple.Create("Deformer", c.DeformerCount, (string)null),
+                Tuple.Create("Deformer", c.DeformerCount, (string)null)
             };
             list = list.Where(x => x.Item2 > 0).ToList();
             d.Add("Count", list.Sum(x => x.Item2));
@@ -432,7 +509,35 @@ namespace VRMR
                 o.Add("Count", x.Item2);
                 if (x.Item3 != null) o.Add("PropertyTemplate", x.Item3).Add("Properties70");
             }
+
             return d;
+        }
+
+        sealed class Ctx
+        {
+            public int ModelCount, AttrCount, CurveNodeCount, CurveCount, GeomCount, DeformerCount;
+            public FbxNode Objects, Connections;
+
+            /// <summary>Ids already taken (when adding to an existing file).</summary>
+            public HashSet<long> Used;
+
+            long _next = 1000000;
+
+            public long Id()
+            {
+                while (Used != null && Used.Contains(_next)) _next++;
+                return _next++;
+            }
+
+            public void OO(long child, long parent)
+            {
+                Connections.Add("C", "OO", child, parent);
+            }
+
+            public void OP(long child, long parent, string prop)
+            {
+                Connections.Add("C", "OP", child, parent, prop);
+            }
         }
     }
 }

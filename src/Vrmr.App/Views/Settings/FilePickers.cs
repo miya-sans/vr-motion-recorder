@@ -9,17 +9,20 @@ using Avalonia.Platform.Storage;
 
 namespace VRMR.App.Views.Settings
 {
-    /// <summary>The file and folder pickers of Settings and the first-run guide, and the one confirm question. Each returns null when cancelled.</summary>
+    /// <summary>
+    ///     The file and folder pickers of Settings and the first-run guide, and the one confirm question. Each returns
+    ///     null when cancelled.
+    /// </summary>
     static class FilePickers
     {
-        /// <summary>Asks for a folder, starting in <paramref name="start"/> when it exists.</summary>
+        /// <summary>Asks for a folder, starting in <paramref name="start" /> when it exists.</summary>
         public static async Task<string> FolderAsync(Visual from, string title, string start)
         {
             var top = TopLevel.GetTopLevel(from);
             if (top == null) return null;
             var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = title, AllowMultiple = false, SuggestedStartLocation = await StartAsync(top, start),
+                Title = title, AllowMultiple = false, SuggestedStartLocation = await StartAsync(top, start)
             });
             return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
         }
@@ -31,13 +34,15 @@ namespace VRMR.App.Views.Settings
             if (top == null) return null;
             var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Pick the avatar's .unitypackage (or .zip) and its face-tracking add-on, or a Unity model (.fbx with its .meta)",
+                Title =
+                    "Pick the avatar's .unitypackage (or .zip) and its face-tracking add-on, or a Unity model (.fbx with its .meta)",
                 AllowMultiple = true,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Avatar files") { Patterns = new[] { "*.unitypackage", "*.zip", "*.fbx", "*.meta" } },
-                    FilePickerFileTypes.All,
-                },
+                    new FilePickerFileType("Avatar files")
+                        { Patterns = new[] { "*.unitypackage", "*.zip", "*.fbx", "*.meta" } },
+                    FilePickerFileTypes.All
+                }
             });
             return files.Select(f => f.TryGetLocalPath()).Where(p => p != null).ToList();
         }
@@ -49,9 +54,11 @@ namespace VRMR.App.Views.Settings
             if (top == null) return null;
             var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Pick your avatar's model inside a Unity project (its rig must be Humanoid)", AllowMultiple = false,
+                Title = "Pick your avatar's model inside a Unity project (its rig must be Humanoid)",
+                AllowMultiple = false,
                 SuggestedStartLocation = await StartAsync(top, start),
-                FileTypeFilter = new[] { new FilePickerFileType("Humanoid model") { Patterns = new[] { "*.fbx", "*.meta", "*.blend" } } },
+                FileTypeFilter = new[]
+                    { new FilePickerFileType("Humanoid model") { Patterns = new[] { "*.fbx", "*.meta", "*.blend" } } }
             });
             return files.Count > 0 ? files[0].TryGetLocalPath() : null;
         }
@@ -64,7 +71,12 @@ namespace VRMR.App.Views.Settings
             var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Pick Blender's program file", AllowMultiple = false,
-                FileTypeFilter = new[] { new FilePickerFileType("Blender") { Patterns = new[] { OperatingSystem.IsWindows() ? "blender.exe" : "blender" } }, FilePickerFileTypes.All },
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Blender")
+                        { Patterns = new[] { OperatingSystem.IsWindows() ? "blender.exe" : "blender" } },
+                    FilePickerFileTypes.All
+                }
             });
             return files.Count > 0 ? files[0].TryGetLocalPath() : null;
         }
@@ -76,9 +88,10 @@ namespace VRMR.App.Views.Settings
             if (top == null) return null;
             var file = await top.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Save the FBX with face shapes", SuggestedFileName = suggestedName, DefaultExtension = "fbx", ShowOverwritePrompt = true,
+                Title = "Save the FBX with face shapes", SuggestedFileName = suggestedName, DefaultExtension = "fbx",
+                ShowOverwritePrompt = true,
                 SuggestedStartLocation = await StartAsync(top, start),
-                FileTypeChoices = new[] { new FilePickerFileType("FBX") { Patterns = new[] { "*.fbx" } } },
+                FileTypeChoices = new[] { new FilePickerFileType("FBX") { Patterns = new[] { "*.fbx" } } }
             });
             return file?.TryGetLocalPath();
         }

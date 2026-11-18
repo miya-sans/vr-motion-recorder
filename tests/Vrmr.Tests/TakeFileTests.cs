@@ -25,10 +25,15 @@ namespace VRMR.Tests
                 Assert.Equal(a.Name, b.Name);
                 Assert.Equal(a.AvatarName, b.AvatarName);
                 Assert.Equal(a.Duration, b.Duration, 6);
-                var pa = a.Param("FT/v2/JawOpen"); var pb = b.Param("FT/v2/JawOpen");
+                var pa = a.Param("FT/v2/JawOpen");
+                var pb = b.Param("FT/v2/JawOpen");
                 Assert.NotNull(pb);
                 Assert.Equal(pa.Count, pb.Count);
-                for (int i = 0; i < pa.Count; i++) { Assert.Equal(pa.T[i], pb.T[i], 9); Assert.Equal(pa.V[i], pb.V[i]); }
+                for (int i = 0; i < pa.Count; i++)
+                {
+                    Assert.Equal(pa.T[i], pb.T[i], 9);
+                    Assert.Equal(pa.V[i], pb.V[i]);
+                }
             }
         }
 

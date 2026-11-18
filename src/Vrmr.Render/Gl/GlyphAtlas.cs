@@ -1,7 +1,9 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
+using Avalonia.Platform;
 using SkiaSharp;
 
 namespace VRMR.Render
@@ -13,39 +15,41 @@ namespace VRMR.Render
 namespace VRMR.Render.Gl
 {
     /// <summary>
-    /// Text for the 3D view: glyphs are rasterised once per size in device pixels (so they are sharp at any display
-    /// scaling), kept in one 8-bit atlas texture, and drawn as pixel-aligned quads. Laying out a string that was drawn
-    /// before allocates nothing.
+    ///     Text for the 3D view: glyphs are rasterised once per size in device pixels (so they are sharp at any display
+    ///     scaling), kept in one 8-bit atlas texture, and drawn as pixel-aligned quads. Laying out a string that was drawn
+    ///     before allocates nothing.
     /// </summary>
-    internal sealed class GlyphAtlas : IDisposable
+    sealed class GlyphAtlas : IDisposable
     {
         public const int Size = 1024;
 
-        struct Glyph
-        {
-            public short X, Y, W, H;
-            /// <summary>From the pen position on the baseline to the bitmap's top-left, in pixels.</summary>
-            public float Left, Top;
-            public float Advance;
-        }
-
-        struct SizeInfo { public float Ascent, LineHeight, DigitAdvance; }
-
-        /// <summary>The atlas pixels (coverage), <see cref="Size"/> squared.</summary>
+        /// <summary>The atlas pixels (coverage), <see cref="Size" /> squared.</summary>
         public readonly byte[] Pixels = new byte[Size * Size];
-        /// <summary>True when <see cref="Pixels"/> changed since the renderer last uploaded them.</summary>
+
+        readonly Dictionary<int, SKTypeface> _fallback = new();
+
+        readonly Dictionary<long, Glyph> _glyphs = new();
+        readonly SKPaint _paint = new() { Color = SKColors.White, IsAntialias = true };
+        readonly Dictionary<int, SizeInfo> _sizes = new();
+
+        /// <summary>True when <see cref="Pixels" /> changed since the renderer last uploaded them.</summary>
         public bool Dirty = true;
 
-        readonly Dictionary<long, Glyph> _glyphs = new Dictionary<long, Glyph>();
-        readonly Dictionary<int, SizeInfo> _sizes = new Dictionary<int, SizeInfo>();
-        readonly Dictionary<int, SKTypeface> _fallback = new Dictionary<int, SKTypeface>();
-        readonly SKPaint _paint = new SKPaint { Color = SKColors.White, IsAntialias = true };
+        SKCanvas _canvas;
         SKTypeface _face = SKTypeface.Default;
         string _family;
-        SKBitmap _scratch;
-        SKCanvas _canvas;
-        int _penX = 1, _penY = 1, _rowHeight;
         bool _full, _resetLastFrame;
+        int _penX = 1, _penY = 1, _rowHeight;
+        SKBitmap _scratch;
+
+        public void Dispose()
+        {
+            _canvas?.Dispose();
+            _scratch?.Dispose();
+            _paint.Dispose();
+            _canvas = null;
+            _scratch = null;
+        }
 
         /// <summary>Selects the font family; an unknown family falls back to the system's default.</summary>
         public void SetFamily(string family)
@@ -66,23 +70,26 @@ namespace VRMR.Render.Gl
                 // a font the app embeds the Avalonia way (for example Avalonia.Fonts.Inter)
                 var assets = new Uri("avares://Avalonia.Fonts." + family + "/Assets");
                 Uri pick = null;
-                foreach (var uri in Avalonia.Platform.AssetLoader.GetAssets(assets, null))
+                foreach (var uri in AssetLoader.GetAssets(assets, null))
                 {
                     string path = uri.AbsolutePath;
-                    if (!path.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".otf", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!path.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) &&
+                        !path.EndsWith(".otf", StringComparison.OrdinalIgnoreCase)) continue;
                     if (pick == null || path.Contains("Regular", StringComparison.OrdinalIgnoreCase)) pick = uri;
                 }
+
                 if (pick != null)
-                    using (var stream = Avalonia.Platform.AssetLoader.Open(pick, null))
+                    using (var stream = AssetLoader.Open(pick))
                         return SKTypeface.FromStream(stream) ?? SKTypeface.Default;
             }
             catch (Exception ex) { AppLog.Warn("3D view font '" + family + "': " + ex.Message); }
+
             return SKTypeface.Default;
         }
 
         /// <summary>
-        /// Call at the start of a frame. Returns true when the atlas ran full during the last one and was emptied: the
-        /// glyphs come back as they are used, and the caller should draw once more.
+        ///     Call at the start of a frame. Returns true when the atlas ran full during the last one and was emptied: the
+        ///     glyphs come back as they are used, and the caller should draw once more.
         /// </summary>
         public bool BeginFrame()
         {
@@ -94,12 +101,21 @@ namespace VRMR.Render.Gl
 
         void Reset()
         {
-            _glyphs.Clear(); _sizes.Clear();
+            _glyphs.Clear();
+            _sizes.Clear();
             Array.Clear(Pixels);
-            _penX = 1; _penY = 1; _rowHeight = 0; _full = false; Dirty = true;
+            _penX = 1;
+            _penY = 1;
+            _rowHeight = 0;
+            _full = false;
+            Dirty = true;
         }
 
-        static int SizeKey(float pixels) => Math.Max(8, (int)MathF.Round(pixels * 2f)); // half-pixel steps, 4 px at least
+        static int SizeKey(float pixels)
+        {
+            return Math.Max(8, (int)MathF.Round(pixels * 2f));
+            // half-pixel steps, 4 px at least
+        }
 
         SKTypeface FaceFor(int codepoint)
         {
@@ -124,12 +140,16 @@ namespace VRMR.Render.Gl
                 font.GetGlyphWidths(ids, adv, Span<SKRect>.Empty, _paint);
                 foreach (float a in adv) info.DigitAdvance = Math.Max(info.DigitAdvance, a);
             }
+
             _sizes[sizeKey] = info;
             return info;
         }
 
-        static SKFont NewFont(SKTypeface face, int sizeKey) =>
-            new SKFont(face, sizeKey * 0.5f) { Edging = SKFontEdging.Antialias, Hinting = SKFontHinting.Normal, Subpixel = false };
+        static SKFont NewFont(SKTypeface face, int sizeKey)
+        {
+            return new SKFont(face, sizeKey * 0.5f)
+                { Edging = SKFontEdging.Antialias, Hinting = SKFontHinting.Normal, Subpixel = false };
+        }
 
         Glyph GlyphFor(int codepoint, int sizeKey)
         {
@@ -153,32 +173,63 @@ namespace VRMR.Render.Gl
             if (box[0].Width <= 0 || box[0].Height <= 0) return g; // a space
             int left = (int)MathF.Floor(box[0].Left) - 1, top = (int)MathF.Floor(box[0].Top) - 1;
             int w = (int)MathF.Ceiling(box[0].Right) + 1 - left, h = (int)MathF.Ceiling(box[0].Bottom) + 1 - top;
-            if (_penX + w + 1 > Size) { _penX = 1; _penY += _rowHeight + 1; _rowHeight = 0; }
-            if (w + 2 > Size || _penY + h + 1 > Size) { _full = true; placed = false; return g; }
+            if (_penX + w + 1 > Size)
+            {
+                _penX = 1;
+                _penY += _rowHeight + 1;
+                _rowHeight = 0;
+            }
+
+            if (w + 2 > Size || _penY + h + 1 > Size)
+            {
+                _full = true;
+                placed = false;
+                return g;
+            }
 
             if (_scratch == null || _scratch.Width < w || _scratch.Height < h)
             {
-                _canvas?.Dispose(); _scratch?.Dispose();
-                _scratch = new SKBitmap(new SKImageInfo(Math.Max(64, w), Math.Max(64, h), SKColorType.Alpha8, SKAlphaType.Premul));
+                _canvas?.Dispose();
+                _scratch?.Dispose();
+                _scratch = new SKBitmap(new SKImageInfo(Math.Max(64, w), Math.Max(64, h), SKColorType.Alpha8,
+                    SKAlphaType.Premul));
                 _canvas = new SKCanvas(_scratch);
             }
+
             _canvas.Clear(SKColors.Transparent);
             _canvas.DrawText(char.ConvertFromUtf32(codepoint), -left, -top, SKTextAlign.Left, font, _paint);
             var src = _scratch.GetPixelSpan();
             int stride = _scratch.RowBytes;
             for (int y = 0; y < h; y++) src.Slice(y * stride, w).CopyTo(Pixels.AsSpan((_penY + y) * Size + _penX, w));
 
-            g.X = (short)_penX; g.Y = (short)_penY; g.W = (short)w; g.H = (short)h; g.Left = left; g.Top = top;
-            _penX += w + 1; _rowHeight = Math.Max(_rowHeight, h);
+            g.X = (short)_penX;
+            g.Y = (short)_penY;
+            g.W = (short)w;
+            g.H = (short)h;
+            g.Left = left;
+            g.Top = top;
+            _penX += w + 1;
+            _rowHeight = Math.Max(_rowHeight, h);
             Dirty = true;
             return g;
         }
 
         static bool NextRune(ReadOnlySpan<char> text, ref int i, out int codepoint)
         {
-            if (i >= text.Length) { codepoint = 0; return false; }
-            if (Rune.DecodeFromUtf16(text.Slice(i), out Rune r, out int used) != System.Buffers.OperationStatus.Done) { r = Rune.ReplacementChar; used = 1; }
-            i += used; codepoint = r.Value;
+            if (i >= text.Length)
+            {
+                codepoint = 0;
+                return false;
+            }
+
+            if (Rune.DecodeFromUtf16(text.Slice(i), out var r, out int used) != OperationStatus.Done)
+            {
+                r = Rune.ReplacementChar;
+                used = 1;
+            }
+
+            i += used;
+            codepoint = r.Value;
             return true;
         }
 
@@ -195,22 +246,26 @@ namespace VRMR.Render.Gl
         {
             int sizeKey = SizeKey(size * scale);
             var info = InfoFor(sizeKey);
-            float width = 0; int lines = 0;
+            float width = 0;
+            int lines = 0;
             for (int start = 0; start <= text.Length;)
             {
                 int n = text.Slice(start).IndexOf('\n');
                 int end = n < 0 ? text.Length : start + n;
                 width = Math.Max(width, LineWidth(text.Slice(start, end - start), sizeKey, tabular, info.DigitAdvance));
-                lines++; start = end + 1;
+                lines++;
+                start = end + 1;
             }
+
             return new Vector2(width, lines * info.LineHeight) / scale;
         }
 
         /// <summary>
-        /// Adds a text block to the batch. at is the block's top-left, top-centre or top-right in device-independent
-        /// pixels; size its font size. tabular gives every digit the same width, so counters do not jitter.
+        ///     Adds a text block to the batch. at is the block's top-left, top-centre or top-right in device-independent
+        ///     pixels; size its font size. tabular gives every digit the same width, so counters do not jitter.
         /// </summary>
-        public void Draw(VectorBatch batch, ReadOnlySpan<char> text, Vector2 at, float size, Rgba color, TextAlign align = TextAlign.Left, bool tabular = false)
+        public void Draw(VectorBatch batch, ReadOnlySpan<char> text, Vector2 at, float size, Rgba color,
+            TextAlign align = TextAlign.Left, bool tabular = false)
         {
             if (color.A == 0 || text.Length == 0) return;
             float scale = batch.Scale;
@@ -228,24 +283,42 @@ namespace VRMR.Render.Gl
                     float w = LineWidth(line, sizeKey, tabular, info.DigitAdvance);
                     x -= align == TextAlign.Center ? w * 0.5f : w;
                 }
+
                 x = MathF.Round(x);
                 float baseline = y + info.Ascent;
                 for (int i = 0; NextRune(line, ref i, out int cp);)
                 {
                     var g = GlyphFor(cp, sizeKey);
                     float advance = g.Advance, shift = 0;
-                    if (tabular && cp >= '0' && cp <= '9') { shift = (info.DigitAdvance - advance) * 0.5f; advance = info.DigitAdvance; }
-                    if (g.W > 0) batch.Glyph(MathF.Round(x + shift) + g.Left, baseline + g.Top, g.X, g.Y, g.W, g.H, color);
+                    if (tabular && cp >= '0' && cp <= '9')
+                    {
+                        shift = (info.DigitAdvance - advance) * 0.5f;
+                        advance = info.DigitAdvance;
+                    }
+
+                    if (g.W > 0)
+                        batch.Glyph(MathF.Round(x + shift) + g.Left, baseline + g.Top, g.X, g.Y, g.W, g.H, color);
                     x += advance;
                 }
-                y += info.LineHeight; start = end + 1;
+
+                y += info.LineHeight;
+                start = end + 1;
             }
         }
 
-        public void Dispose()
+        struct Glyph
         {
-            _canvas?.Dispose(); _scratch?.Dispose(); _paint.Dispose();
-            _canvas = null; _scratch = null;
+            public short X, Y, W, H;
+
+            /// <summary>From the pen position on the baseline to the bitmap's top-left, in pixels.</summary>
+            public float Left, Top;
+
+            public float Advance;
+        }
+
+        struct SizeInfo
+        {
+            public float Ascent, LineHeight, DigitAdvance;
         }
     }
 }

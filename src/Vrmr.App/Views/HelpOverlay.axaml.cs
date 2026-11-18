@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using VRMR.App.ViewModels;
 
@@ -45,7 +46,7 @@ namespace VRMR.App.Views
             ("F1", "This sheet"),
             (null, "Number fields"),
             ("Drag sideways", "Change the value (Shift fine, Ctrl coarse)"),
-            ("↑ ↓", "Step the value"),
+            ("↑ ↓", "Step the value")
         };
 
         public HelpOverlay()
@@ -54,26 +55,36 @@ namespace VRMR.App.Views
             var left = this.FindControl<StackPanel>("LeftColumn");
             var right = this.FindControl<StackPanel>("RightColumn");
             int half = 0, groups = 0;
-            foreach (var s in Shortcuts) if (s.keys == null) groups++;
+            foreach (var s in Shortcuts)
+                if (s.keys == null)
+                    groups++;
             int seen = 0;
             for (int i = 0; i < Shortcuts.Length; i++)
             {
-                var (keys, action) = Shortcuts[i];
-                if (keys == null) { seen++; if (seen > (groups + 1) / 2 && half == 0) half = i; }
+                (string keys, string action) = Shortcuts[i];
+                if (keys == null)
+                {
+                    seen++;
+                    if (seen > (groups + 1) / 2 && half == 0) half = i;
+                }
+
                 var column = half == 0 ? left : right;
                 if (keys == null)
                 {
-                    var head = new TextBlock { Text = action, Margin = new Thickness(0, column.Children.Count == 0 ? 0 : 10, 0, 2) };
+                    var head = new TextBlock
+                        { Text = action, Margin = new Thickness(0, column.Children.Count == 0 ? 0 : 10, 0, 2) };
                     head.Classes.Add("title");
                     column.Children.Add(head);
                     continue;
                 }
+
                 var row = new Grid { ColumnDefinitions = new ColumnDefinitions("150,*") };
                 var k = new TextBlock { Text = keys, VerticalAlignment = VerticalAlignment.Center };
                 k.Classes.Add("secondary");
-                var a = new TextBlock { Text = action, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+                var a = new TextBlock { Text = action, TextWrapping = TextWrapping.Wrap };
                 Grid.SetColumn(a, 1);
-                row.Children.Add(k); row.Children.Add(a);
+                row.Children.Add(k);
+                row.Children.Add(a);
                 column.Children.Add(row);
             }
         }

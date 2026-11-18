@@ -8,11 +8,14 @@
   <StackPanel>
     <c:Section Header="Start and stop" StateKey="settings.recording.start">
       <StackPanel>
-        <c:FieldRow Label="Global hotkey" CanReset="{Binding HotkeyChanged}" ResetCommand="{Binding ResetHotkeyCommand}"
+        <c:FieldRow Label="Global hotkey" CanReset="{Binding HotkeyChanged}"
+                    ResetCommand="{Binding ResetHotkeyCommand}"
                     ToolTip.Tip="A key that starts and stops recording from anywhere, also while VRChat has the focus. Type it (F9, Ctrl+Shift+R), or use Press to set.">
           <Grid ColumnDefinitions="*,Auto">
             <TextBox x:Name="HotkeyBox" Text="{Binding Hotkey, UpdateSourceTrigger=LostFocus}" PlaceholderText="None" />
-            <c:IconToggle Grid.Column="1" x:Name="CaptureToggle" Classes="outlined" Icon="{DynamicResource Icon.Keyboard}" Content="Press to set" Margin="{DynamicResource GapLeft}"
+            <c:IconToggle Grid.Column="1" x:Name="CaptureToggle" Classes="outlined"
+                          Icon="{DynamicResource Icon.Keyboard}" Content="Press to set"
+                          Margin="{DynamicResource GapLeft}"
                           ToolTip.Tip="Click, then press the key or the combination to use. Tab or Esc leaves the hotkey as it is." />
           </Grid>
         </c:FieldRow>

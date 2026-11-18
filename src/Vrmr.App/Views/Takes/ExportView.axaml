@@ -11,15 +11,18 @@
     <DataTemplate x:Key="ExportChoiceRow" x:DataType="vm:ExportChoiceViewModel">
       <Grid ColumnDefinitions="Auto,*">
         <Border Width="{DynamicResource Space6}" IsVisible="{Binding IsNested}" />
-        <CheckBox Grid.Column="1" Content="{Binding Title}" IsChecked="{Binding IsOn}" IsEnabled="{Binding IsAvailable}"
+        <CheckBox Grid.Column="1" Content="{Binding Title}" IsChecked="{Binding IsOn}"
+                  IsEnabled="{Binding IsAvailable}"
                   ToolTip.Tip="{Binding Description}" ToolTip.ShowOnDisabled="True" />
       </Grid>
     </DataTemplate>
   </UserControl.Resources>
 
   <Panel>
-    <c:EmptyState Icon="{DynamicResource Icon.Export}" Text="Pick a take in the library to export it." IsVisible="{Binding !HasTake}" />
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasTake}">
+    <c:EmptyState Icon="{DynamicResource Icon.Export}" Text="Pick a take in the library to export it."
+                  IsVisible="{Binding !HasTake}" />
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                  IsVisible="{Binding HasTake}">
       <StackPanel Margin="{DynamicResource PadPanel}">
 
         <!-- ============================================================ folder -->
@@ -31,9 +34,11 @@
                        IsVisible="{Binding FolderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource GapRow}">
               <Button Content="Browse…" Command="{Binding BrowseCommand}" ToolTip.Tip="Pick the export folder" />
-              <Button Content="Unity project" Command="{Binding UseUnityProjectCommand}" IsVisible="{Binding HasUnityProject}"
+              <Button Content="Unity project" Command="{Binding UseUnityProjectCommand}"
+                      IsVisible="{Binding HasUnityProject}"
                       ToolTip.Tip="Export into Assets\VRMotionRecorder of the linked Unity project. The VR Motion Bridge there sets the model FBX up as your base model's Humanoid and writes a Humanoid clip that plays on any Humanoid avatar." />
-              <Button Content="Open" Command="{Binding OpenFolderCommand}" ToolTip.Tip="Open the folder of the last export, or else the export folder, in the file manager" />
+              <Button Content="Open" Command="{Binding OpenFolderCommand}"
+                      ToolTip.Tip="Open the folder of the last export, or else the export folder, in the file manager" />
             </StackPanel>
             <CheckBox Content="A folder per take" IsChecked="{Binding TakeFolders}"
                       ToolTip.Tip="Each take's files go into a folder named after the take, inside the export folder. Off: straight into the export folder; every file name starts with the take's name." />
@@ -41,10 +46,13 @@
         </c:Section>
 
         <!-- ============================================================ formats -->
-        <c:Section x:Name="FormatsSection" Header="Formats" StateKey="export.formats" Summary="{Binding FormatsSummary}" SummaryTone="{Binding FormatsTone}">
+        <c:Section x:Name="FormatsSection" Header="Formats" StateKey="export.formats"
+                   Summary="{Binding FormatsSummary}" SummaryTone="{Binding FormatsTone}">
           <StackPanel>
-            <ItemsControl x:Name="MainFormatList" ItemsSource="{Binding MainFormats}" ItemTemplate="{StaticResource ExportChoiceRow}" />
-            <c:Section Header="More formats" Level="2" IsExpanded="False" StateKey="export.more" Summary="{Binding MoreSummary}" IsVisible="{Binding HasMoreFormats}">
+            <ItemsControl x:Name="MainFormatList" ItemsSource="{Binding MainFormats}"
+                          ItemTemplate="{StaticResource ExportChoiceRow}" />
+            <c:Section Header="More formats" Level="2" IsExpanded="False" StateKey="export.more"
+                       Summary="{Binding MoreSummary}" IsVisible="{Binding HasMoreFormats}">
               <ItemsControl ItemsSource="{Binding MoreFormats}" ItemTemplate="{StaticResource ExportChoiceRow}" />
             </c:Section>
           </StackPanel>
@@ -53,13 +61,16 @@
         <!-- ============================================================ options -->
         <c:Section Header="Options" StateKey="export.options" Summary="{Binding OptionsSummary}">
           <StackPanel>
-            <c:FieldRow Label="Frame rate" ToolTip.Tip="Frames per second of the solved clip and of every file written from it. An app setting: the take is solved again when it changes.">
+            <c:FieldRow Label="Frame rate"
+                        ToolTip.Tip="Frames per second of the solved clip and of every file written from it. An app setting: the take is solved again when it changes.">
               <ComboBox ItemsSource="{Binding FrameRates}" SelectedIndex="{Binding FrameRateIndex}" />
             </c:FieldRow>
-            <c:FieldRow Label="Face shapes" ToolTip.Tip="How the exported face shapes are named. Where your avatar's face mesh has shapes of its own for them, those names are used.">
+            <c:FieldRow Label="Face shapes"
+                        ToolTip.Tip="How the exported face shapes are named. Where your avatar's face mesh has shapes of its own for them, those names are used.">
               <ComboBox ItemsSource="{Binding FaceNamings}" SelectedIndex="{Binding FaceNamingIndex}" />
             </c:FieldRow>
-            <c:FieldRow Label="Face mesh" ToolTip.Tip="The mesh the face shapes are keyed on, as a path from the avatar's root (for example Body). Empty: the avatar's own face mesh.">
+            <c:FieldRow Label="Face mesh"
+                        ToolTip.Tip="The mesh the face shapes are keyed on, as a path from the avatar's root (for example Body). Empty: the avatar's own face mesh.">
               <TextBox Text="{Binding FaceMeshPath}" PlaceholderText="The avatar's own" />
             </c:FieldRow>
             <CheckBox Content="Split at avatar changes" IsChecked="{Binding SplitAtAvatarChanges}"
@@ -68,15 +79,19 @@
         </c:Section>
 
         <!-- ============================================================ export, progress, result -->
-        <Button x:Name="ExportButton" Classes="accent" Content="Export" Command="{Binding ExportCommand}" HorizontalAlignment="Stretch"
+        <Button x:Name="ExportButton" Classes="accent" Content="Export" Command="{Binding ExportCommand}"
+                HorizontalAlignment="Stretch"
                 ToolTip.Tip="Write the open take in the chosen formats into the export folder. Edits that are not solved yet are solved first." />
         <StackPanel x:Name="ProgressPanel" IsVisible="{Binding IsExporting}" Margin="{DynamicResource GapTop}">
-          <TextBlock Text="{Binding ProgressText}" Classes="secondary" TextWrapping="Wrap" Margin="{DynamicResource GapRowSmall}" />
-          <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue}" IsIndeterminate="{Binding ProgressIndeterminate}" />
+          <TextBlock Text="{Binding ProgressText}" Classes="secondary" TextWrapping="Wrap"
+                     Margin="{DynamicResource GapRowSmall}" />
+          <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue}"
+                       IsIndeterminate="{Binding ProgressIndeterminate}" />
         </StackPanel>
         <StackPanel x:Name="ResultPanel" IsVisible="{Binding HasResult}" Margin="{DynamicResource GapTop}">
           <TextBlock x:Name="ResultMessage" Text="{Binding ResultText}" Classes="note"
-                     Classes.success="{Binding ResultIsSuccess}" Classes.warning="{Binding ResultIsWarning}" Classes.error="{Binding ResultIsError}" />
+                     Classes.success="{Binding ResultIsSuccess}" Classes.warning="{Binding ResultIsWarning}"
+                     Classes.error="{Binding ResultIsError}" />
           <ItemsControl ItemsSource="{Binding ResultNotes}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String">
@@ -84,7 +99,8 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <Button Classes="link" Content="Open folder" Command="{Binding OpenResultCommand}" IsVisible="{Binding CanOpenResult}" HorizontalAlignment="Left"
+          <Button Classes="link" Content="Open folder" Command="{Binding OpenResultCommand}"
+                  IsVisible="{Binding CanOpenResult}" HorizontalAlignment="Left"
                   ToolTip.Tip="Open the folder the files were written into" />
         </StackPanel>
       </StackPanel>

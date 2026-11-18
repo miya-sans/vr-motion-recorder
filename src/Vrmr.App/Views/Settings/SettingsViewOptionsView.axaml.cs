@@ -12,7 +12,11 @@ namespace VRMR.App.Views.Settings
             InitializeComponent();
             DataContextChanged += (o, e) =>
             {
-                if (DataContext is SettingsViewOptionsViewModel vm) vm.ApplyTheme = theme => { if (Application.Current is { } app) App.ApplyTheme(app, theme); };
+                if (DataContext is SettingsViewOptionsViewModel vm)
+                    vm.ApplyTheme = theme =>
+                    {
+                        if (Application.Current is { } app) App.ApplyTheme(app, theme);
+                    };
             };
         }
     }

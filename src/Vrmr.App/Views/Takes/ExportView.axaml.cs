@@ -13,7 +13,10 @@ namespace VRMR.App.Views.Takes
         public ExportView()
         {
             InitializeComponent();
-            DataContextChanged += (o, e) => { if (DataContext is ExportViewModel vm) vm.PickFolder = PickFolderAsync; };
+            DataContextChanged += (o, e) =>
+            {
+                if (DataContext is ExportViewModel vm) vm.PickFolder = PickFolderAsync;
+            };
             // a typed folder counts once it is confirmed: Enter, or leaving the box
             FolderBox.LostFocus += (o, e) => CommitFolder();
             FolderBox.KeyDown += (o, e) =>
@@ -24,7 +27,10 @@ namespace VRMR.App.Views.Takes
             };
         }
 
-        void CommitFolder() => (DataContext as ExportViewModel)?.CommitFolderCommand.Execute(null);
+        void CommitFolder()
+        {
+            (DataContext as ExportViewModel)?.CommitFolderCommand.Execute(null);
+        }
 
         async Task<string> PickFolderAsync(string start)
         {
@@ -33,7 +39,7 @@ namespace VRMR.App.Views.Takes
             var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "Export folder", AllowMultiple = false,
-                SuggestedStartLocation = await top.StorageProvider.TryGetFolderFromPathAsync(start),
+                SuggestedStartLocation = await top.StorageProvider.TryGetFolderFromPathAsync(start)
             });
             return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
         }

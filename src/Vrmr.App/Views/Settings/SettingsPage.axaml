@@ -32,10 +32,12 @@
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}">
-    <Border Classes="panel" Height="{DynamicResource TopBarHeight}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
+    <Border Classes="panel" Height="{DynamicResource TopBarHeight}" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="{DynamicResource HairlineBottom}">
       <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource SettingsHeaderPad}">
         <TextBlock Text="Settings" Classes="title" VerticalAlignment="Center" />
-        <c:IconButton Grid.Column="1" x:Name="CloseButton" Icon="{DynamicResource Icon.Close}" Content="Close" Command="{Binding CloseCommand}"
+        <c:IconButton Grid.Column="1" x:Name="CloseButton" Icon="{DynamicResource Icon.Close}" Content="Close"
+                      Command="{Binding CloseCommand}"
                       VerticalAlignment="Center" ToolTip.Tip="Back to the workspace (Esc)" />
       </Grid>
     </Border>
@@ -43,10 +45,12 @@
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
       <Border Classes="panel" Width="{DynamicResource SettingsNavWidth}" Padding="{DynamicResource SettingsNavPad}"
               BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineRight}">
-        <ListBox x:Name="CategoryList" Classes="plain nav" ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex}" SelectionMode="AlwaysSelected" />
+        <ListBox x:Name="CategoryList" Classes="plain nav" ItemsSource="{Binding Categories}"
+                 SelectedIndex="{Binding CategoryIndex}" SelectionMode="AlwaysSelected" />
       </Border>
 
-      <ScrollViewer Grid.Column="1" x:Name="CategoryScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer Grid.Column="1" x:Name="CategoryScroll" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
         <Grid Margin="{DynamicResource SettingsPagePad}">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MaxWidth="{DynamicResource SettingsContentWidth}" />
@@ -55,26 +59,33 @@
             <TextBlock Text="{Binding CategoryTitle}" Classes="page" Margin="{DynamicResource SettingsTitleGap}" />
             <TextBlock Text="{Binding CategoryIntro}" Classes="note" Margin="{DynamicResource SettingsIntroGap}" />
 
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Sources}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Sources}}">
               <s:SettingsSourcesView DataContext="{Binding Sources}" />
             </Panel>
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Recording}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Recording}}">
               <s:SettingsRecordingView DataContext="{Binding Recording}" />
             </Panel>
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Folders}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Folders}}">
               <s:SettingsFoldersView DataContext="{Binding Folders}" />
             </Panel>
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Avatars}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Avatars}}">
               <s:SettingsAvatarsView DataContext="{Binding Avatars}" />
             </Panel>
             <!-- the calibration editor is shared with the inspector; the shell puts it here, editing the defaults -->
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.CalibrationDefaults}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.CalibrationDefaults}}">
               <ContentControl x:Name="CalibrationDefaultsHost" />
             </Panel>
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.View}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.View}}">
               <s:SettingsViewOptionsView DataContext="{Binding View}" />
             </Panel>
-            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.About}}">
+            <Panel
+              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.About}}">
               <s:SettingsAboutView />
             </Panel>
           </StackPanel>

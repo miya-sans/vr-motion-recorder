@@ -11,64 +11,69 @@ using VRMR.App.Services;
 namespace VRMR.App.ViewModels
 {
     /// <summary>
-    /// The short setup guide shown over the workspace on first run: what was found on this computer, where takes are
-    /// kept, and the avatar to solve onto. Nothing in it is required: every step can be passed, and the guide can be
-    /// left at any time and opened again from Settings → About.
+    ///     The short setup guide shown over the workspace on first run: what was found on this computer, where takes are
+    ///     kept, and the avatar to solve onto. Nothing in it is required: every step can be passed, and the guide can be
+    ///     left at any time and opened again from Settings → About.
     /// </summary>
     public partial class FirstRunViewModel : ObservableObject
     {
-        /// <summary>The <see cref="UiStateStore"/> flag that says the guide has been seen.</summary>
+        /// <summary>The <see cref="UiStateStore" /> flag that says the guide has been seen.</summary>
         public const string DoneKey = "firstRun.done";
 
         /// <summary>The steps: what was found, the recordings folder, the avatar.</summary>
         public const int StepCount = 3;
 
         readonly AppHost _host;
+        [ObservableProperty] string _avatarState = "";
+        [ObservableProperty] bool _folderMoved;
+        [ObservableProperty] bool _foundNeedsAttention;
+        [ObservableProperty] string _foundSummary = "";
+        [ObservableProperty] bool _hasOwnAvatar;
+        [ObservableProperty] string _importMessage = "";
+
+        // what was found
+        [ObservableProperty] bool _isChecking;
+
+        // the avatar
+        [ObservableProperty] bool _isImporting;
+
+        [ObservableProperty] bool _isOpen;
+
+        // the recordings folder
+        [ObservableProperty] string _recordingsFolder = "";
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowsFound), nameof(ShowsFolder), nameof(ShowsAvatar), nameof(CanGoBack),
+            nameof(IsLastStep), nameof(StepText), nameof(StepTitle))]
+        int _step;
 
         public FirstRunViewModel(AppHost host)
         {
             _host = host;
             Found = new ObservableCollection<StatusRowViewModel>
             {
-                new StatusRowViewModel { Id = EnvironmentProbe.SteamVR, Title = "SteamVR" },
-                new StatusRowViewModel { Id = EnvironmentProbe.VrChat, Title = "VRChat" },
-                new StatusRowViewModel { Id = EnvironmentProbe.VrChatOsc, Title = "VRChat's OSC switch" },
-                new StatusRowViewModel { Id = EnvironmentProbe.Blender, Title = "Blender" },
-                new StatusRowViewModel { Id = EnvironmentProbe.Unity, Title = "Unity projects" },
+                new() { Id = EnvironmentProbe.SteamVR, Title = "SteamVR" },
+                new() { Id = EnvironmentProbe.VrChat, Title = "VRChat" },
+                new() { Id = EnvironmentProbe.VrChatOsc, Title = "VRChat's OSC switch" },
+                new() { Id = EnvironmentProbe.Blender, Title = "Blender" },
+                new() { Id = EnvironmentProbe.Unity, Title = "Unity projects" }
             };
             host.Environment.Changed += ShowFound;
             host.AvatarService.Changed += ShowAvatars;
-            host.SettingsStore.Changed += what => { if (what == nameof(Settings.RecordingsDir) || what == "") ShowFolder(); };
+            host.SettingsStore.Changed += what =>
+            {
+                if (what == nameof(Settings.RecordingsDir) || what == "") ShowFolder();
+            };
             ShowFound();
             ShowFolder();
             ShowAvatars();
         }
 
-        [ObservableProperty] bool _isOpen;
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ShowsFound), nameof(ShowsFolder), nameof(ShowsAvatar), nameof(CanGoBack), nameof(IsLastStep), nameof(StepText), nameof(StepTitle))]
-        int _step;
-
-        // what was found
-        [ObservableProperty] bool _isChecking;
-        [ObservableProperty] string _foundSummary = "";
-        [ObservableProperty] bool _foundNeedsAttention;
-
-        // the recordings folder
-        [ObservableProperty] string _recordingsFolder = "";
-        [ObservableProperty] bool _folderMoved;
-
-        // the avatar
-        [ObservableProperty] bool _isImporting;
-        [ObservableProperty] string _importMessage = "";
-        [ObservableProperty] string _avatarState = "";
-        [ObservableProperty] bool _hasOwnAvatar;
-
         /// <summary>SteamVR, VRChat, VRChat's OSC switch, Blender and Unity projects, as found.</summary>
         public ObservableCollection<StatusRowViewModel> Found { get; }
 
         /// <summary>Whether the recordings folder can be used.</summary>
-        public StatusRowViewModel FolderState { get; } = new StatusRowViewModel();
+        public StatusRowViewModel FolderState { get; } = new();
 
         public bool ShowsFound => Step == 0;
         public bool ShowsFolder => Step == 1;
@@ -76,14 +81,18 @@ namespace VRMR.App.ViewModels
         public bool CanGoBack => Step > 0;
         public bool IsLastStep => Step == StepCount - 1;
         public string StepText => $"Step {Step + 1} of {StepCount}";
-        public string StepTitle => Step == 0 ? "What was found on this computer" : Step == 1 ? "Where to keep your takes" : "The avatar to solve onto";
+
+        public string StepTitle => Step == 0 ? "What was found on this computer" :
+            Step == 1 ? "Where to keep your takes" : "The avatar to solve onto";
 
         /// <summary>Portable mode: takes stay inside the data folder the app was started with.</summary>
         public bool IsPortable => _host.Options.DataDir != null;
+
         public bool CanMoveFolder => !IsPortable;
 
         /// <summary>Asks the view for a folder: the picker's title and the folder to start in. Null when cancelled.</summary>
         public Func<string, string, Task<string>> PickFolder { get; set; }
+
         /// <summary>Asks the view for the files of an avatar. Null or empty when cancelled.</summary>
         public Func<Task<IReadOnlyList<string>>> PickFiles { get; set; }
 
@@ -115,8 +124,17 @@ namespace VRMR.App.ViewModels
             _host.UiState.Set(DoneKey, true);
         }
 
-        [RelayCommand] void Next() { if (!IsLastStep) Step++; }
-        [RelayCommand] void Back() { if (CanGoBack) Step--; }
+        [RelayCommand]
+        void Next()
+        {
+            if (!IsLastStep) Step++;
+        }
+
+        [RelayCommand]
+        void Back()
+        {
+            if (CanGoBack) Step--;
+        }
 
         [RelayCommand]
         void Skip()
@@ -129,12 +147,18 @@ namespace VRMR.App.ViewModels
         void Finish()
         {
             Close();
-            _host.Status.Info(_host.CaptureOn ? "Setup done. Press Record while VRChat runs to make your first take." : "Setup done.");
+            _host.Status.Info(_host.CaptureOn
+                ? "Setup done. Press Record while VRChat runs to make your first take."
+                : "Setup done.");
         }
 
         // ------------------------------------------------------------------------------------------ what was found
 
-        [RelayCommand] Task CheckAgain() => _host.Environment.RefreshAsync();
+        [RelayCommand]
+        Task CheckAgain()
+        {
+            return _host.Environment.RefreshAsync();
+        }
 
         void ShowFound()
         {
@@ -154,7 +178,8 @@ namespace VRMR.App.ViewModels
         void ShowFolder()
         {
             RecordingsFolder = _host.Settings.RecordingsDir;
-            FolderMoved = CanMoveFolder && !string.Equals(RecordingsFolder.TrimEnd('\\', '/'), _host.Options.Paths.RecordingsDir.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
+            FolderMoved = CanMoveFolder && !string.Equals(RecordingsFolder.TrimEnd('\\', '/'),
+                _host.Options.Paths.RecordingsDir.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
         }
 
         [RelayCommand]
@@ -165,7 +190,11 @@ namespace VRMR.App.ViewModels
             if (dir != null) UseFolder(dir);
         }
 
-        [RelayCommand] void UseDefaultFolder() => UseFolder(_host.Options.Paths.RecordingsDir);
+        [RelayCommand]
+        void UseDefaultFolder()
+        {
+            UseFolder(_host.Options.Paths.RecordingsDir);
+        }
 
         void UseFolder(string dir)
         {
@@ -182,9 +211,11 @@ namespace VRMR.App.ViewModels
             ImportMessage = service.ImportMessage;
             var own = service.Entries.Where(e => !e.BuiltIn).Select(e => e.Label).ToList();
             HasOwnAvatar = own.Count > 0;
-            AvatarState = own.Count == 0 ? "No avatar of your own yet: takes are solved onto the built-in mannequin until you add one."
-                : own.Count == 1 ? $"In your library: {own[0]}."
-                : $"In your library: {string.Join(", ", own)}. Avatars that match none of them use {service.Default.Label}.";
+            AvatarState = own.Count == 0
+                ? "No avatar of your own yet: takes are solved onto the built-in mannequin until you add one."
+                : own.Count == 1
+                    ? $"In your library: {own[0]}."
+                    : $"In your library: {string.Join(", ", own)}. Avatars that match none of them use {service.Default.Label}.";
         }
 
         [RelayCommand]

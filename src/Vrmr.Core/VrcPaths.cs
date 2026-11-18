@@ -19,10 +19,13 @@ namespace VRMR
 
         /// <summary>VRChat's data folder (LocalLow\VRChat\VRChat). When it cannot be located this is a folder that does not exist.</summary>
         public string DataDir { get; }
+
         /// <summary>The folder with VRChat's output_log_*.txt files.</summary>
         public string LogDir => DataDir;
+
         /// <summary>VRChat's OSC folder (per-user avatar parameter configs).</summary>
         public string OscDir => Path.Combine(DataDir, "OSC");
+
         /// <summary>Whether VRChat has run for this user (its data folder exists).</summary>
         public bool Exists => Directory.Exists(DataDir);
 
@@ -33,7 +36,8 @@ namespace VRMR
             {
                 var dir = new DirectoryInfo(LogDir);
                 if (!dir.Exists) return null;
-                return dir.GetFiles("output_log_*.txt").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()?.FullName;
+                return dir.GetFiles("output_log_*.txt").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()
+                    ?.FullName;
             }
             catch { return null; }
         }
@@ -44,21 +48,24 @@ namespace VRMR
             string low = machine.Folder(KnownFolder.LocalAppDataLow);
             if (low != null) return Path.Combine(low, "VRChat", "VRChat");
             // elsewhere VRChat runs under Steam's compatibility layer, with its own Windows profile per app
-            foreach (var lib in SteamLocator.Libraries(machine))
+            foreach (string lib in SteamLocator.Libraries(machine))
             {
-                string prefix = Path.Combine(lib, "steamapps", "compatdata", SteamAppId.ToString(), "pfx", "drive_c", "users", "steamuser", "AppData", "LocalLow", "VRChat", "VRChat");
+                string prefix = Path.Combine(lib, "steamapps", "compatdata", SteamAppId.ToString(), "pfx", "drive_c",
+                    "users", "steamuser", "AppData", "LocalLow", "VRChat", "VRChat");
                 if (Directory.Exists(prefix)) return prefix;
             }
-            return Path.Combine(machine.Folder(KnownFolder.Temp) ?? Path.GetTempPath(), AppPaths.AppDataFolderName, "vrchat-not-found");
+
+            return Path.Combine(machine.Folder(KnownFolder.Temp) ?? Path.GetTempPath(), AppPaths.AppDataFolderName,
+                "vrchat-not-found");
         }
     }
 
-    /// <summary>VRChat's folders on the machine this process looks at (<see cref="AppPaths.Current"/>).</summary>
+    /// <summary>VRChat's folders on the machine this process looks at (<see cref="AppPaths.Current" />).</summary>
     public static class VrcPaths
     {
         static VrcFolders _folders;
         static IMachine _machine;
-        static readonly object Lock = new object();
+        static readonly object Lock = new();
 
         /// <summary>VRChat's folders for the current machine.</summary>
         public static VrcFolders Current
@@ -68,7 +75,12 @@ namespace VRMR
                 var machine = AppPaths.Current.Machine;
                 lock (Lock)
                 {
-                    if (_folders == null || !ReferenceEquals(_machine, machine)) { _folders = new VrcFolders(machine); _machine = machine; }
+                    if (_folders == null || !ReferenceEquals(_machine, machine))
+                    {
+                        _folders = new VrcFolders(machine);
+                        _machine = machine;
+                    }
+
                     return _folders;
                 }
             }
@@ -76,8 +88,10 @@ namespace VRMR
 
         /// <summary>VRChat's data folder.</summary>
         public static string DataDir => Current.DataDir;
+
         /// <summary>The folder with VRChat's output_log_*.txt files.</summary>
         public static string LogDir => Current.LogDir;
+
         /// <summary>VRChat's OSC folder (per-user avatar parameter configs).</summary>
         public static string OscDir => Current.OscDir;
     }

@@ -7,14 +7,24 @@ namespace VRMR.App.Platform
     /// <summary>The UI thread of the running Avalonia app.</summary>
     public sealed class AvaloniaUiDispatcher : IUiDispatcher
     {
-        public bool CheckAccess() => Dispatcher.UIThread.CheckAccess();
+        public bool CheckAccess()
+        {
+            return Dispatcher.UIThread.CheckAccess();
+        }
 
-        public void Post(Action action) => Dispatcher.UIThread.Post(action);
+        public void Post(Action action)
+        {
+            Dispatcher.UIThread.Post(action);
+        }
 
         public IDisposable After(TimeSpan delay, Action action)
         {
             var timer = new DispatcherTimer { Interval = delay };
-            timer.Tick += (o, e) => { timer.Stop(); action(); };
+            timer.Tick += (o, e) =>
+            {
+                timer.Stop();
+                action();
+            };
             timer.Start();
             return new Stopper(timer);
         }
@@ -31,7 +41,11 @@ namespace VRMR.App.Platform
         {
             readonly DispatcherTimer _timer;
             public Stopper(DispatcherTimer timer) { _timer = timer; }
-            public void Dispose() => _timer.Stop();
+
+            public void Dispose()
+            {
+                _timer.Stop();
+            }
         }
     }
 }

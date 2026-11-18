@@ -12,12 +12,12 @@ namespace VRMR.Tests
             var o = new Dictionary<string, object>
             {
                 ["name"] = "take \"one\"", ["n"] = 3.5, ["on"] = true, ["none"] = null,
-                ["list"] = new List<object> { 1.0, "two", new Dictionary<string, object> { ["k"] = -0.25 } },
+                ["list"] = new List<object> { 1.0, "two", new Dictionary<string, object> { ["k"] = -0.25 } }
             };
             var back = Json.ParseObject(Json.Serialize(o));
             Assert.Equal("take \"one\"", back.GetStr("name", ""));
             Assert.Equal(3.5f, back.GetF("n"), 5);
-            Assert.True(back.GetBool("on", false));
+            Assert.True(back.GetBool("on"));
             var list = back.GetList("list");
             Assert.Equal(3, list.Count);
             Assert.Equal(-0.25f, ((Dictionary<string, object>)list[2]).GetF("k"), 5);

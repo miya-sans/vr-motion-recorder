@@ -9,29 +9,48 @@ namespace VRMR
     /// <summary>Finds the Blender to open exports in, and writes the startup script that imports them.</summary>
     public static class BlenderLocator
     {
-        /// <summary>The Blender to use: the user's own (<paramref name="userPath"/>, Settings.BlenderPath) when it is valid, else the newest release found; null when there is none.</summary>
-        public static string Find(string userPath = null) => FindAll(userPath).FirstOrDefault()?.Exe;
+        /// <summary>
+        ///     The Blender to use: the user's own (<paramref name="userPath" />, Settings.BlenderPath) when it is valid, else
+        ///     the newest release found; null when there is none.
+        /// </summary>
+        public static string Find(string userPath = null)
+        {
+            return FindAll(userPath).FirstOrDefault()?.Exe;
+        }
 
-        /// <summary>Every Blender found on the machine in use, best first (see <see cref="BlenderInstalls"/>).</summary>
-        public static List<BlenderInstall> FindAll(string userPath = null) => BlenderInstalls.Find(AppPaths.Current.Machine, userPath);
+        /// <summary>Every Blender found on the machine in use, best first (see <see cref="BlenderInstalls" />).</summary>
+        public static List<BlenderInstall> FindAll(string userPath = null)
+        {
+            return BlenderInstalls.Find(AppPaths.Current.Machine, userPath);
+        }
 
         /// <summary>Full version from the build folder name (blender-5.3.0-stable.hash), else the exe's file version (5.3).</summary>
-        public static Version VersionOf(string exe) => BlenderInstalls.VersionOf(exe);
+        public static Version VersionOf(string exe)
+        {
+            return BlenderInstalls.VersionOf(exe);
+        }
 
         /// <summary>The bundled add-on (blender\vrmr_bridge.py next to the app or one folder up), or null.</summary>
         public static string BundledAddon()
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            foreach (var p in new[] { Path.Combine(baseDir, "blender", "vrmr_bridge.py"), Path.Combine(baseDir, "..", "blender", "vrmr_bridge.py") })
+            foreach (string p in new[]
+                     {
+                         Path.Combine(baseDir, "blender", "vrmr_bridge.py"),
+                         Path.Combine(baseDir, "..", "blender", "vrmr_bridge.py")
+                     })
             {
                 string full = Path.GetFullPath(p);
                 if (File.Exists(full)) return full;
             }
+
             return null;
         }
 
-        /// <summary>Startup script: import through the VRMR add-on (installed, or loaded from the bundled copy) so the
-        /// face/avatar parameters become armature curves; plain FBX import with the same settings as a fallback.</summary>
+        /// <summary>
+        ///     Startup script: import through the VRMR add-on (installed, or loaded from the bundled copy) so the
+        ///     face/avatar parameters become armature curves; plain FBX import with the same settings as a fallback.
+        /// </summary>
         public static string OpenScript(string fbx, int fps, string addon)
         {
             return
@@ -60,9 +79,9 @@ namespace VRMR
         }
 
         /// <summary>
-        /// Opens an export in Blender (the user's own, else the newest found): a startup script imports the manifest (take
-        /// or scene) through the bundled add-on. The script goes to the temp folder when the export is inside a Unity
-        /// project (Unity would import it). Returns an error message, or null when Blender was started.
+        ///     Opens an export in Blender (the user's own, else the newest found): a startup script imports the manifest (take
+        ///     or scene) through the bundled add-on. The script goes to the temp folder when the export is inside a Unity
+        ///     project (Unity would import it). Returns an error message, or null when Blender was started.
         /// </summary>
         public static string OpenExport(string manifest, bool inUnityProject, string blenderPath = null)
         {
@@ -71,17 +90,22 @@ namespace VRMR
             try
             {
                 string dir = inUnityProject ? Path.GetTempPath() : Path.GetDirectoryName(manifest);
-                string script = Path.Combine(dir, "_vrmr_open_" + Path.GetFileName(manifest).Replace(SceneExport.ManifestSuffix, "").Replace(' ', '_') + ".py");
+                string script = Path.Combine(dir,
+                    "_vrmr_open_" +
+                    Path.GetFileName(manifest).Replace(SceneExport.ManifestSuffix, "").Replace(' ', '_') + ".py");
                 File.WriteAllText(script, OpenSceneScript(manifest, BundledAddon()));
                 AppLog.Info("Opening in Blender " + VersionOf(exe) + ": " + exe + " <- " + manifest);
-                Process.Start(new ProcessStartInfo(exe, $"--python \"{script}\"") { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) });
+                Process.Start(new ProcessStartInfo(exe, $"--python \"{script}\"")
+                    { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) });
                 return null;
             }
             catch (Exception ex) { return "Could not start Blender: " + ex.Message; }
         }
 
-        /// <summary>Startup script for a scene export: import the manifest (every actor, frame range, fps, markers) through
-        /// the VRMR add-on; without the add-on, a plain FBX import of every actor with the same settings.</summary>
+        /// <summary>
+        ///     Startup script for a scene export: import the manifest (every actor, frame range, fps, markers) through
+        ///     the VRMR add-on; without the add-on, a plain FBX import of every actor with the same settings.
+        /// </summary>
         public static string OpenSceneScript(string manifest, string addon)
         {
             return

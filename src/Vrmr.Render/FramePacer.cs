@@ -3,11 +3,11 @@ using System;
 namespace VRMR.Render
 {
     /// <summary>
-    /// Decides on which display frames an animating view ticks, so that it runs at the frame cap: every display frame
-    /// when the cap is at or above the display's rate, every second one for half of it, and so on. Pure arithmetic on
-    /// the times it is given, so it can be tested without a display.
+    ///     Decides on which display frames an animating view ticks, so that it runs at the frame cap: every display frame
+    ///     when the cap is at or above the display's rate, every second one for half of it, and so on. Pure arithmetic on
+    ///     the times it is given, so it can be tested without a display.
     /// </summary>
-    internal sealed class FramePacer
+    sealed class FramePacer
     {
         const int Window = 32;
         readonly double[] _gaps = new double[Window];
@@ -21,8 +21,8 @@ namespace VRMR.Render
         public void Reset() { _lastDisplay = _lastTick = _nextDue = double.NaN; }
 
         /// <summary>
-        /// Call once per display frame with the current time in seconds. Returns true when the view should tick now;
-        /// elapsed is then the time since the previous tick (one cap interval for the first).
+        ///     Call once per display frame with the current time in seconds. Returns true when the view should tick now;
+        ///     elapsed is then the time since the previous tick (one cap interval for the first).
         /// </summary>
         public bool Tick(double now, double cap, out double elapsed)
         {
@@ -46,9 +46,11 @@ namespace VRMR.Render
                 if (due)
                 {
                     _nextDue += interval;
-                    if (_nextDue < now + interval * 0.5) _nextDue = now + interval; // fell behind: do not catch up in a burst
+                    if (_nextDue < now + interval * 0.5)
+                        _nextDue = now + interval; // fell behind: do not catch up in a burst
                 }
             }
+
             if (due) _lastTick = now;
             return due;
         }
@@ -57,7 +59,8 @@ namespace VRMR.Render
         void Observe(double gap)
         {
             if (gap < 0.002 || gap > 0.1) return; // a hitch or a pause tells nothing about the display
-            _gaps[_gapNext] = gap; _gapNext = (_gapNext + 1) % Window;
+            _gaps[_gapNext] = gap;
+            _gapNext = (_gapNext + 1) % Window;
             if (_gapCount < Window) _gapCount++;
             if (_gapCount < 8) return;
             // the median shrugs off both early and late callbacks
@@ -74,16 +77,22 @@ namespace VRMR.Render
     {
         /// <summary>Frames drawn since the view was created.</summary>
         public long FramesDrawn { get; internal set; }
+
         /// <summary>CPU time the last frame took on the UI thread, in milliseconds (building it and issuing the GL calls).</summary>
         public double LastFrameCpuMs { get; internal set; }
+
         /// <summary>Managed memory the last frame allocated, in bytes. Zero in steady state.</summary>
         public long LastFrameAllocatedBytes { get; internal set; }
+
         /// <summary>Time between the last two frames, in milliseconds.</summary>
         public double LastFrameGapMs { get; internal set; }
+
         /// <summary>Avatar mesh triangles in the last frame.</summary>
         public int Triangles { get; internal set; }
+
         /// <summary>The OpenGL implementation and the graphics adapter, once the first frame was drawn.</summary>
         public string GlVersion { get; internal set; } = "";
+
         public string Adapter { get; internal set; } = "";
     }
 }

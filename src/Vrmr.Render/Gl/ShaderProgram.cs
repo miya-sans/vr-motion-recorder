@@ -4,7 +4,7 @@ using Silk.NET.OpenGL;
 namespace VRMR.Render.Gl
 {
     /// <summary>A linked vertex + fragment shader pair.</summary>
-    internal sealed class ShaderProgram
+    sealed class ShaderProgram
     {
         public readonly uint Handle;
         readonly GL _gl;
@@ -12,16 +12,23 @@ namespace VRMR.Render.Gl
         public ShaderProgram(GL gl, string name, string vertexSource, string fragmentSource)
         {
             _gl = gl;
-            uint vs = Compile(ShaderType.VertexShader, name, vertexSource), fs = Compile(ShaderType.FragmentShader, name, fragmentSource);
+            uint vs = Compile(ShaderType.VertexShader, name, vertexSource),
+                fs = Compile(ShaderType.FragmentShader, name, fragmentSource);
             Handle = gl.CreateProgram();
             gl.AttachShader(Handle, vs);
             gl.AttachShader(Handle, fs);
             gl.LinkProgram(Handle);
             gl.GetProgram(Handle, ProgramPropertyARB.LinkStatus, out int ok);
             string log = ok == 0 ? gl.GetProgramInfoLog(Handle) : null;
-            gl.DetachShader(Handle, vs); gl.DetachShader(Handle, fs);
-            gl.DeleteShader(vs); gl.DeleteShader(fs);
-            if (ok == 0) { gl.DeleteProgram(Handle); throw new InvalidOperationException("The '" + name + "' shader did not link: " + log); }
+            gl.DetachShader(Handle, vs);
+            gl.DetachShader(Handle, fs);
+            gl.DeleteShader(vs);
+            gl.DeleteShader(fs);
+            if (ok == 0)
+            {
+                gl.DeleteProgram(Handle);
+                throw new InvalidOperationException("The '" + name + "' shader did not link: " + log);
+            }
         }
 
         uint Compile(ShaderType type, string name, string source)
@@ -36,8 +43,14 @@ namespace VRMR.Render.Gl
             throw new InvalidOperationException("The '" + name + "' " + type + " did not compile: " + log);
         }
 
-        public int Uniform(string name) => _gl.GetUniformLocation(Handle, name);
+        public int Uniform(string name)
+        {
+            return _gl.GetUniformLocation(Handle, name);
+        }
 
-        public void Delete() => _gl.DeleteProgram(Handle);
+        public void Delete()
+        {
+            _gl.DeleteProgram(Handle);
+        }
     }
 }

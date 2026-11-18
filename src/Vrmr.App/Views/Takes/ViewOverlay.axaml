@@ -6,16 +6,25 @@
              x:DataType="vm:TakesWorkspaceViewModel">
   <!-- What sits on top of the 3D view in the Takes workspace: the view chips, the camera button and the empty state. -->
   <Panel>
-    <c:EmptyState x:Name="Empty" IsVisible="{Binding ShowEmpty}" Title="{Binding EmptyTitle}" Text="{Binding EmptyText}" Icon="{DynamicResource Icon.Pose}" />
-    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="48,0,48,10">
-      <c:ToggleChip Content="Mesh" IsChecked="{Binding ShowMesh}" ToolTip.Tip="The avatar's own mesh. Single meshes can be hidden under Settings → View." />
+    <c:EmptyState x:Name="Empty" IsVisible="{Binding ShowEmpty}" Title="{Binding EmptyTitle}"
+                  Text="{Binding EmptyText}" Icon="{DynamicResource Icon.Pose}" />
+    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="48,0,48,10">
+      <c:ToggleChip Content="Mesh" IsChecked="{Binding ShowMesh}"
+                    ToolTip.Tip="The avatar's own mesh. Single meshes can be hidden under Settings → View." />
       <c:ToggleChip Content="Skeleton" IsChecked="{Binding ShowSkeleton}" ToolTip.Tip="The bones, over the mesh" />
-      <c:ToggleChip Content="Devices" IsChecked="{Binding ShowDevices}" ToolTip.Tip="The controllers and trackers, where the take recorded them or where they are now" />
-      <c:ToggleChip Content="Headset" IsChecked="{Binding ShowHeadset}" Available="{Binding HasHeadset}" ToolTip.Tip="The headset among the devices. Off by default: it covers the avatar's face." />
-      <c:ToggleChip Content="Playspace" IsChecked="{Binding ShowPlayArea}" Available="{Binding HasPlayArea}" ToolTip.Tip="The SteamVR play area as an outline on the floor. Dimmed when this view has none." />
-      <c:ToggleChip Content="Base stations" IsChecked="{Binding ShowBaseStations}" Available="{Binding HasBaseStations}" ToolTip.Tip="The base stations with their field of view. Dimmed when this view has none." />
+      <c:ToggleChip Content="Devices" IsChecked="{Binding ShowDevices}"
+                    ToolTip.Tip="The controllers and trackers, where the take recorded them or where they are now" />
+      <c:ToggleChip Content="Headset" IsChecked="{Binding ShowHeadset}" Available="{Binding HasHeadset}"
+                    ToolTip.Tip="The headset among the devices. Off by default: it covers the avatar's face." />
+      <c:ToggleChip Content="Playspace" IsChecked="{Binding ShowPlayArea}" Available="{Binding HasPlayArea}"
+                    ToolTip.Tip="The SteamVR play area as an outline on the floor. Dimmed when this view has none." />
+      <c:ToggleChip Content="Base stations" IsChecked="{Binding ShowBaseStations}"
+                    Available="{Binding HasBaseStations}"
+                    ToolTip.Tip="The base stations with their field of view. Dimmed when this view has none." />
     </StackPanel>
-    <c:IconButton Icon="{DynamicResource Icon.Frame}" Command="{Binding FrameAllCommand}" ToolTip.Tip="Fit the avatar in the view (F, or double-click)"
+    <c:IconButton Icon="{DynamicResource Icon.Frame}" Command="{Binding FrameAllCommand}"
+                  ToolTip.Tip="Fit the avatar in the view (F, or double-click)"
                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8,34,8,8" />
   </Panel>
 </UserControl>

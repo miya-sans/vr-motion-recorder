@@ -21,21 +21,35 @@ namespace VRMR.App.Services
     /// <summary>Runs an action once things have been quiet for a while; each call restarts the wait.</summary>
     public sealed class Debouncer : IDisposable
     {
-        readonly IUiDispatcher _ui;
-        readonly TimeSpan _delay;
         readonly Action _action;
+        readonly TimeSpan _delay;
+        readonly IUiDispatcher _ui;
         IDisposable _pending;
 
-        public Debouncer(IUiDispatcher ui, TimeSpan delay, Action action) { _ui = ui; _delay = delay; _action = action; }
+        public Debouncer(IUiDispatcher ui, TimeSpan delay, Action action)
+        {
+            _ui = ui;
+            _delay = delay;
+            _action = action;
+        }
 
         /// <summary>True while a run is waiting.</summary>
         public bool Pending => _pending != null;
+
+        public void Dispose()
+        {
+            Cancel();
+        }
 
         /// <summary>Starts (or restarts) the wait.</summary>
         public void Trigger()
         {
             _pending?.Dispose();
-            _pending = _ui.After(_delay, () => { _pending = null; _action(); });
+            _pending = _ui.After(_delay, () =>
+            {
+                _pending = null;
+                _action();
+            });
         }
 
         /// <summary>Runs now if a run is waiting.</summary>
@@ -47,8 +61,10 @@ namespace VRMR.App.Services
         }
 
         /// <summary>Drops a waiting run.</summary>
-        public void Cancel() { _pending?.Dispose(); _pending = null; }
-
-        public void Dispose() => Cancel();
+        public void Cancel()
+        {
+            _pending?.Dispose();
+            _pending = null;
+        }
     }
 }

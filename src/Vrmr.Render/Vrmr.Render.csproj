@@ -3,16 +3,16 @@
     <RootNamespace>VRMR.Render</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia" />
-    <PackageReference Include="Silk.NET.OpenGL" />
-    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="Avalonia"/>
+    <PackageReference Include="Silk.NET.OpenGL"/>
+    <PackageReference Include="SkiaSharp"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj" />
-    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj" />
-    <ProjectReference Include="../Vrmr.Avatars/Vrmr.Avatars.csproj" />
+    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj"/>
+    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj"/>
+    <ProjectReference Include="../Vrmr.Avatars/Vrmr.Avatars.csproj"/>
   </ItemGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="Vrmr.Render.Tests" />
+    <InternalsVisibleTo Include="Vrmr.Render.Tests"/>
   </ItemGroup>
 </Project>

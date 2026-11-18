@@ -1,6 +1,8 @@
 // Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
 // Plain C#: game-engine, Burst and job-system dependencies are replaced by the VRMR.Fbik shim.
+
 using System.Runtime.CompilerServices;
+
 namespace VRMR.Fbik
 {
     public partial struct FbikSolver
@@ -48,7 +50,9 @@ namespace VRMR.Fbik
         public Vector3 tposeRightShoulderLocalDir;
         public Quaternion tposeLeftShoulderRot, tposeRightShoulderRot, tposeChestRot;
         public float tposeShoulderToHandLeft, tposeShoulderToHandRight, tposeClavicleLenLeft, tposeClavicleLenRight;
+
         public float tposeShoulderToElbowLeft, tposeShoulderToElbowRight;
+
         // Back-of-hand direction in each hand bone's local space, captured in T-pose (zero = unknown).
         public Vector3 tposeLeftHandBackLocal, tposeRightHandBackLocal;
         public Quaternion tposeLeftLowerArmTwistBind, tposeLeftLowerArmChildBind, tposeRightLowerArmTwistBind;
@@ -74,10 +78,12 @@ namespace VRMR.Fbik
         public NativeArray<IkLegDiagnostics> legDiagnostics;
         public IkPoseStream poseStream;
         public IkGizmoRecorder gizmos;
-        static unsafe ref T Ref<T>(NativeArray<T> array, int index) where T : unmanaged
+
+        static ref T Ref<T>(NativeArray<T> array, int index) where T : unmanaged
         {
             return ref array.ElementAt(index);
         }
+
         internal IkBoneHandle SlotHandle(int slot)
         {
             switch (slot)
@@ -107,7 +113,12 @@ namespace VRMR.Fbik
                 default: return IkBoneHandle.Unbound;
             }
         }
-        public void Execute() => ProcessAnimation();
+
+        public void Execute()
+        {
+            ProcessAnimation();
+        }
+
         public void ProcessAnimation()
         {
             poseStream.InvalidateWorldCache();
@@ -142,6 +153,7 @@ namespace VRMR.Fbik
             RecordNumberGizmos();
             RecordSkeletonGizmos();
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Slot(int humanBodyBone)
         {
@@ -149,8 +161,10 @@ namespace VRMR.Fbik
             {
                 return humanBodyBone;
             }
+
             return humanBodyBone == (int)HumanBodyBones.UpperChest ? UpperChestSlot : -1;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetTargetPosition(int idx, in Vector3 v)
         {
@@ -160,6 +174,7 @@ namespace VRMR.Fbik
                 slotPositions[s] = v;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetTargetRotation(int idx, in Quaternion q)
         {
@@ -169,6 +184,7 @@ namespace VRMR.Fbik
                 slotRotations[s] = q;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetOffsetRotation(int idx, in Quaternion q)
         {
@@ -178,6 +194,7 @@ namespace VRMR.Fbik
                 slotOffsets[s] = q;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetWeight(int idx, bool State)
         {
@@ -187,15 +204,17 @@ namespace VRMR.Fbik
                 slotWeights[s] = State;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBlend(int idx, float blend)
         {
             int s = Slot(idx);
             if (s >= 0 && s < slotBlends.Length)
             {
-                slotBlends[s] = blend > 0f ? (blend < 1f ? blend : 1f) : 0f;
+                slotBlends[s] = blend > 0f ? blend < 1f ? blend : 1f : 0f;
             }
         }
+
         public void RescaleTposeScalars(float newScale)
         {
             if (float.IsNaN(newScale) || float.IsInfinity(newScale) || newScale <= 0f || tposeBakeScale <= 0f)
@@ -221,20 +240,27 @@ namespace VRMR.Fbik
 
             tposeBakeScale = newScale;
         }
+
         public void RescaleTposeFit(float armScale, float torsoScale)
         {
             if (!(armScale > 0f) || !(torsoScale > 0f) || float.IsInfinity(armScale) || float.IsInfinity(torsoScale))
             {
                 return;
             }
-            float ka = armScale / (tposeArmFitScale > 0f ? tposeArmFitScale : 1f), kt = torsoScale / (tposeTorsoFitScale > 0f ? tposeTorsoFitScale : 1f);
+
+            float ka = armScale / (tposeArmFitScale > 0f ? tposeArmFitScale : 1f),
+                kt = torsoScale / (tposeTorsoFitScale > 0f ? tposeTorsoFitScale : 1f);
             if (Mathf.Abs(ka - 1f) >= 1e-6f)
             {
                 tposeShoulderToHandLeft = tposeClavicleLenLeft + (tposeShoulderToHandLeft - tposeClavicleLenLeft) * ka;
-                tposeShoulderToHandRight = tposeClavicleLenRight + (tposeShoulderToHandRight - tposeClavicleLenRight) * ka;
-                tposeShoulderToElbowLeft = tposeClavicleLenLeft + (tposeShoulderToElbowLeft - tposeClavicleLenLeft) * ka;
-                tposeShoulderToElbowRight = tposeClavicleLenRight + (tposeShoulderToElbowRight - tposeClavicleLenRight) * ka;
+                tposeShoulderToHandRight =
+                    tposeClavicleLenRight + (tposeShoulderToHandRight - tposeClavicleLenRight) * ka;
+                tposeShoulderToElbowLeft =
+                    tposeClavicleLenLeft + (tposeShoulderToElbowLeft - tposeClavicleLenLeft) * ka;
+                tposeShoulderToElbowRight =
+                    tposeClavicleLenRight + (tposeShoulderToElbowRight - tposeClavicleLenRight) * ka;
             }
+
             if (Mathf.Abs(kt - 1f) >= 1e-6f)
             {
                 RescaleRalivSpineSegments(kt, chainTorsoTopIdx);
@@ -244,9 +270,11 @@ namespace VRMR.Fbik
                     minHeadSpineHeight = chain;
                 }
             }
+
             tposeArmFitScale = armScale;
             tposeTorsoFitScale = torsoScale;
         }
+
         public void Destroy()
         {
             if (chainHeadToSpine.IsCreated) chainHeadToSpine.Dispose();

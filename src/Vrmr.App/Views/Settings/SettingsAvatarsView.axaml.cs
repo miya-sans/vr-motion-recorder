@@ -16,7 +16,8 @@ namespace VRMR.App.Views.Settings
                 vm.PickUnityModel = () => FilePickers.UnityModelAsync(this, null);
                 vm.PickSaveFbx = (name, start) => FilePickers.SaveFbxAsync(this, name, start);
                 vm.ConfirmRemove = name => FilePickers.ConfirmAsync(this, $"Remove \"{name}\" from the library?",
-                    "Its files go to the Recycle Bin and can be restored from there. Takes keep their own copy of the skeleton.", "Remove");
+                    "Its files go to the Recycle Bin and can be restored from there. Takes keep their own copy of the skeleton.",
+                    "Remove");
             };
         }
     }

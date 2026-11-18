@@ -1,7 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-        xmlns:c="using:VRMR.App.Controls">
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <!-- Sizes and looks of the stock controls, on top of the Fluent theme, plus the text and panel classes views use. -->
   <Styles.Resources>
     <ResourceDictionary>

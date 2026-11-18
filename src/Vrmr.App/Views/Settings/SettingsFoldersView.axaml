@@ -8,29 +8,37 @@
   <!-- Folders: takes and avatars, the Blender that opens exports, the Unity projects avatars are matched from. -->
   <StackPanel>
     <Border Classes="card" IsVisible="{Binding IsPortable}" Margin="{DynamicResource SettingsBlockGap}">
-      <TextBlock Classes="fact" Text="Portable mode: takes and avatars stay inside the data folder the app was started with, so these two folders cannot be moved." />
+      <TextBlock Classes="fact"
+                 Text="Portable mode: takes and avatars stay inside the data folder the app was started with, so these two folders cannot be moved." />
     </Border>
 
     <c:Section Header="Takes and avatars" StateKey="settings.folders.work">
       <StackPanel>
-        <c:FieldRow Label="Recordings folder" CanReset="{Binding RecordingsMoved}" ResetCommand="{Binding ResetRecordingsCommand}"
+        <c:FieldRow Label="Recordings folder" CanReset="{Binding RecordingsMoved}"
+                    ResetCommand="{Binding ResetRecordingsCommand}"
                     ToolTip.Tip="Where new takes are saved, and where the library looks for takes. Takes already recorded stay in the old folder until you move them yourself.">
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBox Text="{Binding RecordingsFolder, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsPortable}" />
-            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseRecordingsCommand}" IsVisible="{Binding CanMoveFolders}" Margin="{DynamicResource GapLeft}" />
-            <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenRecordingsCommand}" ToolTip.Tip="Open the recordings folder" Margin="{DynamicResource GapLeftSmall}" />
+            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseRecordingsCommand}"
+                    IsVisible="{Binding CanMoveFolders}" Margin="{DynamicResource GapLeft}" />
+            <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.Folder}"
+                          Command="{Binding OpenRecordingsCommand}" ToolTip.Tip="Open the recordings folder"
+                          Margin="{DynamicResource GapLeftSmall}" />
           </Grid>
         </c:FieldRow>
         <Panel IsVisible="{Binding Recordings.NeedsAttention}" Margin="{DynamicResource GapRow}">
           <s:StatusRow DataContext="{Binding Recordings}" />
         </Panel>
 
-        <c:FieldRow Label="Avatar library folder" CanReset="{Binding AvatarsMoved}" ResetCommand="{Binding ResetAvatarsCommand}"
+        <c:FieldRow Label="Avatar library folder" CanReset="{Binding AvatarsMoved}"
+                    ResetCommand="{Binding ResetAvatarsCommand}"
                     ToolTip.Tip="Where the base models added under Avatars are kept: one folder per avatar with its model, its textures and its skeleton.">
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBox Text="{Binding AvatarFolder, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsPortable}" />
-            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseAvatarsCommand}" IsVisible="{Binding CanMoveFolders}" Margin="{DynamicResource GapLeft}" />
-            <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenAvatarsCommand}" ToolTip.Tip="Open the avatar library folder" Margin="{DynamicResource GapLeftSmall}" />
+            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseAvatarsCommand}"
+                    IsVisible="{Binding CanMoveFolders}" Margin="{DynamicResource GapLeft}" />
+            <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenAvatarsCommand}"
+                          ToolTip.Tip="Open the avatar library folder" Margin="{DynamicResource GapLeftSmall}" />
           </Grid>
         </c:FieldRow>
         <Panel IsVisible="{Binding Avatars.NeedsAttention}" Margin="{DynamicResource GapRow}">
@@ -42,40 +50,50 @@
     <c:Section Header="Blender" StateKey="settings.folders.blender">
       <StackPanel>
         <s:StatusRow DataContext="{Binding Blender}" Margin="{DynamicResource GapRow}" />
-        <c:FieldRow Label="Blender program" CanReset="{Binding HasBlenderPath}" ResetCommand="{Binding ClearBlenderCommand}"
+        <c:FieldRow Label="Blender program" CanReset="{Binding HasBlenderPath}"
+                    ResetCommand="{Binding ClearBlenderCommand}"
                     ToolTip.Tip="The Blender that exports are opened in. Leave it empty to use the newest release found on this computer; set blender.exe or its folder to use another one.">
           <Grid ColumnDefinitions="*,Auto">
             <TextBox Text="{Binding BlenderPath, UpdateSourceTrigger=LostFocus}" PlaceholderText="Found by itself" />
-            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseBlenderCommand}" Margin="{DynamicResource GapLeft}" />
+            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseBlenderCommand}"
+                    Margin="{DynamicResource GapLeft}" />
           </Grid>
         </c:FieldRow>
-        <TextBlock Text="{Binding BlenderInUse, StringFormat='In use: {0}'}" Classes="caption" TextTrimming="CharacterEllipsis"
+        <TextBlock Text="{Binding BlenderInUse, StringFormat='In use: {0}'}" Classes="caption"
+                   TextTrimming="CharacterEllipsis"
                    IsVisible="{Binding BlenderInUse, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       </StackPanel>
     </c:Section>
 
     <c:Section Header="Unity projects" StateKey="settings.folders.unity">
       <StackPanel>
-        <TextBlock Classes="note" Text="Optional. Link the Unity project your avatar lives in: the app then knows the avatar you wear by its VRChat id and reads its humanoid rig from the model's .meta. Unity does not need to be running." />
+        <TextBlock Classes="note"
+                   Text="Optional. Link the Unity project your avatar lives in: the app then knows the avatar you wear by its VRChat id and reads its humanoid rig from the model's .meta. Unity does not need to be running." />
         <s:StatusRow DataContext="{Binding Unity}" Margin="{DynamicResource GapRow}" />
-        <ListBox x:Name="ProjectList" Classes="plain" ItemsSource="{Binding Projects}" SelectedItem="{Binding SelectedProject}" IsVisible="{Binding HasProjects}"
+        <ListBox x:Name="ProjectList" Classes="plain" ItemsSource="{Binding Projects}"
+                 SelectedItem="{Binding SelectedProject}" IsVisible="{Binding HasProjects}"
                  MaxHeight="{DynamicResource SettingsShortListMaxHeight}" Margin="{DynamicResource GapRow}">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:UnityProjectRowViewModel">
               <StackPanel Margin="{DynamicResource SettingsListItemPad}">
                 <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Info}" Classes="caption" Classes.warning="{Binding Missing}" TextWrapping="Wrap" Margin="{DynamicResource GapTopSmall}"
+                <TextBlock Text="{Binding Info}" Classes="caption" Classes.warning="{Binding Missing}"
+                           TextWrapping="Wrap" Margin="{DynamicResource GapTopSmall}"
                            IsVisible="{Binding Info, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource GapRow}">
-          <Button Content="Add project…" Command="{Binding AddProjectCommand}" ToolTip.Tip="Link a Unity project: pick the folder that contains Assets and ProjectSettings" />
-          <Button Content="Remove" Command="{Binding RemoveProjectCommand}" IsEnabled="{Binding HasProjects}" ToolTip.Tip="Forget the selected project. Nothing in the project is changed, and avatars already linked to its models stay linked." />
-          <Button Content="Scan again" Command="{Binding RescanCommand}" IsEnabled="{Binding HasProjects}" ToolTip.Tip="Look through the linked projects for avatars again (after uploading a new avatar, say)" />
+          <Button Content="Add project…" Command="{Binding AddProjectCommand}"
+                  ToolTip.Tip="Link a Unity project: pick the folder that contains Assets and ProjectSettings" />
+          <Button Content="Remove" Command="{Binding RemoveProjectCommand}" IsEnabled="{Binding HasProjects}"
+                  ToolTip.Tip="Forget the selected project. Nothing in the project is changed, and avatars already linked to its models stay linked." />
+          <Button Content="Scan again" Command="{Binding RescanCommand}" IsEnabled="{Binding HasProjects}"
+                  ToolTip.Tip="Look through the linked projects for avatars again (after uploading a new avatar, say)" />
         </StackPanel>
-        <TextBlock Text="{Binding ScanInfo}" Classes="note" IsVisible="{Binding ScanInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <TextBlock Text="{Binding ScanInfo}" Classes="note"
+                   IsVisible="{Binding ScanInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       </StackPanel>
     </c:Section>
   </StackPanel>

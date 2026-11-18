@@ -5,10 +5,10 @@
     <RootNamespace>VRMR.App.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="xunit.v3" />
-    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="xunit.v3"/>
+    <PackageReference Include="Avalonia.Headless"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Vrmr.App/Vrmr.App.csproj" />
+    <ProjectReference Include="../../src/Vrmr.App/Vrmr.App.csproj"/>
   </ItemGroup>
 </Project>

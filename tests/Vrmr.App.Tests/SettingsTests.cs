@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Styling;
 using VRMR.App.Composition;
 using VRMR.App.Controls;
 using VRMR.App.Platform;
@@ -31,8 +32,11 @@ namespace VRMR.App.Tests
             return (data, ui, host, new SettingsViewModel(host));
         }
 
-        static void WaitForEnvironment(ManualDispatcher ui, AppHost host) =>
-            Assert.True(ui.WaitFor(() => host.Environment.Report != null && !host.Environment.Checking), "the environment check did not finish");
+        static void WaitForEnvironment(ManualDispatcher ui, AppHost host)
+        {
+            Assert.True(ui.WaitFor(() => host.Environment.Report != null && !host.Environment.Checking),
+                "the environment check did not finish");
+        }
 
         // ------------------------------------------------------------------------------------------ recording and sources
 
@@ -40,7 +44,8 @@ namespace VRMR.App.Tests
         public void SwitchesGoThroughTheSettingsStore()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var changed = new List<string>();
                 host.SettingsStore.Changed += changed.Add;
@@ -64,18 +69,23 @@ namespace VRMR.App.Tests
                 Assert.False(s.CaptureFingers);
                 Assert.False(s.ListenLegacyPort);
                 Assert.False(s.EnableOpenVR);
-                foreach (var name in new[]
-                {
-                    nameof(Settings.FollowHumrTakes), nameof(Settings.PreviewWhileRecording), nameof(Settings.WatchCalibrations), nameof(Settings.AutoLinkCalibration),
-                    nameof(Settings.RecordTriggerParam), nameof(Settings.CaptureFingers), nameof(Settings.ListenLegacyPort), nameof(Settings.EnableOpenVR),
-                })
+                foreach (string name in new[]
+                         {
+                             nameof(Settings.FollowHumrTakes), nameof(Settings.PreviewWhileRecording),
+                             nameof(Settings.WatchCalibrations), nameof(Settings.AutoLinkCalibration),
+                             nameof(Settings.RecordTriggerParam), nameof(Settings.CaptureFingers),
+                             nameof(Settings.ListenLegacyPort), nameof(Settings.EnableOpenVR)
+                         })
                     Assert.Contains(name, changed);
                 // without live sources a switch never starts SteamVR
                 Assert.Null(host.Recorder.OpenVR);
 
                 // and the file has them a moment later
                 ui.Advance(1);
-                Assert.True(ui.WaitFor(() => File.Exists(host.Options.Paths.SettingsFile) && !Settings.Load(host.Options.Paths).EnableOpenVR), "the settings were not saved");
+                Assert.True(
+                    ui.WaitFor(() =>
+                        File.Exists(host.Options.Paths.SettingsFile) &&
+                        !Settings.Load(host.Options.Paths).EnableOpenVR), "the settings were not saved");
             }
         }
 
@@ -83,7 +93,8 @@ namespace VRMR.App.Tests
         public void TheHotkeyIsTrimmedCheckedAndCanGoBackToItsDefault()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var rec = settings.Recording;
                 Assert.Equal(host.Settings.HotkeyRecord, rec.Hotkey);
@@ -133,10 +144,12 @@ namespace VRMR.App.Tests
                 string text = HotkeyKeys.Text(key, KeyModifiers.Control | KeyModifiers.Alt);
                 if (text == null) continue;
                 keys++;
-                Assert.True(HotkeyText.TryParse(text, out uint modifiers, out uint virtualKey), text + " is not understood");
+                Assert.True(HotkeyText.TryParse(text, out uint modifiers, out uint virtualKey),
+                    text + " is not understood");
                 Assert.Equal(HotkeyText.Ctrl | HotkeyText.Alt, modifiers);
                 Assert.NotEqual(0u, virtualKey);
             }
+
             Assert.True(keys > 80, "letters, digits, function keys and the number pad should all be there");
         }
 
@@ -144,7 +157,8 @@ namespace VRMR.App.Tests
         public void SourcesSayWhatWasFoundAndWhatToDo()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 WaitForEnvironment(ui, host);
                 var sources = settings.Sources;
@@ -176,7 +190,8 @@ namespace VRMR.App.Tests
         public void PortableModeKeepsTheFoldersWhereTheyAre()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var folders = settings.Folders;
                 Assert.True(folders.IsPortable);
@@ -218,7 +233,8 @@ namespace VRMR.App.Tests
         public void TheBlenderPathIsStoredAndCheckedAgain()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 WaitForEnvironment(ui, host);
                 var folders = settings.Folders;
@@ -263,7 +279,9 @@ namespace VRMR.App.Tests
                 Assert.True(folders.HasProjects);
                 Assert.Equal(project, Assert.Single(folders.Projects).Path);
                 Assert.Same(folders.Projects[0], folders.SelectedProject);
-                Assert.True(HeadlessUi.WaitFor(() => !host.AvatarService.Scanning && folders.ScanInfo.Contains("1 project")), "the scan did not report: " + folders.ScanInfo);
+                Assert.True(
+                    HeadlessUi.WaitFor(() => !host.AvatarService.Scanning && folders.ScanInfo.Contains("1 project")),
+                    "the scan did not report: " + folders.ScanInfo);
                 Assert.False(folders.Projects[0].Missing);
 
                 folders.RemoveProjectCommand.Execute(null);
@@ -278,7 +296,8 @@ namespace VRMR.App.Tests
         public void AnEmptyLibrarySaysWhatToAdd()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.True(settings.Avatars.IsEmpty);
                 Assert.True(settings.Avatars.AddCommand.CanExecute(null));
@@ -292,12 +311,14 @@ namespace VRMR.App.Tests
         public void TheAvatarListShowsTheDefaultTheBuiltInOneAndMissingModels()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 TestAvatars.Save(host, "Avatar A");
                 TestAvatars.Save(host, "Avatar B");
                 var avatars = settings.Avatars;
-                Assert.Equal(new[] { "Avatar A", "Avatar B", Mannequin.Name }, avatars.Items.Select(i => i.Name).ToArray());
+                Assert.Equal(new[] { "Avatar A", "Avatar B", Mannequin.Name },
+                    avatars.Items.Select(i => i.Name).ToArray());
                 avatars.Selected = avatars.Items[0];
                 Assert.Equal("Avatar A", avatars.Selected.Name);
                 Assert.True(avatars.CanEdit);
@@ -325,7 +346,8 @@ namespace VRMR.App.Tests
         public void NameAndVrChatNamesOfTheSelectedAvatarAreEdited()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 TestAvatars.Save(host, "Working title");
                 var avatars = settings.Avatars;
@@ -353,14 +375,19 @@ namespace VRMR.App.Tests
         public void RemovingAsksFirst()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var entry = TestAvatars.Save(host, "To remove");
                 var avatars = settings.Avatars;
                 avatars.Selected = avatars.Items[0];
                 string asked = null;
                 bool answer = false;
-                avatars.ConfirmRemove = name => { asked = name; return Task.FromResult(answer); };
+                avatars.ConfirmRemove = name =>
+                {
+                    asked = name;
+                    return Task.FromResult(answer);
+                };
 
                 avatars.RemoveCommand.Execute(null);
                 Assert.Equal("To remove", asked);
@@ -378,7 +405,8 @@ namespace VRMR.App.Tests
         public void AddingShowsItsProgressAndSelectsTheNewAvatar()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = settings.Avatars;
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Fresh avatar");
@@ -387,7 +415,8 @@ namespace VRMR.App.Tests
                 Assert.True(avatars.IsImporting);
                 Assert.False(avatars.AddCommand.CanExecute(null));
                 Assert.NotEqual("", avatars.ImportMessage);
-                Assert.True(ui.WaitFor(() => !avatars.IsImporting && avatars.Selected?.Name == "Fresh avatar"), "the import did not finish");
+                Assert.True(ui.WaitFor(() => !avatars.IsImporting && avatars.Selected?.Name == "Fresh avatar"),
+                    "the import did not finish");
                 Assert.False(avatars.IsEmpty);
                 Assert.True(avatars.AddCommand.CanExecute(null));
                 Assert.True(avatars.HasImportReport);
@@ -405,12 +434,21 @@ namespace VRMR.App.Tests
         public void LinkingAndTheFaceFbxSayWhatIsMissing()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = settings.Avatars;
                 bool asked = false;
-                avatars.PickUnityModel = () => { asked = true; return Task.FromResult<string>(null); };
-                avatars.PickSaveFbx = (name, start) => { asked = true; return Task.FromResult<string>(null); };
+                avatars.PickUnityModel = () =>
+                {
+                    asked = true;
+                    return Task.FromResult<string>(null);
+                };
+                avatars.PickSaveFbx = (name, start) =>
+                {
+                    asked = true;
+                    return Task.FromResult<string>(null);
+                };
 
                 avatars.LinkWornCommand.Execute(null);
                 Assert.False(asked); // no picker before VRChat has said which avatar is worn
@@ -429,7 +467,8 @@ namespace VRMR.App.Tests
         public void TheThemeIsRememberedAndApplied()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var applied = new List<string>();
                 settings.View.ApplyTheme = applied.Add;
@@ -446,7 +485,8 @@ namespace VRMR.App.Tests
         public void TheMeshListFollowsTheAvatarOnScreen()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var view = settings.View;
                 settings.Show(SettingsCategory.View);
@@ -458,7 +498,8 @@ namespace VRMR.App.Tests
                 host.Session.Show(SyntheticTake.Create());
                 Assert.True(ui.WaitFor(() =>
                 {
-                    if (host.Session.Solve == SolveState.Waiting) ui.Advance(TakeSession.SolveDelay.TotalSeconds + 0.05);
+                    if (host.Session.Solve == SolveState.Waiting)
+                        ui.Advance(TakeSession.SolveDelay.TotalSeconds + 0.05);
                     return host.Session.Solve == SolveState.Done && view.MeshInfo.Contains("mannequin");
                 }, 30000), "the mesh note did not follow the take: " + view.MeshInfo);
                 Assert.False(view.AnyHidden);
@@ -477,7 +518,8 @@ namespace VRMR.App.Tests
                 OpenATake(host);
                 settings.Show(SettingsCategory.View);
                 settings.SetActive(true);
-                Assert.True(HeadlessUi.WaitFor(() => view.HasMeshes, 120000), "no meshes were listed: " + view.MeshInfo);
+                Assert.True(HeadlessUi.WaitFor(() => view.HasMeshes, 120000),
+                    "no meshes were listed: " + view.MeshInfo);
                 var before = host.Settings.PreviewHiddenMeshes.ToList();
                 try
                 {
@@ -490,7 +532,11 @@ namespace VRMR.App.Tests
                     Assert.DoesNotContain(row.Name, host.Settings.PreviewHiddenMeshes);
                     Assert.All(view.Meshes, m => Assert.True(m.Shown));
                 }
-                finally { host.SettingsStore.Update(nameof(Settings.PreviewHiddenMeshes), s => s.PreviewHiddenMeshes = before); }
+                finally
+                {
+                    host.SettingsStore.Update(nameof(Settings.PreviewHiddenMeshes),
+                        s => s.PreviewHiddenMeshes = before);
+                }
             });
         }
 
@@ -498,7 +544,8 @@ namespace VRMR.App.Tests
         public void TheCategoryIsRememberedAndAlwaysAValidOne()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.Equal(SettingsCategory.Sources, settings.Category);
                 Assert.Equal(7, settings.Categories.Count);
@@ -518,7 +565,8 @@ namespace VRMR.App.Tests
         public void AboutNamesTheVersionAndTheFoldersAndHandsCloseAndTheGuideToTheShell()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.Matches(@"^\d+\.\d+", settings.Version);
                 Assert.True(settings.IsPortable);
@@ -546,7 +594,8 @@ namespace VRMR.App.Tests
         public void LiveStatesAreOnlyReadWhileThePageIsOpen()
         {
             var (data, ui, host, settings) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 // without live sources there is nothing to poll, open or not
                 settings.SetActive(true);
@@ -563,14 +612,18 @@ namespace VRMR.App.Tests
         {
             var opening = host.Session.OpenAsync(PrivateData.Takes()[0]);
             Assert.True(HeadlessUi.WaitFor(() => opening.IsCompleted, 60000), "the take did not open");
-            Assert.True(HeadlessUi.WaitFor(() => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed, 120000), "the take did not solve");
+            Assert.True(
+                HeadlessUi.WaitFor(
+                    () => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed, 120000),
+                "the take did not solve");
             Assert.True(host.Session.Solve == SolveState.Done, "the solve failed: " + host.Session.SolveError);
         }
 
         static Window Open(SettingsViewModel settings, AppHost host, double scale = 1)
         {
             Section.StateStore = host.UiState;
-            var window = new Window { Width = 1400, Height = 860, Content = new SettingsPage { DataContext = settings } };
+            var window = new Window
+                { Width = 1400, Height = 860, Content = new SettingsPage { DataContext = settings } };
             window.Show();
             if (scale != 1) window.SetRenderScaling(scale);
             HeadlessUi.Settle(150);
@@ -600,8 +653,10 @@ namespace VRMR.App.Tests
                     settings.Show(category);
                     HeadlessUi.Settle(80);
                     Assert.Equal((int)category, page.FindControl<ListBox>("CategoryList").SelectedIndex);
-                    Assert.NotNull(HeadlessUi.Capture(window, $"settings-{(int)category + 1}-{category.ToString().ToLowerInvariant()}{suffix}"));
+                    Assert.NotNull(HeadlessUi.Capture(window,
+                        $"settings-{(int)category + 1}-{category.ToString().ToLowerInvariant()}{suffix}"));
                 }
+
                 Assert.NotNull(page.FindControl<ContentControl>("CalibrationDefaultsHost"));
                 window.Close();
             });
@@ -621,7 +676,9 @@ namespace VRMR.App.Tests
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-empty"));
 
                 // with avatars, an import report and every folded part open
-                foreach (var key in new[] { "settings.avatars.details", "settings.avatars.import", "settings.avatars.unity" }) host.UiState.Set("fold." + key, true);
+                foreach (string key in new[]
+                             { "settings.avatars.details", "settings.avatars.import", "settings.avatars.unity" })
+                    host.UiState.Set("fold." + key, true);
                 window.Close();
                 window = Open(settings, host);
                 // the import of a made-up model is over in a blink: its progress is drawn from the state the service would report
@@ -655,7 +712,7 @@ namespace VRMR.App.Tests
                 {
                     settings.View.ThemeIndex = 1; // through the view, as a click on the switch would
                     HeadlessUi.Settle(80);
-                    Assert.Equal(Avalonia.Styling.ThemeVariant.Light, Application.Current.ActualThemeVariant);
+                    Assert.Equal(ThemeVariant.Light, Application.Current.ActualThemeVariant);
                     Assert.NotNull(HeadlessUi.Capture(window, "settings-view-light"));
                     settings.Show(SettingsCategory.Recording);
                     HeadlessUi.Settle(80);
@@ -685,7 +742,8 @@ namespace VRMR.App.Tests
 
                 OpenATake(host);
                 settings.Show(SettingsCategory.View);
-                Assert.True(HeadlessUi.WaitFor(() => settings.View.HasMeshes, 120000), "no meshes were listed: " + settings.View.MeshInfo);
+                Assert.True(HeadlessUi.WaitFor(() => settings.View.HasMeshes, 120000),
+                    "no meshes were listed: " + settings.View.MeshInfo);
                 HeadlessUi.Settle(80);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-view-real"));
                 window.Close();

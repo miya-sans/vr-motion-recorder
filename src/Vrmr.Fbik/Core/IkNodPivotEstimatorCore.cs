@@ -1,10 +1,12 @@
 // Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
 // Plain C#: game-engine, Burst and job-system dependencies are replaced by the VRMR.Fbik shim.
+
 namespace VRMR.Fbik
 {
     public static class IkNodPivotEstimatorCore
     {
-        private const float detEpsilon = 1e-12f, minVariance = 1e-8f;
+        const float detEpsilon = 1e-12f, minVariance = 1e-8f;
+
         public static IkNodPivotSettings Defaults()
         {
             IkNodPivotSettings s;
@@ -18,7 +20,9 @@ namespace VRMR.Fbik
             s.Scale = 1f;
             return s;
         }
-        public static void Solve( float3[] positions, quaternion[] rotations, int count, float3 priorArm, in IkNodPivotSettings settings, out IkNodPivotResult result)
+
+        public static void Solve(float3[] positions, quaternion[] rotations, int count, float3 priorArm,
+            in IkNodPivotSettings settings, out IkNodPivotResult result)
         {
             result = default;
             result.Arm = priorArm;
@@ -29,11 +33,12 @@ namespace VRMR.Fbik
             float minPitch = float.MaxValue, maxPitch = float.MinValue;
             for (int i = 0; i < count; i++)
             {
-                float3 fwd = math.mul(rotations[i], new float3(0f, 0f, 1f));
+                var fwd = math.mul(rotations[i], new float3(0f, 0f, 1f));
                 float horiz = math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z), pitch = math.degrees(math.atan2(fwd.y, horiz));
                 minPitch = math.min(minPitch, pitch);
                 maxPitch = math.max(maxPitch, pitch);
             }
+
             result.PitchRangeDeg = maxPitch - minPitch;
             if (!(result.PitchRangeDeg >= settings.MinPitchRangeDeg)) return;
 
@@ -43,27 +48,30 @@ namespace VRMR.Fbik
                 minY = math.min(minY, positions[i].y);
                 maxY = math.max(maxY, positions[i].y);
             }
+
             result.VerticalRangeMeters = maxY - minY;
-            if (!(result.VerticalRangeMeters <= settings.MaxVerticalRangeMeters * math.max(1e-3f, settings.Scale))) return;
+            if (!(result.VerticalRangeMeters <=
+                  settings.MaxVerticalRangeMeters * math.max(1e-3f, settings.Scale))) return;
 
             float inv = 1f / count;
-            float3 meanPos = float3.zero;
-            float3x3 meanRot = float3x3.zero;
+            var meanPos = float3.zero;
+            var meanRot = float3x3.zero;
             for (int i = 0; i < count; i++)
             {
                 meanPos += positions[i];
                 meanRot += new float3x3(rotations[i]);
             }
+
             meanPos *= inv;
             meanRot = MulScalar(meanRot, inv);
 
-            float3x3 M = float3x3.zero;
-            float3 b = float3.zero;
+            var M = float3x3.zero;
+            var b = float3.zero;
             float totalVar = 0f;
             for (int i = 0; i < count; i++)
             {
-                float3x3 D = new float3x3(rotations[i]) - meanRot;
-                float3 dp = positions[i] - meanPos;
+                var D = new float3x3(rotations[i]) - meanRot;
+                var dp = positions[i] - meanPos;
                 M += math.mul(math.transpose(D), D);
                 b += math.mul(math.transpose(D), dp);
                 totalVar += math.lengthsq(dp);
@@ -80,43 +88,47 @@ namespace VRMR.Fbik
                 b += lambda * priorArm;
             }
 
-            if (!TrySolveSymmetric3(in M, in b, out float3 arm)) return;
+            if (!TrySolveSymmetric3(in M, in b, out var arm)) return;
             if (!math.all(math.isfinite(arm))) return;
 
             float residual = 0f;
             for (int i = 0; i < count; i++)
             {
-                float3x3 D = new float3x3(rotations[i]) - meanRot;
+                var D = new float3x3(rotations[i]) - meanRot;
                 residual += math.lengthsq(math.mul(D, arm) - (positions[i] - meanPos));
             }
-            result.FitQuality = 1f - (residual / totalVar);
+
+            result.FitQuality = 1f - residual / totalVar;
             if (!(result.FitQuality >= settings.MinFitQuality)) return;
 
             float scale = math.max(1e-3f, settings.Scale);
-            float3 pivotMean = float3.zero;
+            var pivotMean = float3.zero;
             for (int i = 0; i < count; i++) pivotMean += positions[i] - math.mul(rotations[i], arm);
             pivotMean *= inv;
 
             float pivotVar = 0f;
             for (int i = 0; i < count; i++)
             {
-                pivotVar += math.lengthsq((positions[i] - math.mul(rotations[i], arm)) - pivotMean);
+                pivotVar += math.lengthsq(positions[i] - math.mul(rotations[i], arm) - pivotMean);
             }
+
             result.PivotSpreadMeters = math.sqrt(pivotVar * inv);
             if (!(result.PivotSpreadMeters <= settings.MaxPivotSpreadMeters * scale)) return;
 
-            float3 box = settings.MaxArm * scale;
+            var box = settings.MaxArm * scale;
 
             arm = math.clamp(arm, new float3(-box.x, 0f, 0f), box);
 
             result.Arm = arm;
             result.Accepted = true;
         }
-        private static float3x3 MulScalar(float3x3 m, float s)
+
+        static float3x3 MulScalar(float3x3 m, float s)
         {
             return new float3x3(m.c0 * s, m.c1 * s, m.c2 * s);
         }
-        private static bool TrySolveSymmetric3(in float3x3 M, in float3 b, out float3 x)
+
+        static bool TrySolveSymmetric3(in float3x3 M, in float3 b, out float3 x)
         {
             x = default;
 
@@ -128,7 +140,8 @@ namespace VRMR.Fbik
 
             float c11 = a00 * a22 - a02 * a02, c12 = a02 * a01 - a00 * a12, c22 = a00 * a11 - a01 * a01;
             float invDet = 1f / det;
-            x = new float3( (c00 * b.x + c01 * b.y + c02 * b.z) * invDet, (c01 * b.x + c11 * b.y + c12 * b.z) * invDet, (c02 * b.x + c12 * b.y + c22 * b.z) * invDet);
+            x = new float3((c00 * b.x + c01 * b.y + c02 * b.z) * invDet, (c01 * b.x + c11 * b.y + c12 * b.z) * invDet,
+                (c02 * b.x + c12 * b.y + c22 * b.z) * invDet);
             return true;
         }
     }

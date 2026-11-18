@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using VRMR.App.Composition;
 using VRMR.App.Controls;
@@ -10,59 +11,27 @@ using VRMR.App.Services;
 using VRMR.App.ViewModels;
 using VRMR.App.Views.Takes;
 using Xunit;
+using VisualExtensions = Avalonia.VisualTree.VisualExtensions;
 
 namespace VRMR.App.Tests
 {
     /// <summary>
-    /// The Export tab: the catalogue of formats and where each keeps its state, the folder rules, what an export
-    /// refuses, the tab itself, and (with copies of real takes) exports that write files.
+    ///     The Export tab: the catalogue of formats and where each keeps its state, the folder rules, what an export
+    ///     refuses, the tab itself, and (with copies of real takes) exports that write files.
     /// </summary>
     [Collection("app")]
     public class ExportTests
     {
-        /// <summary>The app's services on an empty data folder, with a UI thread the test drives.</summary>
-        sealed class Rig : IDisposable
+        /// <summary>A take with nothing in it: enough to have a take open.</summary>
+        static Recording EmptyTake()
         {
-            readonly ScratchData _data = new ScratchData();
-            public ManualDispatcher Ui { get; } = new ManualDispatcher();
-            public AppHost Host { get; }
-
-            public Rig() { Host = _data.NewHost(Ui); }
-
-            public string Root => _data.Root;
-            public ExportService Export => Host.Export;
-            public Settings Settings => Host.Settings;
-
-            public ExportFormat Format(string id) => Export.Formats.First(f => f.Id == id);
-            public ExportOption Option(string id) => Export.Formats.SelectMany(f => f.Options).First(o => o.Id == id);
-
-            public void AllOff()
-            {
-                foreach (var format in Export.Formats)
-                {
-                    Export.SetOn(format, false);
-                    foreach (var option in format.Options) Export.SetOn(option, false);
-                }
-            }
-
-            /// <summary>Makes a folder that looks like a Unity project and links it.</summary>
-            public string LinkUnityProject()
-            {
-                string project = Path.Combine(Root, "UnityProject");
-                Directory.CreateDirectory(Path.Combine(project, "Assets"));
-                Directory.CreateDirectory(Path.Combine(project, "ProjectSettings"));
-                Host.SettingsStore.Update(nameof(Settings.UnityProjects), s => s.UnityProjects.Add(project));
-                return project;
-            }
-
-            public void Dispose() { Host.Dispose(); _data.Dispose(); }
+            return new Recording { Name = "Empty take", Duration = 1 };
         }
 
-        /// <summary>A take with nothing in it: enough to have a take open.</summary>
-        static Recording EmptyTake() => new Recording { Name = "Empty take", Duration = 1 };
-
-        static IEnumerable<ExportChoice> Choices(IEnumerable<ExportFormat> formats) =>
-            formats.SelectMany(f => new ExportChoice[] { f }.Concat(f.Options));
+        static IEnumerable<ExportChoice> Choices(IEnumerable<ExportFormat> formats)
+        {
+            return formats.SelectMany(f => new ExportChoice[] { f }.Concat(f.Options));
+        }
 
         // ------------------------------------------------------------------------------------------ catalogue
 
@@ -87,12 +56,13 @@ namespace VRMR.App.Tests
                 rig.Export.SetOn(choice, false);
                 Assert.False(rig.Export.IsOn(choice), choice.Id);
             }
+
             foreach (var format in formats)
-                foreach (var option in format.Options)
-                {
-                    Assert.Same(format, option.Format);
-                    Assert.All(option.DependsOn, id => Assert.Contains(formats, f => f.Id == id));
-                }
+            foreach (var option in format.Options)
+            {
+                Assert.Same(format, option.Format);
+                Assert.All(option.DependsOn, id => Assert.Contains(formats, f => f.Id == id));
+            }
         }
 
         [Fact]
@@ -109,7 +79,7 @@ namespace VRMR.App.Tests
                 ["anim"] = (s => s.ExportAnim && s.ExportFaceAnim, (s, v) => s.ExportAnim = s.ExportFaceAnim = v),
                 ["paramsAnim"] = (s => s.ExportParamsAnim, (s, v) => s.ExportParamsAnim = v),
                 ["oscJson"] = (s => s.ExportOscJson, (s, v) => s.ExportOscJson = v),
-                ["humrLog"] = (s => s.ExportHumrLog, (s, v) => s.ExportHumrLog = v),
+                ["humrLog"] = (s => s.ExportHumrLog, (s, v) => s.ExportHumrLog = v)
             };
             var all = Choices(rig.Export.Formats).ToDictionary(c => c.Id);
             foreach (var kv in fields)
@@ -123,11 +93,13 @@ namespace VRMR.App.Tests
                     Assert.Equal(on, kv.Value.Get(rig.Settings));
                 }
             }
+
             // every entry of the catalogue is covered here, or is the one without a setting
             Assert.Equal(new[] { "faceJson" }, all.Keys.Except(fields.Keys));
 
             // the Unity .anim is one choice over two settings: either one shows it as on
-            rig.Settings.ExportAnim = false; rig.Settings.ExportFaceAnim = true;
+            rig.Settings.ExportAnim = false;
+            rig.Settings.ExportFaceAnim = true;
             Assert.True(rig.Export.IsOn(all["anim"]));
         }
 
@@ -177,7 +149,8 @@ namespace VRMR.App.Tests
             var job = rig.Export.BuildJob();
             Assert.Empty(job.Formats);
             Assert.Empty(job.Writers);
-            Assert.False(job.Clip.Fbx || job.Clip.FbxArmature || job.Clip.BodyAnim || job.Clip.FaceAnim || job.Clip.ParamsAnim || job.Clip.FaceJson);
+            Assert.False(job.Clip.Fbx || job.Clip.FbxArmature || job.Clip.BodyAnim || job.Clip.FaceAnim ||
+                         job.Clip.ParamsAnim || job.Clip.FaceJson);
 
             // an option without its format does nothing
             rig.Export.SetOn(rig.Option("fbx.face"), true);
@@ -204,7 +177,8 @@ namespace VRMR.App.Tests
             rig.Export.SetOn(rig.Format("humrLog"), true);
             job = rig.Export.BuildJob();
             Assert.Equal(rig.Export.Formats.Count, job.Formats.Count);
-            Assert.True(job.Clip.Fbx && job.Clip.FbxFace && job.Clip.BodyAnim && job.Clip.FaceAnim && job.Clip.ParamsAnim && job.Clip.FaceJson);
+            Assert.True(job.Clip.Fbx && job.Clip.FbxFace && job.Clip.BodyAnim && job.Clip.FaceAnim &&
+                        job.Clip.ParamsAnim && job.Clip.FaceJson);
             Assert.Equal(2, job.Writers.Count);
         }
 
@@ -216,12 +190,14 @@ namespace VRMR.App.Tests
             {
                 new ExportFormat
                 {
-                    Id = "notes", Title = "Notes", Description = "A text file with the take's notes.", Group = ExportGroup.Main,
+                    Id = "notes", Title = "Notes", Description = "A text file with the take's notes.",
+                    Group = ExportGroup.Main,
                     State = ExportState.InUiState("export.test.notes"),
-                    Apply = job => job.Writers.Add(part => part.PathFor("_notes.txt")),
-                },
+                    Apply = job => job.Writers.Add(part => part.PathFor("_notes.txt"))
+                }
             };
-            var export = new ExportService(rig.Host.SettingsStore, rig.Host.UiState, rig.Host.Session, rig.Host.Avatars, rig.Host.Status, rig.Ui, catalogue);
+            var export = new ExportService(rig.Host.SettingsStore, rig.Host.UiState, rig.Host.Session, rig.Host.Avatars,
+                rig.Host.Status, rig.Ui, catalogue);
             Assert.Equal(0, export.CountOn());
             Assert.Empty(export.BuildJob().Formats);
             export.SetOn(catalogue[0], true);
@@ -331,7 +307,9 @@ namespace VRMR.App.Tests
             rig.Export.FaceMeshPath = "  Body/Face ";
             Assert.Equal("Body/Face", rig.Settings.FaceMeshPath);
             // each change is announced under its field's name: the take session solves again on the first two
-            Assert.Equal(new[] { nameof(Settings.ExportFps), nameof(Settings.FaceNaming), nameof(Settings.FaceMeshPath) }, changed);
+            Assert.Equal(
+                new[] { nameof(Settings.ExportFps), nameof(Settings.FaceNaming), nameof(Settings.FaceMeshPath) },
+                changed);
 
             Assert.False(rig.Export.SplitAtAvatarChanges);
             rig.Export.SplitAtAvatarChanges = true;
@@ -408,7 +386,8 @@ namespace VRMR.App.Tests
             vm.FrameRateIndex = ExportService.FrameRates.ToList().IndexOf(90);
             Assert.Equal(90, rig.Settings.ExportFps);
             Assert.Equal("90 fps", vm.OptionsSummary);
-            rig.Host.SettingsStore.Update(nameof(Settings.ExportFps), s => s.ExportFps = 50); // set by hand in the settings file
+            rig.Host.SettingsStore.Update(nameof(Settings.ExportFps),
+                s => s.ExportFps = 50); // set by hand in the settings file
             Assert.Equal(-1, vm.FrameRateIndex);
             Assert.Equal("50 fps", vm.OptionsSummary);
             Assert.Equal(50, rig.Settings.ExportFps);
@@ -471,10 +450,13 @@ namespace VRMR.App.Tests
                 HeadlessUi.Settle(150);
 
                 Assert.NotNull(vm.PickFolder);
-                var boxes = Descendants<CheckBox>(view).Where(c => c.IsEffectivelyVisible).Select(c => c.Content as string).ToList();
-                foreach (var format in host.Export.Formats.Where(f => f.Group == ExportGroup.Main)) Assert.Contains(format.Title, boxes);
+                var boxes = Descendants<CheckBox>(view).Where(c => c.IsEffectivelyVisible)
+                    .Select(c => c.Content as string).ToList();
+                foreach (var format in host.Export.Formats.Where(f => f.Group == ExportGroup.Main))
+                    Assert.Contains(format.Title, boxes);
                 // "More formats" stays closed until wanted
-                foreach (var format in host.Export.Formats.Where(f => f.Group == ExportGroup.More)) Assert.DoesNotContain(format.Title, boxes);
+                foreach (var format in host.Export.Formats.Where(f => f.Group == ExportGroup.More))
+                    Assert.DoesNotContain(format.Title, boxes);
                 Assert.False(view.FindControl<Control>("ProgressPanel").IsVisible);
                 Assert.False(view.FindControl<Control>("ResultPanel").IsVisible);
                 Assert.NotNull(HeadlessUi.Capture(window, "export-tab"));
@@ -482,7 +464,7 @@ namespace VRMR.App.Tests
                 // nothing chosen: the summary warns, and Export says what to do right under the button
                 foreach (var format in host.Export.Formats) host.Export.SetOn(format, false);
                 vm.ExportCommand.Execute(null);
-                HeadlessUi.Settle(60);
+                HeadlessUi.Settle();
                 Assert.Equal("none chosen", view.FindControl<Section>("FormatsSection").Summary);
                 Assert.True(view.FindControl<Control>("ResultPanel").IsVisible);
                 Assert.Equal("Choose at least one format.", view.FindControl<TextBlock>("ResultMessage").Text);
@@ -494,39 +476,29 @@ namespace VRMR.App.Tests
             });
         }
 
-        static IEnumerable<T> Descendants<T>(Avalonia.Visual root) where T : class =>
-            Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(root).OfType<T>();
+        static IEnumerable<T> Descendants<T>(Visual root) where T : class
+        {
+            return VisualExtensions.GetVisualDescendants(root).OfType<T>();
+        }
 
         // ------------------------------------------------------------------------------------------ real takes
 
-        /// <summary>Opens the smallest take copy (changed by <paramref name="prepare"/> in memory only) and waits for its solve.</summary>
+        /// <summary>Opens the smallest take copy (changed by <paramref name="prepare" /> in memory only) and waits for its solve.</summary>
         static Recording OpenSmallestTake(AppHost host, ManualDispatcher ui, Action<Recording> prepare = null)
         {
             var take = RecordingIO.Load(PrivateData.Takes()[0]);
             prepare?.Invoke(take);
             host.Session.Show(take);
-            Assert.True(ui.WaitFor(() => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed, 120000), "the solve did not end");
+            Assert.True(
+                ui.WaitFor(() => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed,
+                    120000), "the solve did not end");
             Assert.True(host.Session.ClipIsCurrent, "the take did not solve: " + host.Session.SolveError);
             return take;
         }
 
-        static string NewExportFolder() => Path.Combine(Path.GetTempPath(), "vrmr-app-tests-export-" + Guid.NewGuid().ToString("N"));
-
-        /// <summary>Puts the settings files of the shared take copies back as they were, so other tests find them unchanged.</summary>
-        sealed class KeptSettings : IDisposable
+        static string NewExportFolder()
         {
-            readonly List<(string Path, byte[] Content)> _files = new List<(string, byte[])>();
-
-            public KeptSettings(AppPaths paths)
-            {
-                foreach (string path in new[] { paths.SettingsFile, paths.UiStateFile }) _files.Add((path, File.Exists(path) ? File.ReadAllBytes(path) : null));
-            }
-
-            public void Dispose()
-            {
-                foreach (var (path, content) in _files)
-                    if (content != null) File.WriteAllBytes(path, content); else File.Delete(path);
-            }
+            return Path.Combine(Path.GetTempPath(), "vrmr-app-tests-export-" + Guid.NewGuid().ToString("N"));
         }
 
         /// <summary>After a test on the take copies: closes the host, restores the settings and removes what was exported.</summary>
@@ -534,7 +506,10 @@ namespace VRMR.App.Tests
         {
             host?.Dispose();
             kept?.Dispose();
-            try { if (Directory.Exists(folder)) Directory.Delete(folder, true); }
+            try
+            {
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
             catch (IOException) { }
         }
 
@@ -542,7 +517,9 @@ namespace VRMR.App.Tests
         {
             Assert.True(result.Exported, result.Message);
             Assert.NotEmpty(result.Files);
-            Assert.All(result.Files, f => Assert.True(File.Exists(f) && new FileInfo(f).Length > 0, "missing or empty: " + Path.GetExtension(f)));
+            Assert.All(result.Files,
+                f => Assert.True(File.Exists(f) && new FileInfo(f).Length > 0,
+                    "missing or empty: " + Path.GetExtension(f)));
             Assert.All(result.Files, f => Assert.StartsWith(folder, f, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -561,7 +538,10 @@ namespace VRMR.App.Tests
                 Assert.True(export.Folders.SetExportDir(folder, out _));
                 foreach (var format in export.Formats) export.SetOn(format, format.Group == ExportGroup.Main);
                 var stages = new List<string>();
-                export.ProgressChanged += () => { if (export.IsExporting) stages.Add(export.ProgressText); };
+                export.ProgressChanged += () =>
+                {
+                    if (export.IsExporting) stages.Add(export.ProgressText);
+                };
 
                 // a change that is not solved yet: the export solves it first
                 host.SettingsStore.Update(nameof(Settings.Smoothing), s => s.Smoothing += 0.05f);
@@ -584,11 +564,15 @@ namespace VRMR.App.Tests
                 Assert.Equal(export.Folders.TakeDir(take.Name), result.Folder);
                 Assert.Equal(result.Folder, export.Folders.LastOutputDir);
                 Assert.Equal(result.Folder, export.Folders.FolderToOpen);
-                Assert.Contains(result.Files, f => f.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) && !f.EndsWith("_armature.fbx", StringComparison.OrdinalIgnoreCase));
+                Assert.Contains(result.Files,
+                    f => f.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) &&
+                         !f.EndsWith("_armature.fbx", StringComparison.OrdinalIgnoreCase));
                 Assert.Contains(result.Files, f => f.EndsWith("_armature.fbx", StringComparison.OrdinalIgnoreCase));
-                Assert.Contains(result.Files, f => f.EndsWith(SceneExport.ManifestSuffix, StringComparison.OrdinalIgnoreCase));
+                Assert.Contains(result.Files,
+                    f => f.EndsWith(SceneExport.ManifestSuffix, StringComparison.OrdinalIgnoreCase));
                 Assert.Contains(result.Files, f => f.EndsWith(".face.json", StringComparison.OrdinalIgnoreCase));
-                if (host.Session.Clip.BodySource != "none") Assert.Contains(result.Files, f => f.EndsWith("_body.anim", StringComparison.OrdinalIgnoreCase));
+                if (host.Session.Clip.BodySource != "none")
+                    Assert.Contains(result.Files, f => f.EndsWith("_body.anim", StringComparison.OrdinalIgnoreCase));
                 Assert.True(stages.Count > 1);
                 Assert.False(export.IsExporting);
                 Assert.Null(host.Status.Current);
@@ -613,12 +597,17 @@ namespace VRMR.App.Tests
                 var take = OpenSmallestTake(host, ui, t =>
                 {
                     double end = t.Edits.TrimOut < 0 ? t.Duration : t.Edits.TrimOut;
-                    t.Events.Add(new RecEvent { T = (t.Edits.TrimIn + end) / 2, Type = "avatar", Text = "avtr_00000000-0000-0000-0000-000000000000" });
+                    t.Events.Add(new RecEvent
+                    {
+                        T = (t.Edits.TrimIn + end) / 2, Type = "avatar",
+                        Text = "avtr_00000000-0000-0000-0000-000000000000"
+                    });
                 });
                 var export = host.Export;
                 Assert.True(export.Folders.SetExportDir(folder, out _));
                 export.Folders.TakeFolders = false;
-                foreach (var format in export.Formats) export.SetOn(format, format.Id == "fbxArmature" || format.Group == ExportGroup.More);
+                foreach (var format in export.Formats)
+                    export.SetOn(format, format.Id == "fbxArmature" || format.Group == ExportGroup.More);
                 export.SplitAtAvatarChanges = true;
                 var edits = take.Edits;
 
@@ -635,12 +624,14 @@ namespace VRMR.App.Tests
                 Assert.True(host.Session.ClipIsCurrent);
 
                 string name = ExportFolders.SafeName(take.Name);
-                var armatures = result.Files.Where(f => f.EndsWith("_armature.fbx", StringComparison.OrdinalIgnoreCase)).ToList();
+                var armatures = result.Files.Where(f => f.EndsWith("_armature.fbx", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
                 Assert.Equal(result.Parts, armatures.Count);
                 Assert.Contains(Path.Combine(folder, name + "_1_armature.fbx"), armatures);
                 foreach (string armature in armatures)
                 {
-                    string part = Path.GetFileName(armature).Substring(0, Path.GetFileName(armature).Length - "_armature.fbx".Length);
+                    string part = Path.GetFileName(armature)
+                        .Substring(0, Path.GetFileName(armature).Length - "_armature.fbx".Length);
                     Assert.Matches("_[0-9]+$", part.Substring(name.Length));
                     Assert.Contains(Path.Combine(folder, part + "_osc.json"), result.Files);
                     Assert.Contains(Path.Combine(folder, part + ".face.json"), result.Files);
@@ -669,7 +660,8 @@ namespace VRMR.App.Tests
                     var window = new Window { Width = 320, Height = 760, Content = view };
                     window.Show();
                     host.Session.Show(RecordingIO.Load(PrivateData.Takes()[0]));
-                    foreach (var format in host.Export.Formats) host.Export.SetOn(format, format.Id == "anim" || format.Id == "faceJson");
+                    foreach (var format in host.Export.Formats)
+                        host.Export.SetOn(format, format.Id == "anim" || format.Id == "faceJson");
                     vm.FolderText = folder; // typed, not confirmed: Export takes it
 
                     vm.ExportCommand.Execute(null);
@@ -677,8 +669,9 @@ namespace VRMR.App.Tests
                     HeadlessUi.Settle(30);
                     Assert.True(view.FindControl<Control>("ProgressPanel").IsVisible);
                     Assert.False(view.FindControl<Button>("ExportButton").IsEffectivelyEnabled);
-                    Assert.True(HeadlessUi.WaitFor(() => !vm.IsExporting && vm.HasResult, 300000), "the export did not end");
-                    HeadlessUi.Settle(60);
+                    Assert.True(HeadlessUi.WaitFor(() => !vm.IsExporting && vm.HasResult, 300000),
+                        "the export did not end");
+                    HeadlessUi.Settle();
 
                     Assert.True(vm.ResultIsSuccess, vm.ResultText);
                     Assert.True(vm.CanOpenResult);
@@ -693,6 +686,74 @@ namespace VRMR.App.Tests
                 });
             }
             finally { HeadlessUi.Run(() => CleanUp(host, kept, folder)); }
+        }
+
+        /// <summary>The app's services on an empty data folder, with a UI thread the test drives.</summary>
+        sealed class Rig : IDisposable
+        {
+            readonly ScratchData _data = new();
+
+            public Rig() { Host = _data.NewHost(Ui); }
+            public ManualDispatcher Ui { get; } = new();
+            public AppHost Host { get; }
+
+            public string Root => _data.Root;
+            public ExportService Export => Host.Export;
+            public Settings Settings => Host.Settings;
+
+            public void Dispose()
+            {
+                Host.Dispose();
+                _data.Dispose();
+            }
+
+            public ExportFormat Format(string id)
+            {
+                return Export.Formats.First(f => f.Id == id);
+            }
+
+            public ExportOption Option(string id)
+            {
+                return Export.Formats.SelectMany(f => f.Options).First(o => o.Id == id);
+            }
+
+            public void AllOff()
+            {
+                foreach (var format in Export.Formats)
+                {
+                    Export.SetOn(format, false);
+                    foreach (var option in format.Options) Export.SetOn(option, false);
+                }
+            }
+
+            /// <summary>Makes a folder that looks like a Unity project and links it.</summary>
+            public string LinkUnityProject()
+            {
+                string project = Path.Combine(Root, "UnityProject");
+                Directory.CreateDirectory(Path.Combine(project, "Assets"));
+                Directory.CreateDirectory(Path.Combine(project, "ProjectSettings"));
+                Host.SettingsStore.Update(nameof(Settings.UnityProjects), s => s.UnityProjects.Add(project));
+                return project;
+            }
+        }
+
+        /// <summary>Puts the settings files of the shared take copies back as they were, so other tests find them unchanged.</summary>
+        sealed class KeptSettings : IDisposable
+        {
+            readonly List<(string Path, byte[] Content)> _files = new();
+
+            public KeptSettings(AppPaths paths)
+            {
+                foreach (string path in new[] { paths.SettingsFile, paths.UiStateFile })
+                    _files.Add((path, File.Exists(path) ? File.ReadAllBytes(path) : null));
+            }
+
+            public void Dispose()
+            {
+                foreach ((string path, byte[] content) in _files)
+                    if (content != null) File.WriteAllBytes(path, content);
+                    else File.Delete(path);
+            }
         }
     }
 }

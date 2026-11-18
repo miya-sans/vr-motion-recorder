@@ -7,24 +7,25 @@ using VRMR.Render;
 namespace VRMR.RenderDemo
 {
     /// <summary>
-    /// A window with nothing but the 3D view in it, playing a take. Keys: Space play / pause, Left / Right one frame,
-    /// Home first frame, M mesh, K skeleton, D devices, H headset, P play area, B base stations, L live devices,
-    /// F frame all, G placement gizmo, A multisampling on / off.
+    ///     A window with nothing but the 3D view in it, playing a take. Keys: Space play / pause, Left / Right one frame,
+    ///     Home first frame, M mesh, K skeleton, D devices, H headset, P play area, B base stations, L live devices,
+    ///     F frame all, G placement gizmo, A multisampling on / off.
     /// </summary>
-    internal sealed class DemoWindow : Window
+    sealed class DemoWindow : Window
     {
-        public readonly ViewportControl View = new ViewportControl();
-        readonly TakeSource _source;
-        readonly LiveDevices _live = new LiveDevices();
+        public readonly ViewportControl View = new();
         readonly PlacementTool _gizmo;
-        double _time, _liveTime;
+        readonly LiveDevices _live = new();
+        readonly TakeSource _source;
         bool _playing, _liveDevices;
+        double _time, _liveTime;
 
         public DemoWindow(TakeSource source, DemoOptions options)
         {
             _source = source;
             Title = "VR Motion Recorder: render demo";
-            Width = 960; Height = 600;
+            Width = 960;
+            Height = 600;
             ShowActivated = !options.Quiet;
             WindowStartupLocation = WindowStartupLocation.Manual;
             Position = new PixelPoint(40, 40);
@@ -37,8 +38,10 @@ namespace VRMR.RenderDemo
                 if (options.ViewPixels is var (w, h))
                 {
                     // the view is the window's whole client area: size it so the view has exactly these device pixels
-                    Width = w / RenderScaling; Height = h / RenderScaling;
+                    Width = w / RenderScaling;
+                    Height = h / RenderScaling;
                 }
+
                 ShowFrame();
                 View.FrameAll();
                 View.Focus();
@@ -51,17 +54,29 @@ namespace VRMR.RenderDemo
         public bool Playing
         {
             get => _playing;
-            set { _playing = value; UpdateAnimating(); }
+            set
+            {
+                _playing = value;
+                UpdateAnimating();
+            }
         }
 
         /// <summary>Show simulated SteamVR devices that keep moving, instead of the take's own.</summary>
         public bool LiveDevices
         {
             get => _liveDevices;
-            set { _liveDevices = value; UpdateAnimating(); ShowFrame(); }
+            set
+            {
+                _liveDevices = value;
+                UpdateAnimating();
+                ShowFrame();
+            }
         }
 
-        void UpdateAnimating() => View.Animating = _playing || _liveDevices;
+        void UpdateAnimating()
+        {
+            View.Animating = _playing || _liveDevices;
+        }
 
         /// <summary>Moves the playhead to a frame and shows it.</summary>
         public void Seek(int frame)
@@ -82,11 +97,13 @@ namespace VRMR.RenderDemo
         {
             var f = View.RentFrame();
             int frame = FrameIndex;
-            _source.Fill(f, frame, devices: !_liveDevices);
+            _source.Fill(f, frame, !_liveDevices);
             if (_liveDevices) _live.Fill(f, _liveTime);
             var stats = View.Stats;
-            f.Overlay.Append(_liveDevices ? "LIVE (simulated)   " : "").Append(_source.Source).Append("   frame ").Append(frame).Append('/').Append(_source.Frames - 1).Append('\n');
-            f.Overlay.Append($"drawn {stats.FramesDrawn}   {stats.LastFrameCpuMs:0.00} ms   {stats.LastFrameAllocatedBytes} B   {stats.Triangles} triangles");
+            f.Overlay.Append(_liveDevices ? "LIVE (simulated)   " : "").Append(_source.Source).Append("   frame ")
+                .Append(frame).Append('/').Append(_source.Frames - 1).Append('\n');
+            f.Overlay.Append(
+                $"drawn {stats.FramesDrawn}   {stats.LastFrameCpuMs:0.00} ms   {stats.LastFrameAllocatedBytes} B   {stats.Triangles} triangles");
             f.OverlayRight.Append(_source.Name);
             View.Submit(f);
         }

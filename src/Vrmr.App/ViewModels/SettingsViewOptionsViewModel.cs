@@ -12,18 +12,23 @@ namespace VRMR.App.ViewModels
     public partial class MeshRowViewModel : ObservableObject
     {
         readonly Action<MeshRowViewModel> _changed;
+        [ObservableProperty] bool _shown;
 
         public MeshRowViewModel(string name, int triangles, bool shown, Action<MeshRowViewModel> changed)
         {
-            Name = name; _shown = shown; _changed = changed;
+            Name = name;
+            _shown = shown;
+            _changed = changed;
             Tip = $"{name}: {triangles:N0} triangles";
         }
 
         public string Name { get; }
         public string Tip { get; }
-        [ObservableProperty] bool _shown;
 
-        partial void OnShownChanged(bool value) => _changed(this);
+        partial void OnShownChanged(bool value)
+        {
+            _changed(this);
+        }
     }
 
     /// <summary>Settings → View: the theme, and which meshes of the avatar on screen are hidden (an outfit piece, say).</summary>
@@ -33,24 +38,27 @@ namespace VRMR.App.ViewModels
         public static readonly string[] Themes = { "dark", "light", "system" };
 
         readonly AppHost _host;
-        AvatarProfile _listed;
-        AvatarMeshList _list = new AvatarMeshList();
         bool _active, _syncing;
+        [ObservableProperty] bool _anyHidden;
+        [ObservableProperty] bool _hasMeshes;
+        AvatarMeshList _list = new();
+        AvatarProfile _listed;
         int _load;
+        [ObservableProperty] string _meshInfo = "";
+
+        [ObservableProperty] int _themeIndex;
 
         public SettingsViewOptionsViewModel(AppHost host)
         {
             _host = host;
             _themeIndex = Math.Max(0, Array.IndexOf(Themes, host.UiState.GetString("theme", "dark")));
-            host.Session.ClipChanged += () => { if (_active) LoadMeshes(); };
+            host.Session.ClipChanged += () =>
+            {
+                if (_active) LoadMeshes();
+            };
         }
 
-        [ObservableProperty] int _themeIndex;
-        [ObservableProperty] string _meshInfo = "";
-        [ObservableProperty] bool _hasMeshes;
-        [ObservableProperty] bool _anyHidden;
-
-        public ObservableCollection<MeshRowViewModel> Meshes { get; } = new ObservableCollection<MeshRowViewModel>();
+        public ObservableCollection<MeshRowViewModel> Meshes { get; } = new();
 
         /// <summary>Applies a theme ("dark", "light", "system") to the running app; set by the view.</summary>
         public Action<string> ApplyTheme { get; set; }
@@ -62,7 +70,10 @@ namespace VRMR.App.ViewModels
             ApplyTheme?.Invoke(Themes[value]);
         }
 
-        /// <summary>The mesh list is read only while this category is on screen: reading a model the view has not loaded yet takes a moment.</summary>
+        /// <summary>
+        ///     The mesh list is read only while this category is on screen: reading a model the view has not loaded yet takes
+        ///     a moment.
+        /// </summary>
         public void SetActive(bool active)
         {
             _active = active;
@@ -83,9 +94,12 @@ namespace VRMR.App.ViewModels
             try
             {
                 Meshes.Clear();
-                foreach (var part in list.Parts) Meshes.Add(new MeshRowViewModel(part.Name, part.Triangles, !hidden.Contains(part.Name), OnMeshToggled));
+                foreach (var part in list.Parts)
+                    Meshes.Add(new MeshRowViewModel(part.Name, part.Triangles, !hidden.Contains(part.Name),
+                        OnMeshToggled));
             }
             finally { _syncing = false; }
+
             HasMeshes = Meshes.Count > 0;
             _list = list;
             ShowInfo();
@@ -102,7 +116,8 @@ namespace VRMR.App.ViewModels
         {
             int shown = Meshes.Count(m => m.Shown);
             AnyHidden = shown < Meshes.Count;
-            MeshInfo = Meshes.Count == 0 ? _list.Note
+            MeshInfo = Meshes.Count == 0
+                ? _list.Note
                 : $"{_list.File}: {shown} of {Meshes.Count} meshes shown, {_list.Triangles:N0} triangles in all";
         }
 

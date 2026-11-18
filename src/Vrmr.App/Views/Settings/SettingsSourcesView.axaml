@@ -8,7 +8,8 @@
   <!-- Sources: each switch with what that source finds right now. -->
   <StackPanel>
     <Border Classes="card" IsVisible="{Binding CaptureOff}" Margin="{DynamicResource SettingsBlockGap}">
-      <TextBlock Classes="fact" Text="Live sources are off in this session (the app was started with --no-capture). The switches are saved and used from the next normal start; the states show what is installed." />
+      <TextBlock Classes="fact"
+                 Text="Live sources are off in this session (the app was started with --no-capture). The switches are saved and used from the next normal start; the states show what is installed." />
     </Border>
 
     <c:Section Header="SteamVR" StateKey="settings.sources.steamvr">

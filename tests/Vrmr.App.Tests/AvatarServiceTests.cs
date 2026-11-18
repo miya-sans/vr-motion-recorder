@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,29 +16,39 @@ namespace VRMR.App.Tests
         public static AvatarEntry Save(AppHost host, string name, float height = 1.6f)
         {
             var skeleton = Mannequin.Profile(height);
-            skeleton.Name = name; skeleton.SourcePath = ""; skeleton.LibraryId = "";
+            skeleton.Name = name;
+            skeleton.SourcePath = "";
+            skeleton.LibraryId = "";
             var entry = new AvatarEntry { Id = AvatarLibrary.Slug(name), Name = name, Skeleton = skeleton };
             host.Avatars.Save(entry);
             return entry;
         }
 
         /// <summary>
-        /// Writes a Unity model the way an avatar ships it: a .fbx with a humanoid .meta next to it. The .fbx is a
-        /// placeholder (nothing reads its mesh in these tests); the .meta holds a small skeleton. Returns the .fbx.
+        ///     Writes a Unity model the way an avatar ships it: a .fbx with a humanoid .meta next to it. The .fbx is a
+        ///     placeholder (nothing reads its mesh in these tests); the .meta holds a small skeleton. Returns the .fbx.
         /// </summary>
         public static string WriteUnityModel(string dir, string name)
         {
             Directory.CreateDirectory(dir);
             string fbx = Path.Combine(dir, name + ".fbx");
             File.WriteAllBytes(fbx, Encoding.ASCII.GetBytes("placeholder, not a model"));
-            var meta = new StringBuilder("fileFormatVersion: 2\nguid: 0123456789abcdef0123456789abcdef\nModelImporter:\n  humanDescription:\n    serializedVersion: 3\n    human:\n");
-            foreach (var bone in new[] { "Hips", "Spine", "Chest", "Neck", "Head" })
-                meta.Append("    - boneName: ").Append(bone).Append("\n      humanName: ").Append(bone).Append("\n      limit:\n        useDefaultValues: 1\n");
+            var meta = new StringBuilder(
+                "fileFormatVersion: 2\nguid: 0123456789abcdef0123456789abcdef\nModelImporter:\n  humanDescription:\n    serializedVersion: 3\n    human:\n");
+            foreach (string bone in new[] { "Hips", "Spine", "Chest", "Neck", "Head" })
+                meta.Append("    - boneName: ").Append(bone).Append("\n      humanName: ").Append(bone)
+                    .Append("\n      limit:\n        useDefaultValues: 1\n");
             meta.Append("    skeleton:\n");
-            void Bone(string bone, string parent, float y) => meta
-                .Append("    - name: ").Append(bone).Append("\n      parentName: ").Append(parent)
-                .Append("\n      position: {x: 0, y: ").Append(y.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(", z: 0}")
-                .Append("\n      rotation: {x: 0, y: 0, z: 0, w: 1}\n      scale: {x: 1, y: 1, z: 1}\n");
+
+            void Bone(string bone, string parent, float y)
+            {
+                meta
+                    .Append("    - name: ").Append(bone).Append("\n      parentName: ").Append(parent)
+                    .Append("\n      position: {x: 0, y: ")
+                    .Append(y.ToString(CultureInfo.InvariantCulture)).Append(", z: 0}")
+                    .Append("\n      rotation: {x: 0, y: 0, z: 0, w: 1}\n      scale: {x: 1, y: 1, z: 1}\n");
+            }
+
             Bone(name + "(Clone)", "", 0);
             Bone("Hips", name + "(Clone)", 0.9f);
             Bone("Spine", "Hips", 0.1f);
@@ -50,7 +61,10 @@ namespace VRMR.App.Tests
         }
     }
 
-    /// <summary>The avatar library as the app uses it: the list, the default, names, adding, removing, Unity projects and links.</summary>
+    /// <summary>
+    ///     The avatar library as the app uses it: the list, the default, names, adding, removing, Unity projects and
+    ///     links.
+    /// </summary>
     [Collection("app")]
     public class AvatarServiceTests
     {
@@ -65,7 +79,8 @@ namespace VRMR.App.Tests
         public void AnEmptyLibraryStillHasTheBuiltInMannequin()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 Assert.False(avatars.HasOwnEntries);
@@ -81,7 +96,8 @@ namespace VRMR.App.Tests
         public void EntriesAreListedByNameWithTheMannequinLast()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 int changes = 0;
                 host.AvatarService.Changed += () => changes++;
@@ -89,7 +105,8 @@ namespace VRMR.App.Tests
                 TestAvatars.Save(host, "First avatar", 1.4f);
                 Assert.True(changes >= 2, "saving an entry must tell the listeners");
                 var entries = host.AvatarService.Entries;
-                Assert.Equal(new[] { "First avatar", "Second avatar", Mannequin.Name }, entries.Select(e => e.Name).ToArray());
+                Assert.Equal(new[] { "First avatar", "Second avatar", Mannequin.Name },
+                    entries.Select(e => e.Name).ToArray());
                 Assert.True(host.AvatarService.HasOwnEntries);
                 // no model file was saved with these: the list flags that
                 Assert.False(AvatarService.HasFbx(entries[0]));
@@ -102,7 +119,8 @@ namespace VRMR.App.Tests
         public void TheDefaultIsStoredInTheSettings()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var a = TestAvatars.Save(host, "Avatar A");
                 var b = TestAvatars.Save(host, "Avatar B");
@@ -124,7 +142,8 @@ namespace VRMR.App.Tests
         public void VrChatNamesAreSplitTrimmedAndSaved()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var entry = TestAvatars.Save(host, "Named avatar");
                 Assert.True(host.AvatarService.SetNames(entry, "  blue fox , fox;fox ,, 青い狐 "));
@@ -146,7 +165,8 @@ namespace VRMR.App.Tests
         public void RenamingKeepsTheIdAndSortsTheList()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var entry = TestAvatars.Save(host, "Alpha");
                 TestAvatars.Save(host, "Middle");
@@ -164,7 +184,8 @@ namespace VRMR.App.Tests
         public void RemovingForgetsTheEntryAndItsDefault()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var entry = TestAvatars.Save(host, "Short lived");
                 host.AvatarService.SetDefault(entry);
@@ -182,7 +203,8 @@ namespace VRMR.App.Tests
         public void TheBuiltInMannequinCannotBeChangedOrRemoved()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var mannequin = host.Avatars.BuiltIn;
                 Assert.False(host.AvatarService.Rename(mannequin, "Mine"));
@@ -197,7 +219,8 @@ namespace VRMR.App.Tests
         public void AddingAUnityModelRunsInTheBackgroundAndReportsTheResult()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Paper doll");
@@ -228,7 +251,8 @@ namespace VRMR.App.Tests
         public void TheSameModelAddedTwiceGetsAnEntryOfItsOwn()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Twin");
@@ -248,7 +272,8 @@ namespace VRMR.App.Tests
         public void FilesWithoutAnAvatarSayWhatToPickInstead()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 string notes = Path.Combine(data.Root, "notes.txt");
                 File.WriteAllText(notes, "not an avatar");
@@ -268,7 +293,8 @@ namespace VRMR.App.Tests
         public void ASecondAddWaitsForTheFirst()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "One at a time");
                 var first = host.AvatarService.AddAsync(new[] { fbx });
@@ -286,7 +312,8 @@ namespace VRMR.App.Tests
         public void AUnityProjectMustLookLikeOne()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 string project = Path.Combine(data.Root, "UnityProject");
@@ -316,7 +343,8 @@ namespace VRMR.App.Tests
         public void LinkingNeedsAnAvatarFromVrChatAndAHumanoidModel()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 string assets = Path.Combine(data.Root, "UnityProject", "Assets");
@@ -345,14 +373,16 @@ namespace VRMR.App.Tests
         public void HiddenMeshesAreKeptInTheSettings()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var before = host.Settings.PreviewHiddenMeshes;
                 host.AvatarService.SetMeshHidden("Jacket", true);
                 host.AvatarService.SetMeshHidden("Jacket", true);
                 host.AvatarService.SetMeshHidden("Hat", true);
                 Assert.Equal(new[] { "Jacket", "Hat" }, host.AvatarService.HiddenMeshes.ToArray());
-                Assert.NotSame(before, host.Settings.PreviewHiddenMeshes); // a view reading the old list is not disturbed
+                Assert.NotSame(before,
+                    host.Settings.PreviewHiddenMeshes); // a view reading the old list is not disturbed
                 host.AvatarService.SetMeshHidden("Jacket", false);
                 Assert.Equal(new[] { "Hat" }, host.AvatarService.HiddenMeshes.ToArray());
             }
@@ -362,7 +392,8 @@ namespace VRMR.App.Tests
         public void TheMeshListSaysWhyItIsEmpty()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 var none = avatars.LoadMeshesAsync(null);
@@ -391,7 +422,8 @@ namespace VRMR.App.Tests
         public void TheFaceFbxCopyNeedsAnAddOnInAUnityProject()
         {
             var (data, ui, host) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 var avatars = host.AvatarService;
                 var nothing = avatars.PlanFaceFbxAsync(null);

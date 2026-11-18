@@ -11,12 +11,12 @@ namespace VRMR.App.Views.Settings
     using Key = Avalonia.Input.Key;
 
     /// <summary>
-    /// The Settings page. It tells its view-model while it is on screen (live states are only read then), and makes
-    /// Enter in a text field apply the value like leaving the field does.
+    ///     The Settings page. It tells its view-model while it is on screen (live states are only read then), and makes
+    ///     Enter in a text field apply the value like leaving the field does.
     /// </summary>
     public partial class SettingsPage : UserControl
     {
-        readonly List<Visual> _watched = new List<Visual>();
+        readonly List<Visual> _watched = new();
         SettingsViewModel _model;
 
         public SettingsPage()
@@ -29,11 +29,15 @@ namespace VRMR.App.Views.Settings
                 _model = DataContext as SettingsViewModel;
                 UpdateActive();
             };
-            CategoryList.SelectionChanged += (o, e) => CategoryScroll.Offset = default; // a new category starts at its top
+            CategoryList.SelectionChanged +=
+                (o, e) => CategoryScroll.Offset = default; // a new category starts at its top
         }
 
         /// <summary>Puts the keyboard focus on the category list (when the page opens).</summary>
-        public void FocusCategories() => CategoryList.Focus();
+        public void FocusCategories()
+        {
+            CategoryList.Focus();
+        }
 
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
@@ -44,6 +48,7 @@ namespace VRMR.App.Views.Settings
                 v.PropertyChanged += OnVisibilityChanged;
                 _watched.Add(v);
             }
+
             UpdateActive();
         }
 

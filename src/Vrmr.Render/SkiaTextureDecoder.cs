@@ -8,15 +8,19 @@ namespace VRMR.Render
     /// <summary>Decodes avatar textures with SkiaSharp (PNG, JPEG, WebP, BMP, GIF). The host installs it once at start-up.</summary>
     public static class SkiaTextureDecoder
     {
-        /// <summary>Makes this the decoder <see cref="SkinnedAvatar"/> loads its textures with.</summary>
-        public static void Install() => SkinnedAvatar.TextureDecoder = Decode;
+        /// <summary>Makes this the decoder <see cref="SkinnedAvatar" /> loads its textures with.</summary>
+        public static void Install()
+        {
+            SkinnedAvatar.TextureDecoder = Decode;
+        }
 
         /// <summary>Decodes an image file to 32-bit ARGB with straight alpha, scaled down so that neither side exceeds maxSize.</summary>
         public static TexturePixels Decode(string path, int maxSize)
         {
             using var codec = SKCodec.Create(path) ?? throw new InvalidDataException("not an image this decoder reads");
             var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
-            using var full = SKBitmap.Decode(codec, info) ?? throw new InvalidDataException("the image could not be decoded");
+            using var full = SKBitmap.Decode(codec, info) ??
+                             throw new InvalidDataException("the image could not be decoded");
             float k = Math.Min(1f, (float)maxSize / Math.Max(info.Width, info.Height));
             int w = Math.Max(1, (int)(info.Width * k)), h = Math.Max(1, (int)(info.Height * k));
             if (w == info.Width && h == info.Height) return ToPixels(full);
@@ -31,7 +35,7 @@ namespace VRMR.Render
         static TexturePixels ToPixels(SKBitmap bmp)
         {
             int w = bmp.Width, h = bmp.Height;
-            var px = new int[w * h];
+            int[] px = new int[w * h];
             // BGRA bytes are 0xAARRGGBB as little-endian ints
             IntPtr src = bmp.GetPixels();
             for (int y = 0; y < h; y++) Marshal.Copy(src + y * bmp.RowBytes, px, y * w, w);

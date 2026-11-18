@@ -17,7 +17,8 @@ namespace VRMR.App.Views.Settings
             InitializeComponent();
             // before the button itself sees the key: Space and Enter are keys to capture, not clicks
             CaptureToggle.AddHandler(KeyDownEvent, OnCaptureKeyDown, RoutingStrategies.Tunnel);
-            CaptureToggle.IsCheckedChanged += (o, e) => CaptureToggle.Content = CaptureToggle.IsChecked == true ? CaptureArmed : CaptureIdle;
+            CaptureToggle.IsCheckedChanged += (o, e) =>
+                CaptureToggle.Content = CaptureToggle.IsChecked == true ? CaptureArmed : CaptureIdle;
             CaptureToggle.LostFocus += (o, e) => CaptureToggle.IsChecked = false;
         }
 
@@ -25,7 +26,12 @@ namespace VRMR.App.Views.Settings
         {
             if (CaptureToggle.IsChecked != true) return;
             // Tab moves on and Esc gives up: neither becomes the hotkey
-            if (e.Key == Key.Tab || e.Key == Key.Escape) { CaptureToggle.IsChecked = false; return; }
+            if (e.Key == Key.Tab || e.Key == Key.Escape)
+            {
+                CaptureToggle.IsChecked = false;
+                return;
+            }
+
             e.Handled = true;
             string text = HotkeyKeys.Text(e.Key, e.KeyModifiers);
             if (text == null) return; // Ctrl, Shift or Alt alone: the key is still to come

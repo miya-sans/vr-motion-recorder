@@ -1,5 +1,6 @@
 // Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
 // Plain C#: game-engine, Burst and job-system dependencies are replaced by the VRMR.Fbik shim.
+
 namespace VRMR.Fbik
 {
     public struct IkBoneHandle
@@ -8,11 +9,17 @@ namespace VRMR.Fbik
         public int Index => IndexPlusOne - 1;
         public bool IsBound => IndexPlusOne > 0;
         public static IkBoneHandle Unbound => default;
-        public static IkBoneHandle FromIndex(int index) => new IkBoneHandle { IndexPlusOne = index + 1 };
+
+        public static IkBoneHandle FromIndex(int index)
+        {
+            return new IkBoneHandle { IndexPlusOne = index + 1 };
+        }
     }
+
     public static class IkQuaternionExt
     {
         const float floatMin = 1e-10f;
+
         public static Quaternion FromToRotation(Vector3 from, Vector3 to)
         {
             Vector3 fromN = from.normalized, toN = to.normalized;
@@ -27,7 +34,7 @@ namespace VRMR.Fbik
                 return Quaternion.identity;
             }
 
-            Vector3 rotAxis = Vector3.Cross(fromN, toN);
+            var rotAxis = Vector3.Cross(fromN, toN);
             if (theta > -1f && rotAxis.sqrMagnitude >= floatMin)
             {
                 return Quaternion.AngleAxis(Mathf.Acos(theta) * Mathf.Rad2Deg, rotAxis.normalized);
@@ -38,11 +45,12 @@ namespace VRMR.Fbik
                 return Quaternion.identity;
             }
 
-            Vector3 axis = Vector3.Cross(fromN, Vector3.right);
+            var axis = Vector3.Cross(fromN, Vector3.right);
             if (axis.sqrMagnitude < floatMin)
             {
                 axis = Vector3.Cross(fromN, Vector3.up);
             }
+
             if (axis.sqrMagnitude < floatMin)
             {
                 return Quaternion.identity;
@@ -50,6 +58,7 @@ namespace VRMR.Fbik
 
             return Quaternion.AngleAxis(180f, axis.normalized);
         }
+
         public static Quaternion NormalizeSafe(Quaternion q)
         {
             float dot = Quaternion.Dot(q, q);
@@ -62,6 +71,7 @@ namespace VRMR.Fbik
             return Quaternion.identity;
         }
     }
+
     public struct IkPoseStream
     {
         public const int MaxDepth = 64;
@@ -82,9 +92,22 @@ namespace VRMR.Fbik
         public float3 AnchorScale;
         public float deltaTime;
         public int Count;
-        public bool IsValid(IkBoneHandle handle) => handle.IndexPlusOne > 0 && handle.IndexPlusOne <= Count;
-        public Vector3 GetPosition(IkBoneHandle handle) => IsValid(handle) ? GetWorldPosition(handle.Index) : Vector3.zero;
-        public Quaternion GetRotation(IkBoneHandle handle) => IsValid(handle) ? GetWorldRotation(handle.Index) : Quaternion.identity;
+
+        public bool IsValid(IkBoneHandle handle)
+        {
+            return handle.IndexPlusOne > 0 && handle.IndexPlusOne <= Count;
+        }
+
+        public Vector3 GetPosition(IkBoneHandle handle)
+        {
+            return IsValid(handle) ? GetWorldPosition(handle.Index) : Vector3.zero;
+        }
+
+        public Quaternion GetRotation(IkBoneHandle handle)
+        {
+            return IsValid(handle) ? GetWorldRotation(handle.Index) : Quaternion.identity;
+        }
+
         public void GetPositionAndRotation(IkBoneHandle handle, out Vector3 position, out Quaternion rotation)
         {
             if (IsValid(handle))
@@ -96,6 +119,7 @@ namespace VRMR.Fbik
             position = Vector3.zero;
             rotation = Quaternion.identity;
         }
+
         public void SetPosition(IkBoneHandle handle, Vector3 position)
         {
             if (IsValid(handle))
@@ -103,6 +127,7 @@ namespace VRMR.Fbik
                 SetWorldPosition(handle.Index, position);
             }
         }
+
         public void SetRotation(IkBoneHandle handle, Quaternion rotation)
         {
             if (IsValid(handle))
@@ -110,33 +135,40 @@ namespace VRMR.Fbik
                 SetWorldRotation(handle.Index, rotation);
             }
         }
+
         public void ResetToRest(IkBoneHandle handle)
         {
             if (!IsValid(handle) || !RestLocalRotation.IsCreated)
             {
                 return;
             }
+
             int index = handle.Index;
             LocalRotation[index] = RestLocalRotation[index];
             if (RestLocalPosition.IsCreated && TranslationFree[index] == 0)
             {
                 LocalPosition[index] = RestLocalPosition[index];
             }
+
             if (RestLocalScale.IsCreated)
             {
                 LocalScale[index] = RestLocalScale[index];
             }
+
             InvalidateWorldCache();
         }
+
         public void InvalidateWorldCache()
         {
             if (!WorldCacheStamp.IsCreated)
             {
                 return;
             }
+
             int next = WorldCacheStamp[Count] + 1;
             WorldCacheStamp[Count] = next != 0 ? next : 1;
         }
+
         public unsafe void GetWorld(int index, out float3 position, out quaternion rotation, out float3 scale)
         {
             bool cached = WorldCacheStamp.IsCreated;
@@ -149,6 +181,7 @@ namespace VRMR.Fbik
                 {
                     break;
                 }
+
                 chain[depth++] = walk;
                 walk = Parent[walk];
             }
@@ -182,6 +215,7 @@ namespace VRMR.Fbik
                 }
             }
         }
+
         public void GetParentWorld(int index, out float3 position, out quaternion rotation, out float3 scale)
         {
             int parent = Parent[index];
@@ -192,27 +226,32 @@ namespace VRMR.Fbik
                 scale = AnchorScale;
                 return;
             }
+
             GetWorld(parent, out position, out rotation, out scale);
         }
+
         public Vector3 GetWorldPosition(int index)
         {
-            GetWorld(index, out float3 position, out _, out _);
+            GetWorld(index, out var position, out _, out _);
             return position;
         }
+
         public Quaternion GetWorldRotation(int index)
         {
-            GetWorld(index, out _, out quaternion rotation, out _);
+            GetWorld(index, out _, out var rotation, out _);
             return rotation;
         }
+
         public void GetWorldPositionAndRotation(int index, out Vector3 position, out Quaternion rotation)
         {
-            GetWorld(index, out float3 p, out quaternion r, out _);
+            GetWorld(index, out var p, out var r, out _);
             position = p;
             rotation = r;
         }
+
         public static quaternion SafeNormalize(quaternion q)
         {
-            float4 x = q.value;
+            var x = q.value;
             float lengthSq = math.lengthsq(x);
             if (math.isfinite(lengthSq))
             {
@@ -224,21 +263,27 @@ namespace VRMR.Fbik
             {
                 return quaternion.identity;
             }
+
             x /= scale;
             float rescaledLengthSq = math.lengthsq(x);
-            return math.isfinite(rescaledLengthSq) && rescaledLengthSq > math.FLT_MIN_NORMAL ? new quaternion(x * math.rsqrt(rescaledLengthSq)) : quaternion.identity;
+            return math.isfinite(rescaledLengthSq) && rescaledLengthSq > math.FLT_MIN_NORMAL
+                ? new quaternion(x * math.rsqrt(rescaledLengthSq))
+                : quaternion.identity;
         }
+
         public void SetWorldRotation(int index, Quaternion rotation)
         {
-            GetParentWorld(index, out _, out quaternion parentRotation, out _);
-            LocalRotation[index] = SafeNormalize(math.mul(math.inverse(parentRotation), (quaternion)rotation));
+            GetParentWorld(index, out _, out var parentRotation, out _);
+            LocalRotation[index] = SafeNormalize(math.mul(math.inverse(parentRotation), rotation));
             InvalidateWorldCache();
         }
+
         public void SetWorldPosition(int index, Vector3 position)
         {
-            GetParentWorld(index, out float3 parentPosition, out quaternion parentRotation, out float3 parentScale);
-            float3 local = math.mul(math.inverse(parentRotation), (float3)position - parentPosition);
-            local = new float3( parentScale.x != 0f ? local.x / parentScale.x : 0f, parentScale.y != 0f ? local.y / parentScale.y : 0f, parentScale.z != 0f ? local.z / parentScale.z : 0f);
+            GetParentWorld(index, out var parentPosition, out var parentRotation, out var parentScale);
+            var local = math.mul(math.inverse(parentRotation), (float3)position - parentPosition);
+            local = new float3(parentScale.x != 0f ? local.x / parentScale.x : 0f,
+                parentScale.y != 0f ? local.y / parentScale.y : 0f, parentScale.z != 0f ? local.z / parentScale.z : 0f);
 
             if (TranslationFree.IsCreated && index < TranslationFree.Length && TranslationFree[index] == 0)
             {

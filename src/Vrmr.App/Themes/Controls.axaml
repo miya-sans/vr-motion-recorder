@@ -20,7 +20,8 @@
       <ControlTemplate>
         <ContentPresenter x:Name="PART_ContentPresenter"
                           Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                          BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
                           Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
                           ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"
                           HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -81,8 +82,10 @@
     <Setter Property="MinWidth" Value="{DynamicResource ControlHeight}" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border x:Name="PART_Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+        <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
             <c:Icon Data="{TemplateBinding Icon}" Filled="{TemplateBinding IconFilled}" VerticalAlignment="Center"
                     IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
@@ -150,8 +153,10 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border x:Name="PART_Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+        <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
             <c:Icon Data="{TemplateBinding Icon}" Filled="{TemplateBinding IconFilled}" VerticalAlignment="Center"
                     IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
@@ -196,8 +201,10 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border x:Name="PART_Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+        <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
           <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" HorizontalAlignment="Center" />
         </Border>
       </ControlTemplate>
@@ -237,12 +244,16 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border x:Name="PART_Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+        <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Ellipse x:Name="PART_Dot" Width="8" Height="8" Fill="{DynamicResource TextFaintBrush}" VerticalAlignment="Center" />
+            <Ellipse x:Name="PART_Dot" Width="8" Height="8" Fill="{DynamicResource TextFaintBrush}"
+                     VerticalAlignment="Center" />
             <TextBlock Text="{TemplateBinding Label}" VerticalAlignment="Center" FontWeight="Medium" />
-            <TextBlock Text="{TemplateBinding StateText}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"
+            <TextBlock Text="{TemplateBinding StateText}" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
                        IsVisible="{TemplateBinding StateText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Border>
@@ -272,18 +283,25 @@
     <Setter Property="Template">
       <ControlTemplate>
         <StackPanel>
-          <ToggleButton x:Name="PART_Header" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+          <ToggleButton x:Name="PART_Header"
+                        IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                         Theme="{DynamicResource SectionHeaderTheme}" HorizontalAlignment="Stretch">
             <Grid ColumnDefinitions="Auto,Auto,*">
-              <c:Icon x:Name="PART_Chevron" Data="{DynamicResource Icon.ChevronRight}" Size="12" VerticalAlignment="Center" Margin="0,0,6,0"
+              <c:Icon x:Name="PART_Chevron" Data="{DynamicResource Icon.ChevronRight}" Size="12"
+                      VerticalAlignment="Center" Margin="0,0,6,0"
                       Foreground="{DynamicResource TextFaintBrush}" />
-              <ContentPresenter x:Name="PART_Title" Grid.Column="1" Content="{TemplateBinding Header}" VerticalAlignment="Center"
-                                FontSize="{DynamicResource FontTitle}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock x:Name="PART_Summary" Grid.Column="2" Text="{TemplateBinding Summary}" VerticalAlignment="Center" HorizontalAlignment="Right"
-                         Margin="12,1,0,0" FontSize="{DynamicResource FontCaption}" Foreground="{DynamicResource TextFaintBrush}" TextTrimming="CharacterEllipsis" />
+              <ContentPresenter x:Name="PART_Title" Grid.Column="1" Content="{TemplateBinding Header}"
+                                VerticalAlignment="Center"
+                                FontSize="{DynamicResource FontTitle}" FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextBrush}" />
+              <TextBlock x:Name="PART_Summary" Grid.Column="2" Text="{TemplateBinding Summary}"
+                         VerticalAlignment="Center" HorizontalAlignment="Right"
+                         Margin="12,1,0,0" FontSize="{DynamicResource FontCaption}"
+                         Foreground="{DynamicResource TextFaintBrush}" TextTrimming="CharacterEllipsis" />
             </Grid>
           </ToggleButton>
-          <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="{TemplateBinding Padding}"
+          <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                            Margin="{TemplateBinding Padding}"
                             IsVisible="{TemplateBinding IsExpanded}" />
         </StackPanel>
       </ControlTemplate>
@@ -324,9 +342,11 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
                 CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
-          <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" />
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Center" />
         </Border>
       </ControlTemplate>
     </Setter>
@@ -343,13 +363,16 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" MinHeight="{DynamicResource ControlHeight}">
-          <TextBlock Text="{TemplateBinding Label}" Width="{TemplateBinding LabelWidth}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+          <TextBlock Text="{TemplateBinding Label}" Width="{TemplateBinding LabelWidth}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
                      Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontBody}" />
           <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="2" Text="{TemplateBinding Unit}" VerticalAlignment="Center" Margin="{DynamicResource GapLeftSmall}"
+          <TextBlock Grid.Column="2" Text="{TemplateBinding Unit}" VerticalAlignment="Center"
+                     Margin="{DynamicResource GapLeftSmall}"
                      Foreground="{DynamicResource TextFaintBrush}" FontSize="{DynamicResource FontSecondary}"
                      IsVisible="{TemplateBinding Unit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-          <c:IconButton Grid.Column="3" Icon="{DynamicResource Icon.Reset}" Command="{TemplateBinding ResetCommand}" IsVisible="{TemplateBinding CanReset}"
+          <c:IconButton Grid.Column="3" Icon="{DynamicResource Icon.Reset}" Command="{TemplateBinding ResetCommand}"
+                        IsVisible="{TemplateBinding CanReset}"
                         ToolTip.Tip="Back to the default" Margin="{DynamicResource GapLeftSmall}" />
         </Grid>
       </ControlTemplate>
@@ -365,14 +388,19 @@
     <Setter Property="Template">
       <ControlTemplate>
         <StackPanel Spacing="8" Margin="{DynamicResource Pad4}">
-          <c:Icon Data="{TemplateBinding Icon}" Size="28" HorizontalAlignment="Center" Foreground="{DynamicResource TextFaintBrush}"
+          <c:Icon Data="{TemplateBinding Icon}" Size="28" HorizontalAlignment="Center"
+                  Foreground="{DynamicResource TextFaintBrush}"
                   IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
-          <TextBlock Text="{TemplateBinding Title}" HorizontalAlignment="Center" TextAlignment="Center" FontSize="{DynamicResource FontTitle}" FontWeight="SemiBold"
+          <TextBlock Text="{TemplateBinding Title}" HorizontalAlignment="Center" TextAlignment="Center"
+                     FontSize="{DynamicResource FontTitle}" FontWeight="SemiBold"
                      Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"
                      IsVisible="{TemplateBinding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-          <TextBlock Text="{TemplateBinding Text}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                     Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontBody}" LineHeight="19" />
-          <Button Content="{TemplateBinding ActionLabel}" Command="{TemplateBinding Command}" HorizontalAlignment="Center" Margin="{DynamicResource GapTopSmall}"
+          <TextBlock Text="{TemplateBinding Text}" HorizontalAlignment="Center" TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontBody}"
+                     LineHeight="19" />
+          <Button Content="{TemplateBinding ActionLabel}" Command="{TemplateBinding Command}"
+                  HorizontalAlignment="Center" Margin="{DynamicResource GapTopSmall}"
                   IsVisible="{TemplateBinding ActionLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </ControlTemplate>
@@ -394,7 +422,8 @@
     </Setter>
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
                 CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
           <ItemsPresenter x:Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
         </Border>
@@ -412,8 +441,10 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border x:Name="PART_Root" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
-          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
       </ControlTemplate>
     </Setter>

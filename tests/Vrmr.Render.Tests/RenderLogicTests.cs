@@ -12,12 +12,16 @@ namespace VRMR.Render.Tests
             var pacer = new FramePacer();
             int ticks = 0;
             for (int i = 0; i < (int)(displayHz * seconds); i++)
-                if (pacer.Tick(i / displayHz, cap, out _)) ticks++;
+                if (pacer.Tick(i / displayHz, cap, out _))
+                    ticks++;
             return ticks;
         }
 
         [Fact]
-        public void ThePacerTicksEveryDisplayFrameAtTheDisplayRate() => Assert.Equal(600, Ticks(60, 60, 10));
+        public void ThePacerTicksEveryDisplayFrameAtTheDisplayRate()
+        {
+            Assert.Equal(600, Ticks(60, 60, 10));
+        }
 
         [Theory]
         [InlineData(60, 15)]
@@ -36,7 +40,8 @@ namespace VRMR.Render.Tests
             var pacer = new FramePacer();
             double sum = 0;
             for (int i = 0; i < 600; i++)
-                if (pacer.Tick(i / 60.0, 15, out double elapsed) && i > 0) sum += elapsed;
+                if (pacer.Tick(i / 60.0, 15, out double elapsed) && i > 0)
+                    sum += elapsed;
             Assert.InRange(sum, 9.8, 10.0);
         }
 
@@ -52,7 +57,8 @@ namespace VRMR.Render.Tests
         {
             var c = Camera();
             Assert.True(c.Project(c.Target, out var s));
-            Assert.Equal(400, s.X, 2); Assert.Equal(250, s.Y, 2);
+            Assert.Equal(400, s.X, 2);
+            Assert.Equal(250, s.Y, 2);
             Assert.Equal(3f, c.Depth(c.Target), 4);
         }
 
@@ -80,7 +86,8 @@ namespace VRMR.Render.Tests
         {
             Assert.Equal(5f, HitTest.DistanceToSegment(new Vector2(5, 5), new Vector2(0, 0), new Vector2(10, 0)), 4);
             Assert.Equal(5f, HitTest.DistanceToSegment(new Vector2(-3, 4), new Vector2(0, 0), new Vector2(10, 0)), 4);
-            Span<Vector2> square = stackalloc Vector2[] { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10), new Vector2(0, 10) };
+            Span<Vector2> square = stackalloc Vector2[]
+                { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10), new Vector2(0, 10) };
             Assert.True(HitTest.InsidePolygon(new Vector2(5, 5), square));
             Assert.False(HitTest.InsidePolygon(new Vector2(15, 5), square));
             Assert.Equal(2, HitTest.NearestPoint(new Vector2(9, 9), square, 3));
@@ -99,7 +106,8 @@ namespace VRMR.Render.Tests
             gizmo.Delta(c, there, false, out var move, out var turn);
             gizmo.End();
             Assert.True(Math.Abs(move.x) > 0.05f);
-            Assert.Equal(0f, move.y, 5); Assert.Equal(0f, move.z, 5);
+            Assert.Equal(0f, move.y, 5);
+            Assert.Equal(0f, move.z, 5);
             Assert.Equal(1f, Math.Abs(turn.w), 5);
         }
 
@@ -114,7 +122,7 @@ namespace VRMR.Render.Tests
             Assert.Equal(90f, Math.Abs(gizmo.Degrees), 1);
             Assert.Equal(0f, move.Length, 5);
             var turned = turn * Vec3.Forward;
-            Assert.Equal(0f, turned.y, 4);           // about the vertical axis
+            Assert.Equal(0f, turned.y, 4); // about the vertical axis
             Assert.Equal(1f, Math.Abs(turned.x), 3); // a quarter turn
         }
 
@@ -142,11 +150,15 @@ namespace VRMR.Render.Tests
             var actor = frame.AddActor(profile, null);
             Assert.Equal(profile.Nodes.Count, actor.NodePos.Length);
             frame.Markers.Add(new Marker { Kind = MarkerKind.Tracker });
-            frame.Overlay.Append("text"); frame.Recording = true;
+            frame.Overlay.Append("text");
+            frame.Recording = true;
             Assert.True(frame.HasDevice());
             frame.Clear();
-            Assert.Empty(frame.Actors); Assert.Empty(frame.Markers);
-            Assert.Equal(0, frame.Overlay.Length); Assert.False(frame.Recording); Assert.False(frame.HasDevice());
+            Assert.Empty(frame.Actors);
+            Assert.Empty(frame.Markers);
+            Assert.Equal(0, frame.Overlay.Length);
+            Assert.False(frame.Recording);
+            Assert.False(frame.HasDevice());
         }
     }
 }

@@ -7,7 +7,7 @@ namespace VRMR.App.Services
     public sealed class SettingsStore : IDisposable
     {
         readonly Debouncer _save;
-        readonly object _writeLock = new object();
+        readonly object _writeLock = new();
 
         public SettingsStore(Settings settings, IUiDispatcher ui)
         {
@@ -18,7 +18,15 @@ namespace VRMR.App.Services
         /// <summary>The settings object the engine shares.</summary>
         public Settings Value { get; }
 
-        /// <summary>Raised on the UI thread after a setting changed; the argument names what changed (a field name, or "" for several).</summary>
+        public void Dispose()
+        {
+            Flush();
+        }
+
+        /// <summary>
+        ///     Raised on the UI thread after a setting changed; the argument names what changed (a field name, or "" for
+        ///     several).
+        /// </summary>
         public event Action<string> Changed;
 
         /// <summary>Applies a change, tells listeners and schedules the save.</summary>
@@ -28,7 +36,7 @@ namespace VRMR.App.Services
             NotifyChanged(what);
         }
 
-        /// <summary>For changes made directly on <see cref="Value"/>: tells listeners and schedules the save.</summary>
+        /// <summary>For changes made directly on <see cref="Value" />: tells listeners and schedules the save.</summary>
         public void NotifyChanged(string what = "")
         {
             _save.Trigger();
@@ -43,8 +51,9 @@ namespace VRMR.App.Services
             Write();
         }
 
-        void Write() { lock (_writeLock) Value.Save(); }
-
-        public void Dispose() => Flush();
+        void Write()
+        {
+            lock (_writeLock) Value.Save();
+        }
     }
 }

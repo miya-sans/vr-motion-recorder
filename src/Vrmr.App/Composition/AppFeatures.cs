@@ -4,8 +4,8 @@ namespace VRMR.App.Composition
     public static class AppFeatures
     {
         /// <summary>
-        /// The Scene workspace (arranging takes on tracks). Off until the scene editor is ported: the Takes | Scene
-        /// switch is hidden and the app stays in the Takes workspace. Set to true to show the switch again.
+        ///     The Scene workspace (arranging takes on tracks). Off until the scene editor is ported: the Takes | Scene
+        ///     switch is hidden and the app stays in the Takes workspace. Set to true to show the switch again.
         /// </summary>
         public static readonly bool SceneWorkspace = false;
     }

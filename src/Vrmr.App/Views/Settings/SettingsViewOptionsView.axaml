@@ -7,7 +7,8 @@
   <!-- View: the theme, and single meshes of the avatar on screen that the 3D view leaves out. -->
   <StackPanel>
     <c:Section Header="Appearance" StateKey="settings.view.appearance">
-      <c:FieldRow Label="Theme" ToolTip.Tip="Dark suits a dim room with a headset nearby. Follow system switches between dark and light with your Windows setting.">
+      <c:FieldRow Label="Theme"
+                  ToolTip.Tip="Dark suits a dim room with a headset nearby. Follow system switches between dark and light with your Windows setting.">
         <c:SegmentedControl x:Name="ThemeSwitch" SelectedIndex="{Binding ThemeIndex}" HorizontalAlignment="Left">
           <ListBoxItem>Dark</ListBoxItem>
           <ListBoxItem>Light</ListBoxItem>
@@ -18,8 +19,10 @@
 
     <c:Section Header="Hidden meshes" StateKey="settings.view.meshes">
       <StackPanel>
-        <TextBlock Classes="note" Text="Untick a mesh of the avatar on screen to leave it out of the 3D view: an outfit piece that covers the body, say. The Mesh chip in the view switches the whole avatar; this only changes what you see, not the take." />
-        <TextBlock Text="{Binding MeshInfo}" Classes="note" IsVisible="{Binding MeshInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <TextBlock Classes="note"
+                   Text="Untick a mesh of the avatar on screen to leave it out of the 3D view: an outfit piece that covers the body, say. The Mesh chip in the view switches the whole avatar; this only changes what you see, not the take." />
+        <TextBlock Text="{Binding MeshInfo}" Classes="note"
+                   IsVisible="{Binding MeshInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <ItemsControl x:Name="MeshList" ItemsSource="{Binding Meshes}" IsVisible="{Binding HasMeshes}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -32,7 +35,8 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Classes="link" Content="Show all meshes" Command="{Binding ShowAllMeshesCommand}" IsVisible="{Binding AnyHidden}" HorizontalAlignment="Left" Margin="{DynamicResource GapTop}" />
+        <Button Classes="link" Content="Show all meshes" Command="{Binding ShowAllMeshesCommand}"
+                IsVisible="{Binding AnyHidden}" HorizontalAlignment="Left" Margin="{DynamicResource GapTop}" />
       </StackPanel>
     </c:Section>
   </StackPanel>

@@ -1,11 +1,15 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
 namespace VRMR
 {
-    /// <summary>Tiny dependency-free JSON reader/writer. Objects -> Dictionary&lt;string,object&gt;, arrays -> List&lt;object&gt;, numbers -> double.</summary>
+    /// <summary>
+    ///     Tiny dependency-free JSON reader/writer. Objects -> Dictionary&lt;string,object&gt;, arrays -> List&lt;object
+    ///     &gt;, numbers -> double.
+    /// </summary>
     public static class Json
     {
         public static object Parse(string s)
@@ -15,9 +19,15 @@ namespace VRMR
             return v;
         }
 
-        public static Dictionary<string, object> ParseObject(string s) => Parse(s) as Dictionary<string, object>;
+        public static Dictionary<string, object> ParseObject(string s)
+        {
+            return Parse(s) as Dictionary<string, object>;
+        }
 
-        static void Ws(string s, ref int i) { while (i < s.Length && char.IsWhiteSpace(s[i])) i++; }
+        static void Ws(string s, ref int i)
+        {
+            while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+        }
 
         static object ParseValue(string s, ref int i)
         {
@@ -27,8 +37,14 @@ namespace VRMR
             if (c == '{')
             {
                 var d = new Dictionary<string, object>();
-                i++; Ws(s, ref i);
-                if (s[i] == '}') { i++; return d; }
+                i++;
+                Ws(s, ref i);
+                if (s[i] == '}')
+                {
+                    i++;
+                    return d;
+                }
+
                 while (true)
                 {
                     Ws(s, ref i);
@@ -38,30 +54,78 @@ namespace VRMR
                     i++;
                     d[k] = ParseValue(s, ref i);
                     Ws(s, ref i);
-                    if (s[i] == ',') { i++; continue; }
-                    if (s[i] == '}') { i++; return d; }
+                    if (s[i] == ',')
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    if (s[i] == '}')
+                    {
+                        i++;
+                        return d;
+                    }
+
                     throw new FormatException("Expected ',' or '}' at " + i);
                 }
             }
+
             if (c == '[')
             {
                 var l = new List<object>();
-                i++; Ws(s, ref i);
-                if (s[i] == ']') { i++; return l; }
+                i++;
+                Ws(s, ref i);
+                if (s[i] == ']')
+                {
+                    i++;
+                    return l;
+                }
+
                 while (true)
                 {
                     l.Add(ParseValue(s, ref i));
                     Ws(s, ref i);
-                    if (s[i] == ',') { i++; continue; }
-                    if (s[i] == ']') { i++; return l; }
+                    if (s[i] == ',')
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    if (s[i] == ']')
+                    {
+                        i++;
+                        return l;
+                    }
+
                     throw new FormatException("Expected ',' or ']' at " + i);
                 }
             }
+
             if (c == '"') return ParseString(s, ref i);
-            if (s.Length - i >= 4 && string.CompareOrdinal(s, i, "true", 0, 4) == 0) { i += 4; return true; }
-            if (s.Length - i >= 5 && string.CompareOrdinal(s, i, "false", 0, 5) == 0) { i += 5; return false; }
-            if (s.Length - i >= 4 && string.CompareOrdinal(s, i, "null", 0, 4) == 0) { i += 4; return null; }
-            if (s.Length - i >= 3 && string.CompareOrdinal(s, i, "NaN", 0, 3) == 0) { i += 3; return double.NaN; }
+            if (s.Length - i >= 4 && string.CompareOrdinal(s, i, "true", 0, 4) == 0)
+            {
+                i += 4;
+                return true;
+            }
+
+            if (s.Length - i >= 5 && string.CompareOrdinal(s, i, "false", 0, 5) == 0)
+            {
+                i += 5;
+                return false;
+            }
+
+            if (s.Length - i >= 4 && string.CompareOrdinal(s, i, "null", 0, 4) == 0)
+            {
+                i += 4;
+                return null;
+            }
+
+            if (s.Length - i >= 3 && string.CompareOrdinal(s, i, "NaN", 0, 3) == 0)
+            {
+                i += 3;
+                return double.NaN;
+            }
+
             int st = i;
             while (i < s.Length && "+-0123456789.eE".IndexOf(s[i]) >= 0) i++;
             if (st == i) throw new FormatException("Unexpected char '" + c + "' at " + i);
@@ -90,12 +154,16 @@ namespace VRMR
                         case 'n': sb.Append('\n'); break;
                         case 'r': sb.Append('\r'); break;
                         case 't': sb.Append('\t'); break;
-                        case 'u': sb.Append((char)Convert.ToInt32(s.Substring(i, 4), 16)); i += 4; break;
+                        case 'u':
+                            sb.Append((char)Convert.ToInt32(s.Substring(i, 4), 16));
+                            i += 4;
+                            break;
                         default: sb.Append(e); break;
                     }
                 }
                 else sb.Append(c);
             }
+
             return sb.ToString();
         }
 
@@ -126,46 +194,61 @@ namespace VRMR
                 case long n: sb.Append(n.ToString(CultureInfo.InvariantCulture)); break;
                 case uint n: sb.Append(n.ToString(CultureInfo.InvariantCulture)); break;
                 case IDictionary<string, object> d:
+                {
+                    sb.Append('{');
+                    bool first = true;
+                    foreach (var kv in d)
                     {
-                        sb.Append('{');
-                        bool first = true;
-                        foreach (var kv in d)
-                        {
-                            if (!first) sb.Append(',');
-                            first = false;
-                            Indent(sb, pretty, lvl + 1);
-                            WriteString(sb, kv.Key);
-                            sb.Append(pretty ? ": " : ":");
-                            Write(sb, kv.Value, pretty, lvl + 1);
-                        }
-                        if (!first) Indent(sb, pretty, lvl);
-                        sb.Append('}');
-                        break;
+                        if (!first) sb.Append(',');
+                        first = false;
+                        Indent(sb, pretty, lvl + 1);
+                        WriteString(sb, kv.Key);
+                        sb.Append(pretty ? ": " : ":");
+                        Write(sb, kv.Value, pretty, lvl + 1);
                     }
-                case System.Collections.IEnumerable e:
+
+                    if (!first) Indent(sb, pretty, lvl);
+                    sb.Append('}');
+                    break;
+                }
+                case IEnumerable e:
+                {
+                    sb.Append('[');
+                    bool first = true;
+                    bool simple = true;
+                    foreach (object x in e)
                     {
-                        sb.Append('[');
-                        bool first = true;
-                        bool simple = true;
-                        foreach (var x in e) { if (x is IDictionary<string, object> || (x is System.Collections.IEnumerable && !(x is string))) { simple = false; break; } }
-                        foreach (var x in e)
+                        if (x is IDictionary<string, object> || (x is IEnumerable && !(x is string)))
                         {
-                            if (!first) sb.Append(',');
-                            first = false;
-                            if (!simple) Indent(sb, pretty, lvl + 1);
-                            Write(sb, x, pretty, lvl + 1);
+                            simple = false;
+                            break;
                         }
-                        if (!first && !simple) Indent(sb, pretty, lvl);
-                        sb.Append(']');
-                        break;
                     }
+
+                    foreach (object x in e)
+                    {
+                        if (!first) sb.Append(',');
+                        first = false;
+                        if (!simple) Indent(sb, pretty, lvl + 1);
+                        Write(sb, x, pretty, lvl + 1);
+                    }
+
+                    if (!first && !simple) Indent(sb, pretty, lvl);
+                    sb.Append(']');
+                    break;
+                }
                 default: WriteString(sb, o.ToString()); break;
             }
         }
 
         static void WriteNum(StringBuilder sb, double d)
         {
-            if (double.IsNaN(d) || double.IsInfinity(d)) { sb.Append("null"); return; }
+            if (double.IsNaN(d) || double.IsInfinity(d))
+            {
+                sb.Append("null");
+                return;
+            }
+
             sb.Append(d.ToString("R", CultureInfo.InvariantCulture));
         }
 
@@ -187,62 +270,92 @@ namespace VRMR
                         break;
                 }
             }
+
             sb.Append('"');
         }
 
         // ---- typed accessors ----
         public static double GetNum(this Dictionary<string, object> d, string k, double def = 0)
         {
-            if (d != null && d.TryGetValue(k, out var v))
+            if (d != null && d.TryGetValue(k, out object v))
             {
                 if (v is double x) return x;
                 if (v is int i) return i;
                 if (v is long l) return l;
                 if (v is float f) return f;
                 if (v is bool b) return b ? 1 : 0;
-                if (v is string s && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var p)) return p;
+                if (v is string s &&
+                    double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double p)) return p;
             }
+
             return def;
         }
-        public static float GetF(this Dictionary<string, object> d, string k, float def = 0) => (float)GetNum(d, k, def);
-        public static int GetInt(this Dictionary<string, object> d, string k, int def = 0) => (int)Math.Round(GetNum(d, k, def));
+
+        public static float GetF(this Dictionary<string, object> d, string k, float def = 0)
+        {
+            return (float)d.GetNum(k, def);
+        }
+
+        public static int GetInt(this Dictionary<string, object> d, string k, int def = 0)
+        {
+            return (int)Math.Round(d.GetNum(k, def));
+        }
+
         public static bool GetBool(this Dictionary<string, object> d, string k, bool def = false)
         {
-            if (d != null && d.TryGetValue(k, out var v))
+            if (d != null && d.TryGetValue(k, out object v))
             {
                 if (v is bool b) return b;
                 if (v is double x) return x != 0;
             }
+
             return def;
         }
+
         public static string GetStr(this Dictionary<string, object> d, string k, string def = null)
         {
-            if (d != null && d.TryGetValue(k, out var v) && v != null) return v is string s ? s : Convert.ToString(v, CultureInfo.InvariantCulture);
+            if (d != null && d.TryGetValue(k, out object v) && v != null)
+                return v is string s ? s : Convert.ToString(v, CultureInfo.InvariantCulture);
             return def;
         }
+
         public static Dictionary<string, object> GetObj(this Dictionary<string, object> d, string k)
         {
-            if (d != null && d.TryGetValue(k, out var v)) return v as Dictionary<string, object>;
-            return null;
-        }
-        public static List<object> GetList(this Dictionary<string, object> d, string k)
-        {
-            if (d != null && d.TryGetValue(k, out var v)) return v as List<object>;
+            if (d != null && d.TryGetValue(k, out object v)) return v as Dictionary<string, object>;
             return null;
         }
 
-        public static List<object> V3(Vec3 v) => new List<object> { (double)v.x, (double)v.y, (double)v.z };
-        public static List<object> Q(Quat q) => new List<object> { (double)q.x, (double)q.y, (double)q.z, (double)q.w };
+        public static List<object> GetList(this Dictionary<string, object> d, string k)
+        {
+            if (d != null && d.TryGetValue(k, out object v)) return v as List<object>;
+            return null;
+        }
+
+        public static List<object> V3(Vec3 v)
+        {
+            return new List<object> { (double)v.x, (double)v.y, (double)v.z };
+        }
+
+        public static List<object> Q(Quat q)
+        {
+            return new List<object> { (double)q.x, (double)q.y, (double)q.z, (double)q.w };
+        }
+
         public static Vec3 ToV3(object o, Vec3 def = default)
         {
             if (o is List<object> l && l.Count >= 3) return new Vec3(F(l[0]), F(l[1]), F(l[2]));
             return def;
         }
+
         public static Quat ToQ(object o)
         {
             if (o is List<object> l && l.Count >= 4) return new Quat(F(l[0]), F(l[1]), F(l[2]), F(l[3]));
             return Quat.Identity;
         }
-        static float F(object o) => o is double d ? (float)d : 0f;
+
+        static float F(object o)
+        {
+            return o is double d ? (float)d : 0f;
+        }
     }
 }

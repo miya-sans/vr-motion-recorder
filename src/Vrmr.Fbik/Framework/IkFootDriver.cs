@@ -6,86 +6,152 @@
 //  * Transform reads of the avatar's current foot/hips bones are replaced by the last solved pose when
 //    available (else the bone controls), see PORTING_NOTES.md.
 //  * Gizmo drawing and height-change events are dropped; serialized tunables keep their upstream defaults.
+
 namespace VRMR.Fbik
 {
     public sealed class IkFootDriver
     {
-        readonly FbikRig rig;
-        private float predictionFactor = 0.9f;
-        private float velocityBiasFactor = 0.18f;
-        private float leadOffsetFactor = 0.6f;
-        private float maxVelocityOffsetFraction = 0.35f;
-        private float maxPredictionFraction = 0.35f;
-        private float plantedLerpSpeed = 40f;
-        private float rotationLerpSpeed = 16f;
-        private float velocitySmoothAccel = 25f;
-        private float velocitySmoothDecel = 50f;
-        private float bodyFwdRateMoving = 6f;
-        private float bodyFwdRateStationary = 2.5f;
-        private float maxFootTiltDegrees = 35f;
-        private float maxFootYawDegrees = 18f;
-        private float raySphereRadiusMul = 0.3f;
-        private float footHeightOffsetMul = 0.2f;
-        private float stepTriggerMul = 0.18f;
-        private float strideScaleMul = 0.15f;
-        private float stepHeightMul = 0.30f;
-        private float stepDurSlowMul = 0.30f;
-        private float stepDurFastMul = 0.18f;
-        private float fastSpeedMul = 1.2f;
-        private float stepArcLiftExp = 0.6f;
-        private float stepArcDropExp = 1.4f;
-        private float stepHeightMinFraction = 0.4f;
-        private float stepHeightStrideRefFraction = 0.45f;
-        private float idleSpeedThreshold = 0.05f;
-        private float idleBoostFraction = 0.5f;
-        private float maxPlantedYawDegrees = 20f;
-        private float idealSideEnforceFraction = 0.3f;
-        private float stepTargetSideFraction = 0.15f;
-        private float footSideEnforceFraction = 0.2f;
-        private float maxVerticalDriftFraction = 0.25f;
-        private float bodyFwdHipsWeight = 3f;
-        private float bodyFwdChestWeight = 2f;
-        private float bodyFwdHeadWeight = 1f;
-        private float hipBobFraction = 0.02f;
-        private float stanceWidth, hipToFoot, leftLegLen, rightLegLen, leftThighLen, leftShinLen, rightThighLen, rightShinLen, footLength, ankleHeight, upperLegToFootVertical, footRestHeight;
-        private float baseStanceWidth, baseHipToFoot, baseLeftThighLen, baseLeftShinLen, baseLeftLegLen, baseRightThighLen;
-        private float baseRightShinLen, baseRightLegLen, baseFootLength, baseAnkleHeight, baseUpperLegToFootVertical, baseFootRestHeight;
-        private float stepTriggerDist, strideScale, stepHeightCalc, stepDurSlow, stepDurFast, raySphereRadius, footHeightOffset, footHangOffset, fastSpeedRef;
-        private ref IkFootNativeState Foot(int slot) => ref nativeFeet.ElementAt(slot);
-        private float rayCastRange;
-        private Quaternion footAlignLeft = Quaternion.identity;
-        private Quaternion footAlignRight = Quaternion.identity;
-        private Vector3 cachedPlayerUp = Vector3.up;
-        private Vector3 cachedPlayerFwd = Vector3.forward;
-        private Vector3 cachedPlayerRight = Vector3.right;
-        private Vector3 smoothedVelocity;
-        private float prevHeadYaw;
-        private NativeArray<IkFootNativeState> nativeFeet;
-        private NativeArray<IkFootSimState> nativeSimState;
-        private NativeArray<IkFootSimInput> nativeInput;
-        private NativeArray<IkFootSimOutput> nativeOutput;
-        private bool jobScheduled;
-        private const int probeRays = 4;
-        private const int probeMaxHits = 8;
-        private struct ProbeHit { public Vector3 point; public float distance; }
-        private readonly ProbeHit[] probeResults = new ProbeHit[probeRays * probeMaxHits];
-        private bool probePending;
-        private int probeNextFoot;
-        private float probeElapsedLeft, probeElapsedRight;
-        private struct IkFootProbePlan
-        {
-            public int foot;
-            public Vector3 up, fwd, right;
-            public float heelD, ballD, toeD, halfW, hipsUpComp;
-        }
-        private IkFootProbePlan probePlan;
-        private readonly float[] footGroundUp = new float[2];
-        private readonly bool[] footGroundValid = new bool[2];
-        private IkFootSimParams cachedParams;
-        private bool paramsDirty = true;
+        const int probeRays = 4;
+        const int probeMaxHits = 8;
         internal const float SettledPlantedTime = 10f;
-        public bool IsInitialized { get; private set; }
+        const float heelProbeFrac = 0.45f;
+        const float ballProbeFrac = 0.85f;
+        const float toeProbeFrac = 1.30f;
+        const float footHalfWidthFrac = 0.28f;
+        const float toeMaxDorsiDeg = 40f;
+        const float toeMaxPlantarDeg = 15f;
+        const float toeBendRate = 12f;
+        const float surfaceNormalRate = 14f;
+        public static bool SurfaceProbesEnabled = true;
+        readonly float bodyFwdChestWeight = 2f;
+        readonly float bodyFwdHeadWeight = 1f;
+        readonly float bodyFwdHipsWeight = 3f;
+        readonly float bodyFwdRateMoving = 6f;
+        readonly float bodyFwdRateStationary = 2.5f;
+        readonly float fastSpeedMul = 1.2f;
+        readonly float[] footGroundUp = new float[2];
+        readonly bool[] footGroundValid = new bool[2];
+        readonly float footHeightOffsetMul = 0.2f;
+        readonly float footSideEnforceFraction = 0.2f;
+        readonly float hipBobFraction = 0.02f;
+        readonly float idealSideEnforceFraction = 0.3f;
+        readonly float idleBoostFraction = 0.5f;
+        readonly float idleSpeedThreshold = 0.05f;
+        readonly float leadOffsetFactor = 0.6f;
+        readonly float maxFootTiltDegrees = 35f;
+        readonly float maxFootYawDegrees = 18f;
+        readonly float maxPlantedYawDegrees = 20f;
+        readonly float maxPredictionFraction = 0.35f;
+        readonly float maxVelocityOffsetFraction = 0.35f;
+        readonly float maxVerticalDriftFraction = 0.25f;
+        readonly float plantedLerpSpeed = 40f;
+        readonly float predictionFactor = 0.9f;
+
+        readonly ProbeHit[] probeResults = new ProbeHit[probeRays * probeMaxHits];
+        readonly float raySphereRadiusMul = 0.3f;
+        readonly FbikRig rig;
+        readonly float rotationLerpSpeed = 16f;
+        readonly float stepArcDropExp = 1.4f;
+        readonly float stepArcLiftExp = 0.6f;
+        readonly float stepDurFastMul = 0.18f;
+        readonly float stepDurSlowMul = 0.30f;
+        readonly float stepHeightMinFraction = 0.4f;
+        readonly float stepHeightMul = 0.30f;
+        readonly float stepHeightStrideRefFraction = 0.45f;
+        readonly float stepTargetSideFraction = 0.15f;
+        readonly float stepTriggerMul = 0.18f;
+        readonly float strideScaleMul = 0.15f;
+        readonly float velocityBiasFactor = 0.18f;
+        readonly float velocitySmoothAccel = 25f;
+        readonly float velocitySmoothDecel = 50f;
+
+        float baseRightShinLen,
+            baseRightLegLen,
+            baseFootLength,
+            baseAnkleHeight,
+            baseUpperLegToFootVertical,
+            baseFootRestHeight;
+
+        float baseStanceWidth, baseHipToFoot, baseLeftThighLen, baseLeftShinLen, baseLeftLegLen, baseRightThighLen;
+        IkFootSimParams cachedParams;
+        Vector3 cachedPlayerFwd = Vector3.forward;
+        Vector3 cachedPlayerRight = Vector3.right;
+        Vector3 cachedPlayerUp = Vector3.up;
+        Quaternion footAlignLeft = Quaternion.identity;
+        Quaternion footAlignRight = Quaternion.identity;
+        NativeArray<IkFootNativeState> nativeFeet;
+        NativeArray<IkFootSimInput> nativeInput;
+        NativeArray<IkFootSimOutput> nativeOutput;
+        NativeArray<IkFootSimState> nativeSimState;
+        bool paramsDirty = true;
+        float prevHeadYaw;
+        float probeElapsedLeft, probeElapsedRight;
+        int probeNextFoot;
+        bool probePending;
+
+        IkFootProbePlan probePlan;
+
+        float rayCastRange;
+        Vector3 smoothedVelocity;
+
+        float leftLegLen,
+            rightLegLen,
+            leftThighLen,
+            leftShinLen,
+            rightThighLen,
+            rightShinLen,
+            footLength,
+            ankleHeight,
+            upperLegToFootVertical,
+            footRestHeight;
+
+        float strideScale,
+            stepHeightCalc,
+            stepDurSlow,
+            stepDurFast,
+            raySphereRadius,
+            footHeightOffset,
+            footHangOffset,
+            fastSpeedRef;
+
         public IkFootDriver(FbikRig rig) { this.rig = rig; }
+        public bool IsInitialized { get; private set; }
+        public Vector3 LeftFootPosition => nativeFeet.IsCreated ? Foot(0).currentPos : Vector3.zero;
+        public Quaternion LeftFootRotation => nativeFeet.IsCreated ? Foot(0).currentRot : Quaternion.identity;
+        public Vector3 RightFootPosition => nativeFeet.IsCreated ? Foot(1).currentPos : Vector3.zero;
+        public Quaternion RightFootRotation => nativeFeet.IsCreated ? Foot(1).currentRot : Quaternion.identity;
+        public Vector3 LeftPlantedPos => nativeFeet.IsCreated ? Foot(0).plantedPos : Vector3.zero;
+        public Vector3 RightPlantedPos => nativeFeet.IsCreated ? Foot(1).plantedPos : Vector3.zero;
+        public bool LeftIsPlanted => nativeFeet.IsCreated && Foot(0).phase == 0;
+        public bool RightIsPlanted => nativeFeet.IsCreated && Foot(1).phase == 0;
+        public bool LastGroundHit { get; private set; }
+        public float LastGroundUp { get; private set; }
+        public float HipsUp { get; private set; }
+        public bool IsSimulationPending { get; private set; }
+
+        public float LeftToeBendDegrees => IsInitialized && nativeFeet.IsCreated ? nativeFeet[0].toeBendDeg : 0f;
+        public float RightToeBendDegrees => IsInitialized && nativeFeet.IsCreated ? nativeFeet[1].toeBendDeg : 0f;
+
+        public Vector3 LeftToeBendAxis =>
+            IsInitialized && nativeFeet.IsCreated ? nativeFeet[0].toeBendAxis : Vector3.zero;
+
+        public Vector3 RightToeBendAxis =>
+            IsInitialized && nativeFeet.IsCreated ? nativeFeet[1].toeBendAxis : Vector3.zero;
+
+        public Vector3 SmoothedVelocity => smoothedVelocity;
+        public float Speed => smoothedVelocity.magnitude;
+        public float CalibratedStanceWidth { get; private set; }
+
+        public float CalibratedHipToFoot { get; private set; }
+
+        public float DerivedStepTrigger { get; private set; }
+
+        public float FootHeightOffset => footHeightOffset;
+
+        ref IkFootNativeState Foot(int slot)
+        {
+            return ref nativeFeet.ElementAt(slot);
+        }
 
         public void NotifyReEngaging()
         {
@@ -95,10 +161,14 @@ namespace VRMR.Fbik
             {
                 return;
             }
-            ReEngageFoot(ref Foot(0), HumanBodyBones.LeftFoot, FootWorldPosition(rig.Bones.LeftFootControl, HumanBodyBones.LeftFoot));
-            ReEngageFoot(ref Foot(1), HumanBodyBones.RightFoot, FootWorldPosition(rig.Bones.RightFootControl, HumanBodyBones.RightFoot));
+
+            ReEngageFoot(ref Foot(0), HumanBodyBones.LeftFoot,
+                FootWorldPosition(rig.Bones.LeftFootControl, HumanBodyBones.LeftFoot));
+            ReEngageFoot(ref Foot(1), HumanBodyBones.RightFoot,
+                FootWorldPosition(rig.Bones.RightFootControl, HumanBodyBones.RightFoot));
         }
-        private void ReEngageFoot(ref IkFootNativeState f, HumanBodyBones bone, Vector3 position)
+
+        void ReEngageFoot(ref IkFootNativeState f, HumanBodyBones bone, Vector3 position)
         {
             f.currentPos = f.plantedPos = position;
             f.phase = 0;
@@ -107,22 +177,26 @@ namespace VRMR.Fbik
             {
                 f.currentRot = f.plantedRot = f.stepStartRot = rig.BoneWorldRotation(bone);
             }
+
             f.plantedBodyFwd = float3.zero;
             ClearTransient(ref f);
         }
-        private static void ClearTransient(ref IkFootNativeState f)
+
+        static void ClearTransient(ref IkFootNativeState f)
         {
             f.wantsStep = false;
             f.stepUrgency = 0f;
             f.predictedTargetXZ = float3.zero;
         }
+
         public void Teleport(Vector3 delta)
         {
             if (!IsInitialized)
             {
                 return;
             }
-            jobScheduled = false;
+
+            IsSimulationPending = false;
             DiscardPendingProbes();
             footGroundValid[0] = footGroundValid[1] = false;
             if (nativeFeet.IsCreated)
@@ -130,6 +204,7 @@ namespace VRMR.Fbik
                 ShiftFoot(ref Foot(0), delta);
                 ShiftFoot(ref Foot(1), delta);
             }
+
             if (nativeSimState.IsCreated)
             {
                 var sim = nativeSimState[0];
@@ -137,7 +212,8 @@ namespace VRMR.Fbik
                 nativeSimState[0] = sim;
             }
         }
-        private static void ShiftFoot(ref IkFootNativeState f, Vector3 delta)
+
+        static void ShiftFoot(ref IkFootNativeState f, Vector3 delta)
         {
             float3 d = delta;
             f.plantedPos += d;
@@ -147,32 +223,27 @@ namespace VRMR.Fbik
             f.stepTargetPos += d;
             ClearTransient(ref f);
         }
-        public Vector3 LeftFootPosition => nativeFeet.IsCreated ? (Vector3)Foot(0).currentPos : Vector3.zero;
-        public Quaternion LeftFootRotation => nativeFeet.IsCreated ? (Quaternion)Foot(0).currentRot : Quaternion.identity;
-        public Vector3 RightFootPosition => nativeFeet.IsCreated ? (Vector3)Foot(1).currentPos : Vector3.zero;
-        public Quaternion RightFootRotation => nativeFeet.IsCreated ? (Quaternion)Foot(1).currentRot : Quaternion.identity;
-        public Vector3 LeftPlantedPos => nativeFeet.IsCreated ? (Vector3)Foot(0).plantedPos : Vector3.zero;
-        public Vector3 RightPlantedPos => nativeFeet.IsCreated ? (Vector3)Foot(1).plantedPos : Vector3.zero;
-        public bool LeftIsPlanted => nativeFeet.IsCreated && Foot(0).phase == 0;
-        public bool RightIsPlanted => nativeFeet.IsCreated && Foot(1).phase == 0;
-        public bool LastGroundHit { get; private set; }
-        public float LastGroundUp { get; private set; }
-        public float HipsUp { get; private set; }
-        private Vector3 HipsWorldPosition() => rig.Bones.HipsControl.OutgoingWorldData.position;
-        private Vector3 FootWorldPosition(IkBoneControl c, HumanBodyBones bone)
+
+        Vector3 HipsWorldPosition()
+        {
+            return rig.Bones.HipsControl.OutgoingWorldData.position;
+        }
+
+        Vector3 FootWorldPosition(IkBoneControl c, HumanBodyBones bone)
         {
             if (c != null) return c.OutgoingWorldData.position;
             return rig.BoneWorldPosition(bone);
         }
+
         public void InitializeVariables()
         {
-            IkAvatarModel model = rig.Model;
+            var model = rig.Model;
             CaptureFootAlignment();
             MeasureFromCalibration(model);
             StoreBaseMeasurements();
             DeriveStepParameters();
-            rayCastRange = Mathf.Max(hipToFoot + ankleHeight, Mathf.Max(leftLegLen, rightLegLen)) * 2.15f;
-            Matrix4x4 ltw = rig.localToWorldMatrix;
+            rayCastRange = Mathf.Max(CalibratedHipToFoot + ankleHeight, Mathf.Max(leftLegLen, rightLegLen)) * 2.15f;
+            var ltw = rig.localToWorldMatrix;
             cachedPlayerUp = ltw.MultiplyVector(Vector3.up).normalized;
             cachedPlayerFwd = ltw.MultiplyVector(Vector3.forward).normalized;
             cachedPlayerRight = ltw.MultiplyVector(Vector3.right).normalized;
@@ -184,8 +255,8 @@ namespace VRMR.Fbik
             probePending = false;
             probeNextFoot = 0;
             probeElapsedLeft = probeElapsedRight = 0f;
-            ref IkFootNativeState leftN = ref Foot(0);
-            ref IkFootNativeState rightN = ref Foot(1);
+            ref var leftN = ref Foot(0);
+            ref var rightN = ref Foot(1);
             leftN.sideSign = -1;
             rightN.sideSign = +1;
             leftN.thighLen = leftThighLen;
@@ -200,8 +271,8 @@ namespace VRMR.Fbik
             InitPose(ref rightN, HumanBodyBones.RightFoot);
             leftN.landRot = leftN.currentRot;
             rightN.landRot = rightN.currentRot;
-            Vector3 bodyFwd = rig.AvatarRootRotation * Vector3.forward;
-            Vector3 bodyRight = Vector3.Cross(cachedPlayerUp, bodyFwd).normalized;
+            var bodyFwd = rig.AvatarRootRotation * Vector3.forward;
+            var bodyRight = Vector3.Cross(cachedPlayerUp, bodyFwd).normalized;
             prevHeadYaw = HeadYaw();
             nativeSimState[0] = new IkFootSimState
             {
@@ -210,22 +281,25 @@ namespace VRMR.Fbik
                 prevHeadYaw = prevHeadYaw,
                 smoothedVelocity = float3.zero,
                 smoothedBodyFwd = bodyFwd,
-                smoothedBodyRight = bodyRight,
+                smoothedBodyRight = bodyRight
             };
             IsInitialized = true;
         }
+
         public void Dispose()
         {
-            jobScheduled = false;
+            IsSimulationPending = false;
             DiscardPendingProbes();
             DisposeNativeArrays();
             IsInitialized = false;
         }
-        private void DiscardPendingProbes()
+
+        void DiscardPendingProbes()
         {
             probePending = false;
         }
-        private void DisposeNativeArrays()
+
+        void DisposeNativeArrays()
         {
             DiscardPendingProbes();
             if (nativeFeet.IsCreated) nativeFeet.Dispose();
@@ -233,7 +307,8 @@ namespace VRMR.Fbik
             if (nativeInput.IsCreated) nativeInput.Dispose();
             if (nativeOutput.IsCreated) nativeOutput.Dispose();
         }
-        private IkFootSimParams BuildParams()
+
+        IkFootSimParams BuildParams()
         {
             return new IkFootSimParams
             {
@@ -265,8 +340,8 @@ namespace VRMR.Fbik
                 bodyFwdChestWeight = bodyFwdChestWeight,
                 bodyFwdHeadWeight = bodyFwdHeadWeight,
                 hipBobFraction = hipBobFraction,
-                stanceWidth = stanceWidth,
-                hipToFoot = hipToFoot,
+                stanceWidth = CalibratedStanceWidth,
+                hipToFoot = CalibratedHipToFoot,
                 leftLegLen = leftLegLen,
                 rightLegLen = rightLegLen,
                 leftThighLen = leftThighLen,
@@ -277,7 +352,7 @@ namespace VRMR.Fbik
                 ankleHeight = ankleHeight,
                 footAlignLeft = footAlignLeft,
                 footAlignRight = footAlignRight,
-                stepTriggerDist = stepTriggerDist,
+                stepTriggerDist = DerivedStepTrigger,
                 strideScale = strideScale,
                 stepHeightCalc = stepHeightCalc,
                 stepDurSlow = stepDurSlow,
@@ -286,48 +361,54 @@ namespace VRMR.Fbik
                 footHeightOffset = footHeightOffset,
                 footHangOffset = footHangOffset,
                 fastSpeedRef = fastSpeedRef,
-                rayCastRange = rayCastRange,
+                rayCastRange = rayCastRange
             };
         }
+
         // TposeWorld == the model's rest pose (avatar root at the origin).
-        private static bool TryTP(IkAvatarModel m, HumanBodyBones b, out Vector3 p)
+        static bool TryTP(IkAvatarModel m, HumanBodyBones b, out Vector3 p)
         {
             p = Vector3.zero;
             if (!m.Has(b) || m.Pos(b) == Vector3.zero)
             {
                 return false;
             }
+
             p = m.Pos(b);
             return true;
         }
-        private void MeasureFromCalibration(IkAvatarModel tpose)
+
+        void MeasureFromCalibration(IkAvatarModel tpose)
         {
-            bool hasHips = TryTP(tpose, HumanBodyBones.Hips, out Vector3 tH);
-            bool hasLUL = TryTP(tpose, HumanBodyBones.LeftUpperLeg, out Vector3 tLUL);
-            bool hasRUL = TryTP(tpose, HumanBodyBones.RightUpperLeg, out Vector3 tRUL);
-            bool hasLLL = TryTP(tpose, HumanBodyBones.LeftLowerLeg, out Vector3 tLLL);
-            bool hasRLL = TryTP(tpose, HumanBodyBones.RightLowerLeg, out Vector3 tRLL);
-            bool hasLF = TryTP(tpose, HumanBodyBones.LeftFoot, out Vector3 tLF);
-            bool hasRF = TryTP(tpose, HumanBodyBones.RightFoot, out Vector3 tRF);
-            bool hasLT = TryTP(tpose, HumanBodyBones.LeftToes, out Vector3 tLT);
-            bool hasRT = TryTP(tpose, HumanBodyBones.RightToes, out Vector3 tRT);
+            bool hasHips = TryTP(tpose, HumanBodyBones.Hips, out var tH);
+            bool hasLUL = TryTP(tpose, HumanBodyBones.LeftUpperLeg, out var tLUL);
+            bool hasRUL = TryTP(tpose, HumanBodyBones.RightUpperLeg, out var tRUL);
+            bool hasLLL = TryTP(tpose, HumanBodyBones.LeftLowerLeg, out var tLLL);
+            bool hasRLL = TryTP(tpose, HumanBodyBones.RightLowerLeg, out var tRLL);
+            bool hasLF = TryTP(tpose, HumanBodyBones.LeftFoot, out var tLF);
+            bool hasRF = TryTP(tpose, HumanBodyBones.RightFoot, out var tRF);
+            bool hasLT = TryTP(tpose, HumanBodyBones.LeftToes, out var tLT);
+            bool hasRT = TryTP(tpose, HumanBodyBones.RightToes, out var tRT);
             if (hasLF && hasRF)
             {
-                Vector3 d = tRF - tLF; d.y = 0f;
-                stanceWidth = d.magnitude;
+                var d = tRF - tLF;
+                d.y = 0f;
+                CalibratedStanceWidth = d.magnitude;
             }
             else
             {
                 FallbackStanceWidth();
             }
+
             if (hasHips && hasLF && hasRF)
             {
-                hipToFoot = Mathf.Abs(tH.y - (tLF.y + tRF.y) * 0.5f);
+                CalibratedHipToFoot = Mathf.Abs(tH.y - (tLF.y + tRF.y) * 0.5f);
             }
             else
             {
                 FallbackHipToFoot();
             }
+
             if (hasLUL && hasLLL && hasLF)
             {
                 leftThighLen = Vector3.Distance(tLUL, tLLL);
@@ -343,6 +424,7 @@ namespace VRMR.Fbik
             {
                 FallbackLegLens(true);
             }
+
             leftLegLen = leftThighLen + leftShinLen;
             if (hasRUL && hasRLL && hasRF)
             {
@@ -359,6 +441,7 @@ namespace VRMR.Fbik
             {
                 FallbackLegLens(false);
             }
+
             rightLegLen = rightThighLen + rightShinLen;
             if (hasLF && hasLT && hasRF && hasRT)
             {
@@ -374,8 +457,9 @@ namespace VRMR.Fbik
             }
             else
             {
-                footLength = hipToFoot * 0.15f;
+                footLength = CalibratedHipToFoot * 0.15f;
             }
+
             footRestHeight = 0f;
             if (hasLF && hasRF)
             {
@@ -391,13 +475,14 @@ namespace VRMR.Fbik
                 }
                 else
                 {
-                    ankleHeight = Mathf.Max(0.01f, hipToFoot * 0.05f);
+                    ankleHeight = Mathf.Max(0.01f, CalibratedHipToFoot * 0.05f);
                 }
             }
             else
             {
-                ankleHeight = Mathf.Max(0.01f, hipToFoot * 0.05f);
+                ankleHeight = Mathf.Max(0.01f, CalibratedHipToFoot * 0.05f);
             }
+
             if (hasLUL && hasRUL && hasLF && hasRF)
             {
                 float leftV = Mathf.Abs(tLUL.y - tLF.y);
@@ -406,44 +491,55 @@ namespace VRMR.Fbik
             }
             else
             {
-                upperLegToFootVertical = hipToFoot;
+                upperLegToFootVertical = CalibratedHipToFoot;
             }
-            stanceWidth = Mathf.Max(0.04f, stanceWidth);
-            hipToFoot = Mathf.Max(0.15f, hipToFoot);
+
+            CalibratedStanceWidth = Mathf.Max(0.04f, CalibratedStanceWidth);
+            CalibratedHipToFoot = Mathf.Max(0.15f, CalibratedHipToFoot);
             leftLegLen = Mathf.Max(0.15f, leftLegLen);
             rightLegLen = Mathf.Max(0.15f, rightLegLen);
             footLength = Mathf.Max(0.02f, footLength);
             ankleHeight = Mathf.Max(0.005f, ankleHeight);
             footRestHeight = footRestHeight > ankleHeight ? footRestHeight : ankleHeight;
         }
-        public static void DeriveFootHeights(float ankleHeight, float footRestHeight, float upperLegToFootVertical, float avgLeg, float hangMul, out float plantedOffset, out float hangOffset)
+
+        public static void DeriveFootHeights(float ankleHeight, float footRestHeight, float upperLegToFootVertical,
+            float avgLeg, float hangMul, out float plantedOffset, out float hangOffset)
         {
             const float refLeg = 0.87f;
             float straightLegLimit = upperLegToFootVertical + ankleHeight - avgLeg;
-            hangOffset = Mathf.Clamp(Mathf.Min(ankleHeight * hangMul, straightLegLimit), avgLeg * (0.001f / refLeg), avgLeg * (0.05f / refLeg));
+            hangOffset = Mathf.Clamp(Mathf.Min(ankleHeight * hangMul, straightLegLimit), avgLeg * (0.001f / refLeg),
+                avgLeg * (0.05f / refLeg));
             plantedOffset = Mathf.Max(hangOffset, footRestHeight);
         }
-        private void DeriveStepParameters()
+
+        void DeriveStepParameters()
         {
             float avgLeg = (leftLegLen + rightLegLen) * 0.5f;
             float avgShin = (leftShinLen + rightShinLen) * 0.5f;
             const float refLeg = 0.87f;
             float pendulum = Mathf.PI * Mathf.Sqrt(avgLeg / 9.81f);
             float speedRef = Mathf.Sqrt(avgLeg * 9.81f);
-            raySphereRadius = Mathf.Clamp(footLength * raySphereRadiusMul, avgLeg * (0.02f / refLeg), avgLeg * (0.12f / refLeg));
-            DeriveFootHeights(ankleHeight, footRestHeight, upperLegToFootVertical, avgLeg, footHeightOffsetMul, out footHeightOffset, out footHangOffset);
-            stepTriggerDist = Mathf.Clamp(avgLeg * stepTriggerMul, avgLeg * (0.04f / refLeg), avgLeg * (0.18f / refLeg));
+            raySphereRadius = Mathf.Clamp(footLength * raySphereRadiusMul, avgLeg * (0.02f / refLeg),
+                avgLeg * (0.12f / refLeg));
+            DeriveFootHeights(ankleHeight, footRestHeight, upperLegToFootVertical, avgLeg, footHeightOffsetMul,
+                out footHeightOffset, out footHangOffset);
+            DerivedStepTrigger =
+                Mathf.Clamp(avgLeg * stepTriggerMul, avgLeg * (0.04f / refLeg), avgLeg * (0.18f / refLeg));
             strideScale = Mathf.Clamp(avgLeg * strideScaleMul, avgLeg * (0.02f / refLeg), avgLeg * (0.22f / refLeg));
             stepHeightCalc = Mathf.Clamp(avgShin * stepHeightMul, avgLeg * (0.03f / refLeg), avgLeg * (0.20f / refLeg));
-            stepDurSlow = Mathf.Clamp(pendulum * stepDurSlowMul, pendulum * (0.10f / 0.9356f), pendulum * (0.30f / 0.9356f));
-            stepDurFast = Mathf.Clamp(pendulum * stepDurFastMul, pendulum * (0.06f / 0.9356f), pendulum * (0.18f / 0.9356f));
+            stepDurSlow = Mathf.Clamp(pendulum * stepDurSlowMul, pendulum * (0.10f / 0.9356f),
+                pendulum * (0.30f / 0.9356f));
+            stepDurFast = Mathf.Clamp(pendulum * stepDurFastMul, pendulum * (0.06f / 0.9356f),
+                pendulum * (0.18f / 0.9356f));
             fastSpeedRef = Mathf.Clamp(fastSpeedMul * speedRef, speedRef * (1.0f / 2.921f), speedRef * 2.5f);
             paramsDirty = true;
         }
-        private void StoreBaseMeasurements()
+
+        void StoreBaseMeasurements()
         {
-            baseStanceWidth = stanceWidth;
-            baseHipToFoot = hipToFoot;
+            baseStanceWidth = CalibratedStanceWidth;
+            baseHipToFoot = CalibratedHipToFoot;
             baseLeftThighLen = leftThighLen;
             baseLeftShinLen = leftShinLen;
             baseLeftLegLen = leftLegLen;
@@ -455,29 +551,34 @@ namespace VRMR.Fbik
             baseUpperLegToFootVertical = upperLegToFootVertical;
             baseFootRestHeight = footRestHeight;
         }
+
         public void RefreshBodyFitScale()
         {
             if (!IsInitialized)
             {
                 return;
             }
+
             ApplyScaleToMeasurements(rig.ScaledToMatchValue);
         }
-        private float BodyFitLegScale()
+
+        float BodyFitLegScale()
         {
             var fit = rig.AppliedBodyFit;
             if (!fit.HasBodyFit)
             {
                 return 1f;
             }
+
             float legScale = fit.LegScale;
             return legScale > 0f && !float.IsNaN(legScale) && !float.IsInfinity(legScale) ? legScale : 1f;
         }
-        private void ApplyScaleToMeasurements(float scale)
+
+        void ApplyScaleToMeasurements(float scale)
         {
             float legScale = scale * BodyFitLegScale();
-            stanceWidth = baseStanceWidth * scale;
-            hipToFoot = baseHipToFoot * legScale;
+            CalibratedStanceWidth = baseStanceWidth * scale;
+            CalibratedHipToFoot = baseHipToFoot * legScale;
             leftThighLen = baseLeftThighLen * legScale;
             leftShinLen = baseLeftShinLen * legScale;
             leftLegLen = baseLeftLegLen * legScale;
@@ -489,14 +590,23 @@ namespace VRMR.Fbik
             footRestHeight = baseFootRestHeight * scale;
             upperLegToFootVertical = baseUpperLegToFootVertical * legScale;
             DeriveStepParameters();
-            rayCastRange = Mathf.Max(hipToFoot + ankleHeight, Mathf.Max(leftLegLen, rightLegLen)) * 2.15f;
+            rayCastRange = Mathf.Max(CalibratedHipToFoot + ankleHeight, Mathf.Max(leftLegLen, rightLegLen)) * 2.15f;
             paramsDirty = true;
             if (nativeFeet.IsCreated)
             {
-                var ln = nativeFeet[0]; ln.thighLen = leftThighLen; ln.shinLen = leftShinLen; ln.legLength = leftLegLen; nativeFeet[0] = ln;
-                var rn = nativeFeet[1]; rn.thighLen = rightThighLen; rn.shinLen = rightShinLen; rn.legLength = rightLegLen; nativeFeet[1] = rn;
+                var ln = nativeFeet[0];
+                ln.thighLen = leftThighLen;
+                ln.shinLen = leftShinLen;
+                ln.legLength = leftLegLen;
+                nativeFeet[0] = ln;
+                var rn = nativeFeet[1];
+                rn.thighLen = rightThighLen;
+                rn.shinLen = rightShinLen;
+                rn.legLength = rightLegLen;
+                nativeFeet[1] = rn;
             }
         }
+
         /// <summary>Upstream OnHeightChanged (OnPlayersHeightChangedNextFrame).</summary>
         public void OnHeightChanged()
         {
@@ -504,6 +614,7 @@ namespace VRMR.Fbik
             {
                 return;
             }
+
             DiscardPendingProbes();
             ApplyScaleToMeasurements(rig.ScaledToMatchValue);
             if (nativeFeet.IsCreated)
@@ -514,13 +625,17 @@ namespace VRMR.Fbik
                 ClearTransient(ref Foot(1));
             }
         }
-        private void ReSnapFoot(ref IkFootNativeState f, HumanBodyBones bone)
+
+        void ReSnapFoot(ref IkFootNativeState f, HumanBodyBones bone)
         {
             if (!rig.Model.Has(bone)) return;
-            Vector3 origin = FootWorldPosition(f.sideSign < 0 ? rig.Bones.LeftFootControl : rig.Bones.RightFootControl, bone) + cachedPlayerUp * (hipToFoot * 0.33f);
-            if (GroundCast(origin, -cachedPlayerUp, rayCastRange, 0f, Vector3.Dot(HipsWorldPosition(), cachedPlayerUp), out Vector3 hitPoint, out Vector3 hitNormal, out _))
+            var origin =
+                FootWorldPosition(f.sideSign < 0 ? rig.Bones.LeftFootControl : rig.Bones.RightFootControl, bone) +
+                cachedPlayerUp * (CalibratedHipToFoot * 0.33f);
+            if (GroundCast(origin, -cachedPlayerUp, rayCastRange, 0f, Vector3.Dot(HipsWorldPosition(), cachedPlayerUp),
+                    out var hitPoint, out var hitNormal, out _))
             {
-                Vector3 snapped = hitPoint + hitNormal * footHeightOffset;
+                var snapped = hitPoint + hitNormal * footHeightOffset;
                 f.currentPos = f.plantedPos = f.idealPos = snapped;
                 f.filteredNormal = hitNormal;
                 int side = f.sideSign < 0 ? 0 : 1;
@@ -528,26 +643,29 @@ namespace VRMR.Fbik
                 footGroundValid[side] = true;
             }
         }
+
         public void Simulate(float dt)
         {
             ScheduleSimulate(dt);
             CompleteSimulate();
             ScheduleSurfaceProbes();
         }
+
         public void ScheduleSimulate(float dt)
         {
-            jobScheduled = false;
+            IsSimulationPending = false;
             if (!IsInitialized || dt <= 0f) return;
-            Matrix4x4 ltw = rig.localToWorldMatrix;
+            var ltw = rig.localToWorldMatrix;
             cachedPlayerUp = ltw.MultiplyVector(Vector3.up).normalized;
             cachedPlayerFwd = ltw.MultiplyVector(Vector3.forward).normalized;
             cachedPlayerRight = ltw.MultiplyVector(Vector3.right).normalized;
             var headData = rig.Bones.HeadControl.OutgoingWorldData;
             var hipsData = rig.Bones.HipsControl.OutgoingWorldData;
             var chestCtrl = rig.Bones.ChestControl;
-            Vector3 hipsPosition = HipsWorldPosition();
+            var hipsPosition = HipsWorldPosition();
             float hipsUpComponent = Vector3.Dot(hipsPosition, cachedPlayerUp);
-            bool groundHit = GroundCast(hipsPosition, -cachedPlayerUp, rayCastRange, 0f, hipsUpComponent, out Vector3 chPoint, out _, out _);
+            bool groundHit = GroundCast(hipsPosition, -cachedPlayerUp, rayCastRange, 0f, hipsUpComponent,
+                out var chPoint, out _, out _);
             LastGroundHit = groundHit;
             LastGroundUp = groundHit ? Vector3.Dot(chPoint, cachedPlayerUp) : float.NaN;
             HipsUp = hipsUpComponent;
@@ -555,7 +673,8 @@ namespace VRMR.Fbik
             {
                 ApplySurfaceProbes(dt);
             }
-            Quaternion avatarRotation = rig.AvatarRootRotation;
+
+            var avatarRotation = rig.AvatarRootRotation;
             nativeInput[0] = new IkFootSimInput
             {
                 dt = dt,
@@ -568,52 +687,56 @@ namespace VRMR.Fbik
                 avatarRight = avatarRotation * Vector3.right,
                 hasChest = true,
                 groundHit = groundHit,
-                groundPoint = groundHit ? (float3)chPoint : float3.zero,
+                groundPoint = groundHit ? chPoint : float3.zero,
                 leftGroundValid = footGroundValid[0],
                 rightGroundValid = footGroundValid[1],
                 leftGroundUp = footGroundUp[0],
                 rightGroundUp = footGroundUp[1],
-                playerUp = cachedPlayerUp,
+                playerUp = cachedPlayerUp
             };
             if (paramsDirty)
             {
                 cachedParams = BuildParams();
                 paramsDirty = false;
             }
+
             var job = new IkFootSimulateJob
             {
                 p = cachedParams,
                 feet = nativeFeet,
                 simState = nativeSimState,
                 input = nativeInput,
-                output = nativeOutput,
+                output = nativeOutput
             };
             job.Execute();
-            jobScheduled = true;
+            IsSimulationPending = true;
         }
+
         public void CompleteSimulate()
         {
-            if (!jobScheduled) return;
-            jobScheduled = false;
-            ref IkFootNativeState leftN = ref nativeFeet.ElementAt(0);
-            ref IkFootNativeState rightN = ref nativeFeet.ElementAt(1);
+            if (!IsSimulationPending) return;
+            IsSimulationPending = false;
+            ref var leftN = ref nativeFeet.ElementAt(0);
+            ref var rightN = ref nativeFeet.ElementAt(1);
             if (leftN.wantsStep)
             {
                 FinalizeStep(ref leftN);
                 leftN.wantsStep = false;
             }
+
             if (rightN.wantsStep)
             {
                 FinalizeStep(ref rightN);
                 rightN.wantsStep = false;
             }
+
             smoothedVelocity = nativeSimState[0].smoothedVelocity;
         }
-        public bool IsSimulationPending => jobScheduled;
-        private void FinalizeStep(ref IkFootNativeState f)
+
+        void FinalizeStep(ref IkFootNativeState f)
         {
-            IkFootSimState sim = nativeSimState[0];
-            float3 velFlat = (float3)ProjectHorizontal(sim.smoothedVelocity);
+            var sim = nativeSimState[0];
+            var velFlat = (float3)ProjectHorizontal(sim.smoothedVelocity);
             float speed = math.length(velFlat);
             float fastYawRef = Mathf.Max(1f, 0.5f * maxPlantedYawDegrees / Mathf.Max(0.01f, stepDurFast));
             float absYawRate = Mathf.Abs(sim.smoothedYawRateDeg);
@@ -627,9 +750,10 @@ namespace VRMR.Fbik
             f.stepArcScale = IkFootSimulateJob.TurnStepArcFloor * yawPacing;
             float hipsUpComp = Vector3.Dot(HipsWorldPosition(), cachedPlayerUp);
             Vector3 targetXZ = f.predictedTargetXZ;
-            Vector3 rayOrig = targetXZ + cachedPlayerUp * rayCastRange * 0.5f;
+            var rayOrig = targetXZ + cachedPlayerUp * rayCastRange * 0.5f;
             int side = f.sideSign < 0 ? 0 : 1;
-            if (GroundCast(rayOrig, -cachedPlayerUp, rayCastRange, raySphereRadius, hipsUpComp, out Vector3 hitPoint, out Vector3 hitNormal, out _))
+            if (GroundCast(rayOrig, -cachedPlayerUp, rayCastRange, raySphereRadius, hipsUpComp, out var hitPoint,
+                    out var hitNormal, out _))
             {
                 f.stepTargetPos = hitPoint + hitNormal * footHeightOffset;
                 f.filteredNormal = hitNormal;
@@ -638,27 +762,31 @@ namespace VRMR.Fbik
             }
             else
             {
-                float targetUpComp = hipsUpComp - hipToFoot - ankleHeight + footHangOffset;
-                Vector3 targetFlat = ProjectHorizontal(targetXZ);
+                float targetUpComp = hipsUpComp - CalibratedHipToFoot - ankleHeight + footHangOffset;
+                var targetFlat = ProjectHorizontal(targetXZ);
                 f.stepTargetPos = targetFlat + cachedPlayerUp * targetUpComp;
                 footGroundValid[side] = false;
             }
-            float3 bodyFwd = sim.smoothedBodyFwd;
-            Vector3 rawR = Vector3.Cross(cachedPlayerUp, (Vector3)(float3)bodyFwd).normalized;
+
+            var bodyFwd = sim.smoothedBodyFwd;
+            var rawR = Vector3.Cross(cachedPlayerUp, bodyFwd).normalized;
             if (rawR.sqrMagnitude < 0.001f) rawR = Vector3.right;
             Vector3 stp = f.stepTargetPos;
             float stpUpComp = Vector3.Dot(stp, cachedPlayerUp);
-            Vector3 hipsFlat = ProjectHorizontal(HipsWorldPosition());
-            Vector3 hGround = hipsFlat + cachedPlayerUp * stpUpComp;
-            EnforceSide(ref stp, hGround, rawR, f.sideSign, stanceWidth * stepTargetSideFraction);
+            var hipsFlat = ProjectHorizontal(HipsWorldPosition());
+            var hGround = hipsFlat + cachedPlayerUp * stpUpComp;
+            EnforceSide(ref stp, hGround, rawR, f.sideSign, CalibratedStanceWidth * stepTargetSideFraction);
             f.stepTargetPos = stp;
         }
+
         /// <summary>
-        /// Replaces Physics.RaycastNonAlloc / SphereCastNonAlloc against the world: one infinite ground plane
-        /// through rig.GroundPoint with normal = player up. Same filtering as upstream (distance > 0, hit not above maxUpComponent).
-        /// A sphere cast reports the plane contact point and the distance travelled by the sphere centre.
+        ///     Replaces Physics.RaycastNonAlloc / SphereCastNonAlloc against the world: one infinite ground plane
+        ///     through rig.GroundPoint with normal = player up. Same filtering as upstream (distance > 0, hit not above
+        ///     maxUpComponent).
+        ///     A sphere cast reports the plane contact point and the distance travelled by the sphere centre.
         /// </summary>
-        private bool GroundCast(Vector3 origin, Vector3 dir, float maxDist, float sphereRadius, float maxUpComponent, out Vector3 point, out Vector3 normal, out float distance)
+        bool GroundCast(Vector3 origin, Vector3 dir, float maxDist, float sphereRadius, float maxUpComponent,
+            out Vector3 point, out Vector3 normal, out float distance)
         {
             point = Vector3.zero;
             normal = Vector3.up;
@@ -667,50 +795,46 @@ namespace VRMR.Fbik
             {
                 return false;
             }
-            Vector3 n = cachedPlayerUp;
+
+            var n = cachedPlayerUp;
             float denom = Vector3.Dot(dir, n);
             if (denom > -1e-6f)
             {
                 return false;
             }
+
             float t = Vector3.Dot(rig.GroundPoint - origin, n) / denom;
             float d = t - (sphereRadius > 0f ? sphereRadius / -denom : 0f);
             if (t < 0f || d > maxDist || d <= 0f)
             {
                 return false;
             }
-            Vector3 p = origin + dir * t;
+
+            var p = origin + dir * t;
             if (Vector3.Dot(p, cachedPlayerUp) > maxUpComponent)
             {
                 return false;
             }
+
             point = p;
             normal = n;
             distance = d;
             return true;
         }
-        public static bool SurfaceProbesEnabled = true;
-        private const float heelProbeFrac = 0.45f;
-        private const float ballProbeFrac = 0.85f;
-        private const float toeProbeFrac = 1.30f;
-        private const float footHalfWidthFrac = 0.28f;
-        private const float toeMaxDorsiDeg = 40f;
-        private const float toeMaxPlantarDeg = 15f;
-        private const float toeBendRate = 12f;
-        private const float surfaceNormalRate = 14f;
+
         public void ScheduleSurfaceProbes()
         {
             if (!IsInitialized || !SurfaceProbesEnabled) return;
             DiscardPendingProbes();
             int foot = probeNextFoot;
             probeNextFoot ^= 1;
-            ref IkFootNativeState f = ref nativeFeet.ElementAt(foot);
+            ref var f = ref nativeFeet.ElementAt(foot);
             if (f.phase != 0 || footLength <= 0f) return;
-            Vector3 fwd = ProjectHorizontal((Vector3)f.plantedBodyFwd);
+            var fwd = ProjectHorizontal(f.plantedBodyFwd);
             if (fwd.sqrMagnitude < 1e-6f) fwd = ProjectHorizontal(cachedPlayerFwd);
             if (fwd.sqrMagnitude < 1e-6f) return;
             fwd.Normalize();
-            Vector3 right = Vector3.Cross(cachedPlayerUp, fwd);
+            var right = Vector3.Cross(cachedPlayerUp, fwd);
             if (right.sqrMagnitude < 1e-6f) return;
             right.Normalize();
             probePlan = new IkFootProbePlan
@@ -723,11 +847,11 @@ namespace VRMR.Fbik
                 ballD = footLength * ballProbeFrac,
                 toeD = footLength * toeProbeFrac,
                 halfW = footLength * footHalfWidthFrac,
-                hipsUpComp = Vector3.Dot(HipsWorldPosition(), cachedPlayerUp),
+                hipsUpComp = Vector3.Dot(HipsWorldPosition(), cachedPlayerUp)
             };
-            Vector3 c = (Vector3)f.currentPos;
-            Vector3 lift = cachedPlayerUp * (rayCastRange * 0.5f);
-            Vector3 down = -cachedPlayerUp;
+            var c = (Vector3)f.currentPos;
+            var lift = cachedPlayerUp * (rayCastRange * 0.5f);
+            var down = -cachedPlayerUp;
             for (int i = 0; i < probeResults.Length; i++) probeResults[i] = default;
             Probe(0, c - fwd * probePlan.heelD + lift, down);
             Probe(1, c + fwd * probePlan.ballD + right * probePlan.halfW + lift, down);
@@ -735,36 +859,42 @@ namespace VRMR.Fbik
             Probe(3, c + fwd * probePlan.toeD + lift, down);
             probePending = true;
         }
+
         // RaycastCommand against the ground plane (no hipsUp filter here; ResolveProbeHeight applies it).
-        private void Probe(int slot, Vector3 origin, Vector3 dir)
+        void Probe(int slot, Vector3 origin, Vector3 dir)
         {
-            if (GroundCast(origin, dir, rayCastRange, 0f, float.PositiveInfinity, out Vector3 point, out _, out float distance))
+            if (GroundCast(origin, dir, rayCastRange, 0f, float.PositiveInfinity, out var point, out _,
+                    out float distance))
             {
                 probeResults[slot * probeMaxHits] = new ProbeHit { point = point, distance = distance };
             }
         }
-        private void ApplySurfaceProbes(float dt)
+
+        void ApplySurfaceProbes(float dt)
         {
             probeElapsedLeft += dt;
             probeElapsedRight += dt;
-            ref IkFootNativeState leftF = ref nativeFeet.ElementAt(0);
-            ref IkFootNativeState rightF = ref nativeFeet.ElementAt(1);
+            ref var leftF = ref nativeFeet.ElementAt(0);
+            ref var rightF = ref nativeFeet.ElementAt(1);
             if (leftF.phase != 0) leftF.toeBendDeg = Mathf.MoveTowards(leftF.toeBendDeg, 0f, toeMaxDorsiDeg * dt * 4f);
-            if (rightF.phase != 0) rightF.toeBendDeg = Mathf.MoveTowards(rightF.toeBendDeg, 0f, toeMaxDorsiDeg * dt * 4f);
+            if (rightF.phase != 0)
+                rightF.toeBendDeg = Mathf.MoveTowards(rightF.toeBendDeg, 0f, toeMaxDorsiDeg * dt * 4f);
             if (!probePending) return;
             probePending = false;
             int foot = probePlan.foot;
             float elapsed = foot == 0 ? probeElapsedLeft : probeElapsedRight;
-            if (foot == 0) probeElapsedLeft = 0f; else probeElapsedRight = 0f;
-            ref IkFootNativeState f = ref nativeFeet.ElementAt(foot);
+            if (foot == 0) probeElapsedLeft = 0f;
+            else probeElapsedRight = 0f;
+            ref var f = ref nativeFeet.ElementAt(foot);
             if (f.phase != 0) return;
             FitFootSurface(ref f, Mathf.Min(elapsed, 0.25f));
         }
-        private void FitFootSurface(ref IkFootNativeState f, float dt)
+
+        void FitFootSurface(ref IkFootNativeState f, float dt)
         {
-            Vector3 fwd = probePlan.fwd;
-            Vector3 right = probePlan.right;
-            Vector3 up = probePlan.up;
+            var fwd = probePlan.fwd;
+            var right = probePlan.right;
+            var up = probePlan.up;
             float heelD = probePlan.heelD;
             float ballD = probePlan.ballD;
             float toeD = probePlan.toeD;
@@ -779,19 +909,22 @@ namespace VRMR.Fbik
                 int side = probePlan.foot;
                 float span = Mathf.Max(1e-3f, heelD + ballD);
                 float ankleH = Mathf.Lerp(heelH, ballH, heelD / span);
-                footGroundUp[side] = footGroundValid[side] ? Mathf.Lerp(footGroundUp[side], ankleH, 1f - Mathf.Exp(-surfaceNormalRate * dt)) : ankleH;
+                footGroundUp[side] = footGroundValid[side]
+                    ? Mathf.Lerp(footGroundUp[side], ankleH, 1f - Mathf.Exp(-surfaceNormalRate * dt))
+                    : ankleH;
                 footGroundValid[side] = true;
-                Vector3 tFwd = fwd * (heelD + ballD) + up * (ballH - heelH);
-                Vector3 tRight = right * (2f * halfW) + up * (ballAH - ballBH);
-                Vector3 n = Vector3.Cross(tFwd, tRight);
+                var tFwd = fwd * (heelD + ballD) + up * (ballH - heelH);
+                var tRight = right * (2f * halfW) + up * (ballAH - ballBH);
+                var n = Vector3.Cross(tFwd, tRight);
                 if (n.sqrMagnitude > 1e-8f)
                 {
                     n.Normalize();
                     if (Vector3.Dot(n, up) < 0f) n = -n;
-                    Vector3 prev = (Vector3)f.filteredNormal;
+                    var prev = (Vector3)f.filteredNormal;
                     if (prev.sqrMagnitude < 1e-6f) prev = up;
                     f.filteredNormal = Vector3.Slerp(prev, n, 1f - Mathf.Exp(-surfaceNormalRate * dt)).normalized;
                 }
+
                 float expectedToeH = ballH + (ballH - heelH) / span * (toeD - ballD);
                 float toeDelta = toeH - expectedToeH;
                 bool toeHasSurface = okToe && toeDelta > -footLength * 0.5f;
@@ -805,6 +938,7 @@ namespace VRMR.Fbik
                 {
                     f.toeBendDeg = Mathf.Lerp(f.toeBendDeg, 0f, 1f - Mathf.Exp(-toeBendRate * dt));
                 }
+
                 f.toeBendAxis = right;
             }
             else
@@ -813,7 +947,8 @@ namespace VRMR.Fbik
                 f.toeBendDeg = Mathf.Lerp(f.toeBendDeg, 0f, 1f - Mathf.Exp(-toeBendRate * dt));
             }
         }
-        private bool ResolveProbeHeight(int slot, out float height)
+
+        bool ResolveProbeHeight(int slot, out float height)
         {
             int baseIndex = slot * probeMaxHits;
             float bestDist = float.MaxValue;
@@ -821,7 +956,7 @@ namespace VRMR.Fbik
             height = 0f;
             for (int Index = 0; Index < probeMaxHits; Index++)
             {
-                ProbeHit h = probeResults[baseIndex + Index];
+                var h = probeResults[baseIndex + Index];
                 if (h.distance <= 0f) continue;
                 if (h.distance >= bestDist) continue;
                 float upC = Vector3.Dot(h.point, probePlan.up);
@@ -830,13 +965,23 @@ namespace VRMR.Fbik
                 height = upC;
                 found = true;
             }
+
             return found;
         }
-        private Vector3 ProjectHorizontal(Vector3 v) => v - cachedPlayerUp * Vector3.Dot(v, cachedPlayerUp);
-        private float HDist(Vector3 a, Vector3 b) => ProjectHorizontal(a - b).magnitude;
-        private static void EnforceSide(ref Vector3 idealPos, Vector3 center, Vector3 bodyRight, int sideSign, float minDist)
+
+        Vector3 ProjectHorizontal(Vector3 v)
         {
-            Vector3 toIdeal = idealPos - center;
+            return v - cachedPlayerUp * Vector3.Dot(v, cachedPlayerUp);
+        }
+
+        float HDist(Vector3 a, Vector3 b)
+        {
+            return ProjectHorizontal(a - b).magnitude;
+        }
+
+        static void EnforceSide(ref Vector3 idealPos, Vector3 center, Vector3 bodyRight, int sideSign, float minDist)
+        {
+            var toIdeal = idealPos - center;
             float lateral = Vector3.Dot(toIdeal, bodyRight);
             float required = sideSign * minDist;
             if (sideSign > 0 && lateral < required)
@@ -848,53 +993,64 @@ namespace VRMR.Fbik
                 idealPos -= bodyRight * (lateral + minDist);
             }
         }
-        private float HeadYaw()
+
+        float HeadYaw()
         {
             var hc = rig.Bones.HeadControl;
-            Vector3 fwd = ProjectHorizontal(hc.OutgoingWorldData.rotation * Vector3.forward);
+            var fwd = ProjectHorizontal(hc.OutgoingWorldData.rotation * Vector3.forward);
             if (fwd.sqrMagnitude < 0.001f) return prevHeadYaw;
             return Mathf.Atan2(Vector3.Dot(fwd, cachedPlayerRight), Vector3.Dot(fwd, cachedPlayerFwd)) * Mathf.Rad2Deg;
         }
-        private void CaptureFootAlignment()
+
+        void CaptureFootAlignment()
         {
             footAlignLeft = Quaternion.identity;
             footAlignRight = Quaternion.identity;
             // Upstream reads the avatar root and the live foot bones at initialisation; the avatar is in its
             // rest pose then, so the rest pose (root at origin, identity) is used.
-            Quaternion avatarRot = Quaternion.identity;
-            Vector3 avatarUp = avatarRot * Vector3.up;
-            Quaternion restFrame = BuildFootFrame(avatarRot * Vector3.forward, avatarUp, avatarUp);
-            Quaternion invRest = Quaternion.Inverse(restFrame);
-            if (rig.Model.Has(HumanBodyBones.LeftFoot)) footAlignLeft = invRest * rig.Model.Rot(HumanBodyBones.LeftFoot);
-            if (rig.Model.Has(HumanBodyBones.RightFoot)) footAlignRight = invRest * rig.Model.Rot(HumanBodyBones.RightFoot);
+            var avatarRot = Quaternion.identity;
+            var avatarUp = avatarRot * Vector3.up;
+            var restFrame = BuildFootFrame(avatarRot * Vector3.forward, avatarUp, avatarUp);
+            var invRest = Quaternion.Inverse(restFrame);
+            if (rig.Model.Has(HumanBodyBones.LeftFoot))
+                footAlignLeft = invRest * rig.Model.Rot(HumanBodyBones.LeftFoot);
+            if (rig.Model.Has(HumanBodyBones.RightFoot))
+                footAlignRight = invRest * rig.Model.Rot(HumanBodyBones.RightFoot);
         }
-        private Quaternion BuildFootFrame(Vector3 bodyFwd, Vector3 normal, Vector3 up)
+
+        Quaternion BuildFootFrame(Vector3 bodyFwd, Vector3 normal, Vector3 up)
         {
             if (normal.sqrMagnitude < 0.001f)
             {
                 normal = up;
             }
-            Vector3 fwd = Vector3.ProjectOnPlane(bodyFwd, normal);
+
+            var fwd = Vector3.ProjectOnPlane(bodyFwd, normal);
             if (fwd.sqrMagnitude < 1e-6f)
             {
                 fwd = Vector3.ProjectOnPlane(Vector3.forward, normal);
             }
+
             fwd.Normalize();
-            Quaternion surfaceRot = Quaternion.LookRotation(fwd, normal);
-            Quaternion uprightRot = Quaternion.LookRotation(fwd, up);
+            var surfaceRot = Quaternion.LookRotation(fwd, normal);
+            var uprightRot = Quaternion.LookRotation(fwd, up);
             float tiltAngle = Quaternion.Angle(uprightRot, surfaceRot);
-            return tiltAngle > 0.01f ? Quaternion.Slerp(uprightRot, surfaceRot, Mathf.Clamp01(maxFootTiltDegrees / tiltAngle)) : uprightRot;
+            return tiltAngle > 0.01f
+                ? Quaternion.Slerp(uprightRot, surfaceRot, Mathf.Clamp01(maxFootTiltDegrees / tiltAngle))
+                : uprightRot;
         }
-        private Quaternion FootRotation(Vector3 bodyFwd, Vector3 normal, Quaternion footAlign)
+
+        Quaternion FootRotation(Vector3 bodyFwd, Vector3 normal, Quaternion footAlign)
         {
             if (normal.sqrMagnitude < 0.001f)
             {
                 normal = cachedPlayerUp;
             }
-            Quaternion result = BuildFootFrame(bodyFwd, normal, cachedPlayerUp);
-            Vector3 footFwd = result * Vector3.forward;
-            Vector3 footFwdFlat = ProjectHorizontal(footFwd);
-            Vector3 bodyFwdFlat = ProjectHorizontal(bodyFwd);
+
+            var result = BuildFootFrame(bodyFwd, normal, cachedPlayerUp);
+            var footFwd = result * Vector3.forward;
+            var footFwdFlat = ProjectHorizontal(footFwd);
+            var bodyFwdFlat = ProjectHorizontal(bodyFwd);
             if (footFwdFlat.sqrMagnitude > 1e-6f && bodyFwdFlat.sqrMagnitude > 1e-6f)
             {
                 footFwdFlat.Normalize();
@@ -907,35 +1063,44 @@ namespace VRMR.Fbik
                     result = Quaternion.AngleAxis(correction, cachedPlayerUp) * result;
                 }
             }
+
             return result * footAlign;
         }
-        private void FallbackStanceWidth()
+
+        void FallbackStanceWidth()
         {
             if (!rig.Model.Has(HumanBodyBones.LeftFoot) || !rig.Model.Has(HumanBodyBones.RightFoot))
             {
-                stanceWidth = 0.2f;
+                CalibratedStanceWidth = 0.2f;
             }
             else
             {
-                stanceWidth = Mathf.Max(0.04f, ProjectHorizontal(rig.BoneWorldPosition(HumanBodyBones.RightFoot) - rig.BoneWorldPosition(HumanBodyBones.LeftFoot)).magnitude);
+                CalibratedStanceWidth = Mathf.Max(0.04f,
+                    ProjectHorizontal(rig.BoneWorldPosition(HumanBodyBones.RightFoot) -
+                                      rig.BoneWorldPosition(HumanBodyBones.LeftFoot)).magnitude);
             }
         }
-        private void FallbackHipToFoot()
+
+        void FallbackHipToFoot()
         {
-            if (rig.Model.Has(HumanBodyBones.Hips) && rig.Model.Has(HumanBodyBones.LeftFoot) && rig.Model.Has(HumanBodyBones.RightFoot))
+            if (rig.Model.Has(HumanBodyBones.Hips) && rig.Model.Has(HumanBodyBones.LeftFoot) &&
+                rig.Model.Has(HumanBodyBones.RightFoot))
             {
                 float hipsAlongUp = Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.Hips), cachedPlayerUp);
-                float feetAlongUp = (Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.LeftFoot), cachedPlayerUp) + Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.RightFoot), cachedPlayerUp)) * 0.5f;
-                hipToFoot = Mathf.Max(0.15f, Mathf.Abs(hipsAlongUp - feetAlongUp));
+                float feetAlongUp = (Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.LeftFoot), cachedPlayerUp) +
+                                     Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.RightFoot), cachedPlayerUp)) *
+                                    0.5f;
+                CalibratedHipToFoot = Mathf.Max(0.15f, Mathf.Abs(hipsAlongUp - feetAlongUp));
             }
             else
             {
-                hipToFoot = 0.85f;
+                CalibratedHipToFoot = 0.85f;
             }
         }
-        private void FallbackLegLens(bool isLeft)
+
+        void FallbackLegLens(bool isLeft)
         {
-            float total = hipToFoot;
+            float total = CalibratedHipToFoot;
             float th = total * 0.55f, sh = total * 0.45f;
             if (isLeft)
             {
@@ -948,15 +1113,19 @@ namespace VRMR.Fbik
                 rightShinLen = sh;
             }
         }
-        private void InitPose(ref IkFootNativeState f, HumanBodyBones bone)
+
+        void InitPose(ref IkFootNativeState f, HumanBodyBones bone)
         {
             if (!rig.Model.Has(bone))
             {
                 return;
             }
-            Vector3 bp = rig.BoneWorldPosition(bone);
+
+            var bp = rig.BoneWorldPosition(bone);
             int side = f.sideSign < 0 ? 0 : 1;
-            if (GroundCast(bp + cachedPlayerUp * (hipToFoot * 0.33f), -cachedPlayerUp, rayCastRange, 0f, Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.Hips), cachedPlayerUp), out Vector3 hitPoint, out Vector3 hitNormal, out _))
+            if (GroundCast(bp + cachedPlayerUp * (CalibratedHipToFoot * 0.33f), -cachedPlayerUp, rayCastRange, 0f,
+                    Vector3.Dot(rig.BoneWorldPosition(HumanBodyBones.Hips), cachedPlayerUp), out var hitPoint,
+                    out var hitNormal, out _))
             {
                 f.currentPos = f.plantedPos = f.idealPos = hitPoint + hitNormal * footHeightOffset;
                 f.filteredNormal = hitNormal;
@@ -969,34 +1138,42 @@ namespace VRMR.Fbik
                 f.filteredNormal = cachedPlayerUp;
                 footGroundValid[side] = false;
             }
-            Vector3 fwd = rig.AvatarRootRotation * Vector3.forward;
-            f.currentRot = f.plantedRot = f.stepStartRot = FootRotation(fwd, f.filteredNormal, f.sideSign < 0 ? footAlignLeft : footAlignRight);
+
+            var fwd = rig.AvatarRootRotation * Vector3.forward;
+            f.currentRot = f.plantedRot = f.stepStartRot =
+                FootRotation(fwd, f.filteredNormal, f.sideSign < 0 ? footAlignLeft : footAlignRight);
             f.phase = 0;
         }
+
         public float ComputeHipBob()
         {
             if (!IsInitialized || !nativeOutput.IsCreated) return 0f;
             return nativeOutput[0].hipBob;
         }
+
         public Vector3 ComputeHipSway()
         {
             if (!IsInitialized || !nativeOutput.IsCreated) return Vector3.zero;
             return nativeOutput[0].hipSway;
         }
+
         public Quaternion ComputePelvisDelta()
         {
             if (!IsInitialized || !nativeOutput.IsCreated) return Quaternion.identity;
             return nativeOutput[0].pelvisDelta;
         }
-        public float LeftToeBendDegrees => IsInitialized && nativeFeet.IsCreated ? nativeFeet[0].toeBendDeg : 0f;
-        public float RightToeBendDegrees => IsInitialized && nativeFeet.IsCreated ? nativeFeet[1].toeBendDeg : 0f;
-        public Vector3 LeftToeBendAxis => IsInitialized && nativeFeet.IsCreated ? (Vector3)nativeFeet[0].toeBendAxis : Vector3.zero;
-        public Vector3 RightToeBendAxis => IsInitialized && nativeFeet.IsCreated ? (Vector3)nativeFeet[1].toeBendAxis : Vector3.zero;
-        public Vector3 SmoothedVelocity => smoothedVelocity;
-        public float Speed => smoothedVelocity.magnitude;
-        public float CalibratedStanceWidth => stanceWidth;
-        public float CalibratedHipToFoot => hipToFoot;
-        public float DerivedStepTrigger => stepTriggerDist;
-        public float FootHeightOffset => footHeightOffset;
+
+        struct ProbeHit
+        {
+            public Vector3 point;
+            public float distance;
+        }
+
+        struct IkFootProbePlan
+        {
+            public int foot;
+            public Vector3 up, fwd, right;
+            public float heelD, ballD, toeD, halfW, hipsUpComp;
+        }
     }
 }

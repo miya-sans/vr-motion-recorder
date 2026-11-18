@@ -1,14 +1,16 @@
 // Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
 // Plain C#: game-engine, Burst and job-system dependencies are replaced by the VRMR.Fbik shim.
+
 namespace VRMR.Fbik
 {
     public static class FbikPlanner
     {
         public const float stationaryDelaySeconds = 0.15f, footIKBlendInSpeed = 20f, footIKBlendOutSpeed = 15f;
         public const bool locomotionFootIK = false, footRotationFromSim = true;
+
         public static void Bind(ref FbikSolver job)
         {
-            ref FbikPlan p = ref job.plan;
+            ref var p = ref job.plan;
             p.hasHips = job.handleHips.IsBound;
             p.hasSpine = job.handleSpine.IsBound;
             p.hasChest = job.handleChest.IsBound;
@@ -24,16 +26,21 @@ namespace VRMR.Fbik
                     p.hasSpineChain = false;
                 }
             }
+
             p.chestIdx = p.hasSpineChain ? job.chainChestIdx : -1;
             p.hasChestJoint = p.hasSpineChain && chainLen > 3 && p.chestIdx >= 1 && p.chestIdx < chainLen - 2;
-            p.hasSpineRestFrames = p.hasSpineChain && job.chainSpineRestFrames.IsCreated && job.chainSpineRestFrames.Length >= chainLen;
+            p.hasSpineRestFrames = p.hasSpineChain && job.chainSpineRestFrames.IsCreated &&
+                                   job.chainSpineRestFrames.Length >= chainLen;
             p.hasSpineBend = p.hasHips && p.hasChest && (p.hasSpine || p.hasUpperChest);
             p.hasBodyRight = job.handleLeftUpperArm.IsBound && job.handleRightUpperArm.IsBound;
             p.torsoFrom = p.hasChest ? job.handleChest : p.hasSpine ? job.handleSpine : job.handleHips;
             p.torsoTo = p.hasNeck ? job.handleNeck : job.handleHead;
             p.hasTorso = p.torsoFrom.IsBound && p.torsoTo.IsBound;
-            p.legFrameTo = p.hasChest ? job.handleChest : p.hasSpine ? job.handleSpine : p.hasNeck ? job.handleNeck : job.handleHead;
-            p.hasLegFrame = job.handleLeftUpperLeg.IsBound && job.handleRightUpperLeg.IsBound && p.hasHips && p.legFrameTo.IsBound;
+            p.legFrameTo = p.hasChest ? job.handleChest :
+                p.hasSpine ? job.handleSpine :
+                p.hasNeck ? job.handleNeck : job.handleHead;
+            p.hasLegFrame = job.handleLeftUpperLeg.IsBound && job.handleRightUpperLeg.IsBound && p.hasHips &&
+                            p.legFrameTo.IsBound;
             p.chestRef = p.hasUpperChest ? job.handleUpperChest : job.handleChest;
             p.hasChestRef = p.chestRef.IsBound;
             p.hasLeftShoulder = job.handleLeftShoulder.IsBound;
@@ -52,33 +59,49 @@ namespace VRMR.Fbik
                     p.boundSlots |= 1u << i;
                 }
             }
-            p.leftArm.has = job.handleLeftUpperArm.IsBound && job.handleLeftLowerArm.IsBound && job.handleLeftHand.IsBound;
-            p.leftArm.hasUpperTwist = job.handleLeftUpperArmTwist.IsBound && job.handleLeftUpperArm.IsBound && job.handleLeftLowerArm.IsBound;
-            p.leftArm.hasLowerTwist = job.handleLeftLowerArmTwist.IsBound && job.handleLeftLowerArm.IsBound && job.handleLeftHand.IsBound;
-            p.rightArm.has = job.handleRightUpperArm.IsBound && job.handleRightLowerArm.IsBound && job.handleRightHand.IsBound;
-            p.rightArm.hasUpperTwist = job.handleRightUpperArmTwist.IsBound && job.handleRightUpperArm.IsBound && job.handleRightLowerArm.IsBound;
-            p.rightArm.hasLowerTwist = job.handleRightLowerArmTwist.IsBound && job.handleRightLowerArm.IsBound && job.handleRightHand.IsBound;
-            p.leftLeg.has = job.handleLeftUpperLeg.IsBound && job.handleLeftLowerLeg.IsBound && job.handleLeftFoot.IsBound;
-            p.rightLeg.has = job.handleRightUpperLeg.IsBound && job.handleRightLowerLeg.IsBound && job.handleRightFoot.IsBound;
+
+            p.leftArm.has = job.handleLeftUpperArm.IsBound && job.handleLeftLowerArm.IsBound &&
+                            job.handleLeftHand.IsBound;
+            p.leftArm.hasUpperTwist = job.handleLeftUpperArmTwist.IsBound && job.handleLeftUpperArm.IsBound &&
+                                      job.handleLeftLowerArm.IsBound;
+            p.leftArm.hasLowerTwist = job.handleLeftLowerArmTwist.IsBound && job.handleLeftLowerArm.IsBound &&
+                                      job.handleLeftHand.IsBound;
+            p.rightArm.has = job.handleRightUpperArm.IsBound && job.handleRightLowerArm.IsBound &&
+                             job.handleRightHand.IsBound;
+            p.rightArm.hasUpperTwist = job.handleRightUpperArmTwist.IsBound && job.handleRightUpperArm.IsBound &&
+                                       job.handleRightLowerArm.IsBound;
+            p.rightArm.hasLowerTwist = job.handleRightLowerArmTwist.IsBound && job.handleRightLowerArm.IsBound &&
+                                       job.handleRightHand.IsBound;
+            p.leftLeg.has = job.handleLeftUpperLeg.IsBound && job.handleLeftLowerLeg.IsBound &&
+                            job.handleLeftFoot.IsBound;
+            p.rightLeg.has = job.handleRightUpperLeg.IsBound && job.handleRightLowerLeg.IsBound &&
+                             job.handleRightFoot.IsBound;
         }
-        public static void FootIK(ref FbikFrameFacts facts, ref float stationaryTimer, ref float leftBlend, ref float rightBlend, out bool simulate, out bool reengage)
+
+        public static void FootIK(ref FbikFrameFacts facts, ref float stationaryTimer, ref float leftBlend,
+            ref float rightBlend, out bool simulate, out bool reengage)
         {
             stationaryTimer = facts.moving ? 0f : stationaryTimer + facts.deltaTime;
-            bool ready = facts.footSimReady && (locomotionFootIK || stationaryTimer >= stationaryDelaySeconds) && facts.footIKSetting && !facts.prone && facts.upright;
+            bool ready = facts.footSimReady && (locomotionFootIK || stationaryTimer >= stationaryDelaySeconds) &&
+                         facts.footIKSetting && !facts.prone && facts.upright;
             bool leftWant = ready && !facts.leftLegTracked, rightWant = ready && !facts.rightLegTracked;
             if (facts.leftLegTracked) leftBlend = 0f;
             if (facts.rightLegTracked) rightBlend = 0f;
             float leftPrev = leftBlend, rightPrev = rightBlend;
-            leftBlend = Mathf.MoveTowards(leftBlend, leftWant ? 1f : 0f, (leftWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
-            rightBlend = Mathf.MoveTowards(rightBlend, rightWant ? 1f : 0f, (rightWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
+            leftBlend = Mathf.MoveTowards(leftBlend, leftWant ? 1f : 0f,
+                (leftWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
+            rightBlend = Mathf.MoveTowards(rightBlend, rightWant ? 1f : 0f,
+                (rightWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
             facts.leftFootSim = leftBlend;
             facts.rightFootSim = rightBlend;
-            reengage = facts.footSimReady && ((leftPrev < 0.001f && leftBlend >= 0.001f) || (rightPrev < 0.001f && rightBlend >= 0.001f));
+            reengage = facts.footSimReady && ((leftPrev < 0.001f && leftBlend >= 0.001f) ||
+                                              (rightPrev < 0.001f && rightBlend >= 0.001f));
             simulate = facts.footSimReady && (!facts.leftLegTracked || !facts.rightLegTracked);
         }
+
         public static void Frame(ref FbikSolver job, in FbikFrameFacts facts)
         {
-            ref FbikPlan p = ref job.plan;
+            ref var p = ref job.plan;
             p.hipsTracked = facts.hipsTracked;
             p.chestTracked = facts.chestTracked;
             p.prone = facts.prone && !facts.hipsTracked;
@@ -86,7 +109,8 @@ namespace VRMR.Fbik
             p.headChain = !p.chestChain && p.hasHead;
             bool chestPinsBody = facts.chestTracked && !facts.chestFollowsBody;
             p.crouchOffset = !chestPinsBody && !facts.hipsTracked && !facts.seated && !facts.prone;
-            p.gaitPelvis = !facts.hipsTracked && facts.footSimReady && Mathf.Min(facts.leftFootSim, facts.rightFootSim) > 0.001f;
+            p.gaitPelvis = !facts.hipsTracked && facts.footSimReady &&
+                           Mathf.Min(facts.leftFootSim, facts.rightFootSim) > 0.001f;
             p.headPinnedHips = !facts.hipsTracked && !chestPinsBody && !facts.seated && !facts.prone;
             p.leftShoulderTracked = facts.leftShoulderTracked;
             p.rightShoulderTracked = facts.rightShoulderTracked;
@@ -102,8 +126,10 @@ namespace VRMR.Fbik
             Leg(ref p.rightLeg, ref job, in facts, false);
             p.leftToeDriven = p.hasLeftToe && facts.leftToeTracked;
             p.rightToeDriven = p.hasRightToe && facts.rightToeTracked;
-            p.leftToeSurface = p.hasLeftToe && !facts.leftToeTracked && p.leftLeg.target == FbikSource.Sim && facts.leftToeBend;
-            p.rightToeSurface = p.hasRightToe && !facts.rightToeTracked && p.rightLeg.target == FbikSource.Sim && facts.rightToeBend;
+            p.leftToeSurface = p.hasLeftToe && !facts.leftToeTracked && p.leftLeg.target == FbikSource.Sim &&
+                               facts.leftToeBend;
+            p.rightToeSurface = p.hasRightToe && !facts.rightToeTracked && p.rightLeg.target == FbikSource.Sim &&
+                                facts.rightToeBend;
             job.playerUp = Up(job.playerUp);
             job.offsetRotationHips = Unit(job.offsetRotationHips);
             job.offsetRotationHead = Unit(job.offsetRotationHead);
@@ -117,7 +143,14 @@ namespace VRMR.Fbik
             job.offsetRotationLeftHand = Unit(job.offsetRotationLeftHand);
             job.offsetRotationRightHand = Unit(job.offsetRotationRightHand);
         }
-        static FbikShoulderMode Shoulder(bool has, bool solve, bool tracked) => !has ? FbikShoulderMode.None : tracked ? FbikShoulderMode.Tracker : solve ? FbikShoulderMode.Solve : FbikShoulderMode.None;
+
+        static FbikShoulderMode Shoulder(bool has, bool solve, bool tracked)
+        {
+            return !has ? FbikShoulderMode.None :
+                tracked ? FbikShoulderMode.Tracker :
+                solve ? FbikShoulderMode.Solve : FbikShoulderMode.None;
+        }
+
         static void Arm(ref FbikArmPlan arm, ref FbikSolver job, float weight, bool elbowTracked, bool roll)
         {
             arm.weight = weight;
@@ -126,12 +159,16 @@ namespace VRMR.Fbik
             arm.hintRoll = elbowTracked && roll;
             arm.upperTwist = arm.hasUpperTwist;
             arm.lowerTwist = arm.hasLowerTwist;
-            arm.elbowProtect = job.collisionsEnabled && job.protectElbow && job.plan.hasChest && job.plan.hasNeck && (!elbowTracked || job.collideTrackedElbow);
+            arm.elbowProtect = job.collisionsEnabled && job.protectElbow && job.plan.hasChest && job.plan.hasNeck &&
+                               (!elbowTracked || job.collideTrackedElbow);
         }
+
         static void Leg(ref FbikLegPlan leg, ref FbikSolver job, in FbikFrameFacts facts, bool isLeft)
         {
-            bool tracked = isLeft ? facts.leftLegTracked : facts.rightLegTracked, kneeTracked = isLeft ? facts.leftKneeTracked : facts.rightKneeTracked;
-            bool simRotation = isLeft ? facts.leftSimFootRotation : facts.rightSimFootRotation, roll = isLeft ? facts.leftKneeRoll : facts.rightKneeRoll;
+            bool tracked = isLeft ? facts.leftLegTracked : facts.rightLegTracked,
+                kneeTracked = isLeft ? facts.leftKneeTracked : facts.rightKneeTracked;
+            bool simRotation = isLeft ? facts.leftSimFootRotation : facts.rightSimFootRotation,
+                roll = isLeft ? facts.leftKneeRoll : facts.rightKneeRoll;
             float sim = isLeft ? facts.leftFootSim : facts.rightFootSim;
             bool simActive = facts.footSimReady && sim > 0.001f;
             leg.tracked = tracked;
@@ -142,7 +179,12 @@ namespace VRMR.Fbik
             leg.preserveTip = leg.target == FbikSource.Sim && !simRotation;
             leg.hintRoll = kneeTracked && roll;
         }
-        static Quaternion Unit(Quaternion q) => q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > FbikSolver.sqrEpsilon ? q : Quaternion.identity;
+
+        static Quaternion Unit(Quaternion q)
+        {
+            return q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > FbikSolver.sqrEpsilon ? q : Quaternion.identity;
+        }
+
         static Vector3 Up(Vector3 up)
         {
             float m = up.sqrMagnitude;
@@ -150,6 +192,7 @@ namespace VRMR.Fbik
             {
                 return Vector3.up;
             }
+
             return Mathf.Abs(m - 1f) > 1e-6f ? up / Mathf.Sqrt(m) : up;
         }
     }

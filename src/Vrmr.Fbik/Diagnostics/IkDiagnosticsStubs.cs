@@ -2,15 +2,18 @@
 // Port for VR Motion Recorder: gizmo recording and profiler markers are compiled out. The original
 // Record*Gizmos methods only read solver state (every one starts with `if (!gizmos.Wants(stage)) return;`
 // and never writes the pose), so these no-op stubs do not change solver behaviour.
+
+using System;
+
 namespace VRMR.Fbik
 {
     public enum IkGizmoKind : byte
     {
         Line = 0,
-        Sphere = 1,
+        Sphere = 1
     }
 
-    [System.Flags]
+    [Flags]
     public enum IkGizmoStage
     {
         None = 0,
@@ -26,7 +29,7 @@ namespace VRMR.Fbik
         Frames = 1 << 9,
         Limits = 1 << 10,
         Reach = 1 << 11,
-        Numbers = 1 << 12,
+        Numbers = 1 << 12
     }
 
     /// <summary>Stand-in for Unity.Collections.FixedString64Bytes (only used by the stripped gizmo labels).</summary>
@@ -34,15 +37,28 @@ namespace VRMR.Fbik
     {
         public string Value;
         public FixedString64Bytes(string value) { Value = value; }
-        public static implicit operator FixedString64Bytes(string s) => new FixedString64Bytes(s);
-        public override string ToString() => Value ?? string.Empty;
+
+        public static implicit operator FixedString64Bytes(string s)
+        {
+            return new FixedString64Bytes(s);
+        }
+
+        public override string ToString()
+        {
+            return Value ?? string.Empty;
+        }
     }
 
     /// <summary>No-op gizmo recorder (the solver never records in the port).</summary>
     public struct IkGizmoRecorder
     {
         public bool IsCreated => false;
-        public bool Wants(IkGizmoStage stage) => false;
+
+        public bool Wants(IkGizmoStage stage)
+        {
+            return false;
+        }
+
         public void Clear() { }
         public void Dispose() { }
     }
@@ -64,26 +80,28 @@ namespace VRMR.Fbik
     }
 
     /// <summary>No-op stand-in for the upstream ProfilerMarker wrapper.</summary>
-    internal struct IkMarker
+    struct IkMarker
     {
         public IkMarker(string name) { }
         public void Begin() { }
         public void End() { }
     }
 
-    internal static class FbikMarkers
+    static class FbikMarkers
     {
         const string Group = "Fbik";
         const string SpineGroup = Group + ".Spine";
-        public static readonly IkMarker Spine = new IkMarker(Group + ".Spine"),
-            Shoulders = new IkMarker(Group + ".Shoulders"),
-            Legs = new IkMarker(Group + ".Legs"),
-            Arms = new IkMarker(Group + ".Arms"),
-            Toes = new IkMarker(Group + ".Toes"),
-            TrackerOverrides = new IkMarker(Group + ".TrackerOverrides");
-        public static readonly IkMarker SpineHipsPlacement = new IkMarker(SpineGroup + ".HipsPlacement"),
-            SpineChainPrep = new IkMarker(SpineGroup + ".ChainPrep"),
-            SpineSequentialIK = new IkMarker(SpineGroup + ".SequentialIK"),
-            SpineLordosis = new IkMarker(SpineGroup + ".Lordosis");
+
+        public static readonly IkMarker Spine = new(Group + ".Spine"),
+            Shoulders = new(Group + ".Shoulders"),
+            Legs = new(Group + ".Legs"),
+            Arms = new(Group + ".Arms"),
+            Toes = new(Group + ".Toes"),
+            TrackerOverrides = new(Group + ".TrackerOverrides");
+
+        public static readonly IkMarker SpineHipsPlacement = new(SpineGroup + ".HipsPlacement"),
+            SpineChainPrep = new(SpineGroup + ".ChainPrep"),
+            SpineSequentialIK = new(SpineGroup + ".SequentialIK"),
+            SpineLordosis = new(SpineGroup + ".Lordosis");
     }
 }

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj" />
-    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj" />
+    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj"/>
+    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj"/>
   </ItemGroup>
 </Project>

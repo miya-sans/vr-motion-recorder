@@ -8,7 +8,10 @@ namespace VRMR.Tests
 {
     public class SettingsTests
     {
-        /// <summary>A settings file as the first version wrote it: no schema number, the user's eye height on its own, the old face mesh default.</summary>
+        /// <summary>
+        ///     A settings file as the first version wrote it: no schema number, the user's eye height on its own, the old
+        ///     face mesh default.
+        /// </summary>
         const string FirstVersionFile = @"{
   ""recordingsDir"": ""Takes-elsewhere"",
   ""useOscQuery"": false,
@@ -24,7 +27,12 @@ namespace VRMR.Tests
         static AppPaths PathsWith(TempDir tmp, string settingsJson)
         {
             var p = AppPaths.ForDataRoot(tmp.Path);
-            if (settingsJson != null) { Directory.CreateDirectory(p.AppDataDir); File.WriteAllText(p.SettingsFile, settingsJson); }
+            if (settingsJson != null)
+            {
+                Directory.CreateDirectory(p.AppDataDir);
+                File.WriteAllText(p.SettingsFile, settingsJson);
+            }
+
             return p;
         }
 
@@ -142,11 +150,14 @@ namespace VRMR.Tests
         /// <summary>Writes a library entry the way a build from before aliases did: the names under "match".</summary>
         static void WriteOldEntry(Settings s, string name, params string[] match)
         {
-            var skeleton = Mannequin.Profile(1.5f); skeleton.SourcePath = name + ".fbx.meta"; skeleton.LibraryId = "";
+            var skeleton = Mannequin.Profile(1.5f);
+            skeleton.SourcePath = name + ".fbx.meta";
+            skeleton.LibraryId = "";
             var d = new Dictionary<string, object>
             {
                 ["vrmrAvatar"] = 1, ["id"] = name, ["name"] = name, ["fbx"] = "", ["source"] = "",
-                ["match"] = match.Cast<object>().ToList(), ["avatarIds"] = new List<object>(), ["skeleton"] = skeleton.ToJson(),
+                ["match"] = match.Cast<object>().ToList(), ["avatarIds"] = new List<object>(),
+                ["skeleton"] = skeleton.ToJson()
             };
             Directory.CreateDirectory(s.AvatarLibraryDir);
             File.WriteAllText(Path.Combine(s.AvatarLibraryDir, name + ".vrmavatar.json"), Json.Serialize(d, true));
@@ -169,7 +180,8 @@ namespace VRMR.Tests
                 Assert.True(Mannequin.Is(profile));
                 Assert.Equal(Mannequin.Id, profile.LibraryId);
                 // it is not a file: saving and removing do nothing
-                lib.Save(lib.BuiltIn); lib.Remove(lib.BuiltIn);
+                lib.Save(lib.BuiltIn);
+                lib.Remove(lib.BuiltIn);
                 Assert.Single(lib.All());
                 Assert.False(Directory.Exists(lib.Dir));
             }
@@ -238,10 +250,10 @@ namespace VRMR.Tests
         [InlineData("Alpha_Quest_v1.02", "Alpha")]
         [InlineData("アルファver2", "アルファ")]
         [InlineData("alpha (FT)", "alpha")]
-        [InlineData("ShopName_Alpha", null)]       // two names: which one is the model?
+        [InlineData("ShopName_Alpha", null)] // two names: which one is the model?
         [InlineData("Alpha_Hair", null)]
-        [InlineData("Avatar_v3", null)]            // nothing but generic words
-        [InlineData("ab", null)]                   // too short to be safe
+        [InlineData("Avatar_v3", null)] // nothing but generic words
+        [InlineData("ab", null)] // too short to be safe
         public void OnlySingleWordNamesBecomeAliases(string packageName, string expected)
         {
             Assert.Equal(expected, AvatarAliases.SingleName(packageName));
@@ -250,7 +262,8 @@ namespace VRMR.Tests
         [Fact]
         public void ImportAliasesComeFromThePackagesOwnNames()
         {
-            var aliases = AvatarAliases.From("Alpha", "ALPHA", new[] { "Alpha_PC", "アルファ", "Alpha_Ribbon", "ShopName Alpha", "Alpha_v1.3" });
+            var aliases = AvatarAliases.From("Alpha", "ALPHA",
+                new[] { "Alpha_PC", "アルファ", "Alpha_Ribbon", "ShopName Alpha", "Alpha_v1.3" });
             Assert.Equal(new[] { "alpha", "アルファ" }, aliases);
         }
 
@@ -260,10 +273,16 @@ namespace VRMR.Tests
             using (var tmp = new TempDir())
             {
                 var lib = Library(tmp, out _);
-                var profile = Mannequin.Profile(); profile.SourcePath = "x.vrmskel.json"; profile.LibraryId = "";
+                var profile = Mannequin.Profile();
+                profile.SourcePath = "x.vrmskel.json";
+                profile.LibraryId = "";
                 Assert.Equal(FaceMeshFinder.Fallback, lib.FaceMeshFor(profile));
                 profile.Meshes.Add(new AvatarMesh { Path = "Clothes", BlendShapes = { "Shrink_A", "Shrink_B" } });
-                profile.Meshes.Add(new AvatarMesh { Path = "Armature/Face", BlendShapes = { "JawOpen", "EyeClosedLeft", "EyeClosedRight", "MouthSmileLeft" } });
+                profile.Meshes.Add(new AvatarMesh
+                {
+                    Path = "Armature/Face",
+                    BlendShapes = { "JawOpen", "EyeClosedLeft", "EyeClosedRight", "MouthSmileLeft" }
+                });
                 Assert.Equal("Armature/Face", lib.FaceMeshFor(profile));
                 Assert.Equal("Custom", lib.FaceMeshFor(profile, " Custom "));
                 Assert.Equal(FaceMeshFinder.Fallback, lib.FaceMeshFor(lib.BuiltIn.Profile()));
@@ -289,9 +308,11 @@ namespace VRMR.Tests
             for (int b = 0; b < HumanBones.Count; b++)
             {
                 if (!HumanBones.IsLeft(b)) continue;
-                var l = p.HumanRestPos(b); var r = p.HumanRestPos(HumanBones.Mirror(b));
+                var l = p.HumanRestPos(b);
+                var r = p.HumanRestPos(HumanBones.Mirror(b));
                 Assert.True((new Vec3(-l.x, l.y, l.z) - r).Length < 1e-5f, HumanBones.Names[b]);
             }
+
             Assert.True(p.HumanRestPos(HumanBones.LeftHand).x < 0, "left is at -X");
             // every bone hangs from its humanoid parent
             for (int b = 1; b < HumanBones.Count; b++)
@@ -300,7 +321,9 @@ namespace VRMR.Tests
                 int parent = HumanBones.ResolveParent(b, p.HumanExists);
                 Assert.Equal(p.Human[parent], p.Nodes[p.Human[b]].Parent);
             }
-            float span = p.HumanRestPos(HumanBones.RightMiddleProximal + 2).x - p.HumanRestPos(HumanBones.LeftMiddleProximal + 2).x;
+
+            float span = p.HumanRestPos(HumanBones.RightMiddleProximal + 2).x -
+                         p.HumanRestPos(HumanBones.LeftMiddleProximal + 2).x;
             Assert.InRange(span, 1.60f, 1.80f); // about as wide as it is tall
         }
 
@@ -329,16 +352,20 @@ namespace VRMR.Tests
                 Assert.InRange(m.Normals[i].Length, 0.999f, 1.001f);
                 Assert.InRange(m.Node[i], 0, p.Nodes.Count - 1);
                 Assert.True(p.HumanOfNode(m.Node[i]) >= 0, "every vertex moves with a humanoid bone");
-                minY = Math.Min(minY, m.Positions[i].y); maxY = Math.Max(maxY, m.Positions[i].y);
+                minY = Math.Min(minY, m.Positions[i].y);
+                maxY = Math.Max(maxY, m.Positions[i].y);
             }
-            Assert.InRange(minY, -0.005f, 0.01f);          // stands on the floor
-            Assert.InRange(maxY, 1.68f, 1.72f);            // as tall as it says
+
+            Assert.InRange(minY, -0.005f, 0.01f); // stands on the floor
+            Assert.InRange(maxY, 1.68f, 1.72f); // as tall as it says
             for (int t = 0; t < m.Triangles.Length; t += 3)
             {
                 int a = m.Triangles[t], b = m.Triangles[t + 1], c = m.Triangles[t + 2];
-                Assert.Equal(m.Node[a], m.Node[b]); Assert.Equal(m.Node[a], m.Node[c]); // rigid pieces
+                Assert.Equal(m.Node[a], m.Node[b]);
+                Assert.Equal(m.Node[a], m.Node[c]); // rigid pieces
                 var face = Vec3.Cross(m.Positions[b] - m.Positions[a], m.Positions[c] - m.Positions[a]);
-                Assert.True(Vec3.Dot(face, m.Normals[a] + m.Normals[b] + m.Normals[c]) >= 0, "front faces point outwards");
+                Assert.True(Vec3.Dot(face, m.Normals[a] + m.Normals[b] + m.Normals[c]) >= 0,
+                    "front faces point outwards");
             }
         }
 
@@ -347,15 +374,23 @@ namespace VRMR.Tests
         {
             var p = Mannequin.Profile();
             var m = MannequinMesh.For(p);
-            var pos = (Vec3[])p.RestWorldPos.Clone(); var rot = (Quat[])p.RestWorldRot.Clone();
-            var outPos = new Vec3[m.VertexCount]; var outNrm = new Vec3[m.VertexCount];
+            var pos = (Vec3[])p.RestWorldPos.Clone();
+            var rot = (Quat[])p.RestWorldRot.Clone();
+            var outPos = new Vec3[m.VertexCount];
+            var outNrm = new Vec3[m.VertexCount];
             m.Skin(pos, rot, outPos, outNrm);
             for (int i = 0; i < m.VertexCount; i++) Assert.True((outPos[i] - m.Positions[i]).Length < 1e-5f);
             // lift everything by a metre and turn it a quarter: the head ends up where the pose puts it
             var turn = Quat.YawRotation(90);
-            for (int n = 0; n < pos.Length; n++) { pos[n] = turn * pos[n] + Vec3.Up; rot[n] = turn * rot[n]; }
+            for (int n = 0; n < pos.Length; n++)
+            {
+                pos[n] = turn * pos[n] + Vec3.Up;
+                rot[n] = turn * rot[n];
+            }
+
             m.Skin(pos, rot, outPos, outNrm);
-            for (int i = 0; i < m.VertexCount; i++) Assert.True((outPos[i] - (turn * m.Positions[i] + Vec3.Up)).Length < 1e-4f);
+            for (int i = 0; i < m.VertexCount; i++)
+                Assert.True((outPos[i] - (turn * m.Positions[i] + Vec3.Up)).Length < 1e-4f);
         }
     }
 }

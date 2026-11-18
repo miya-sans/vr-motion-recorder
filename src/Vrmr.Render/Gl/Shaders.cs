@@ -1,12 +1,12 @@
 namespace VRMR.Render.Gl
 {
     /// <summary>GLSL ES 3.00 sources (ANGLE on Windows, native OpenGL ES 3 elsewhere).</summary>
-    internal static class Shaders
+    static class Shaders
     {
         /// <summary>
-        /// The avatar mesh: face shapes, then linear blend skinning, as <see cref="SkinnedAvatar.Skin"/> does on the CPU.
-        /// Each bone is three texels (the rows of a 3x4 matrix); a face shape is a row of deltas in the shape texture.
-        /// The light is worked out per vertex and is two-sided.
+        ///     The avatar mesh: face shapes, then linear blend skinning, as <see cref="SkinnedAvatar.Skin" /> does on the CPU.
+        ///     Each bone is three texels (the rows of a 3x4 matrix); a face shape is a row of deltas in the shape texture.
+        ///     The light is worked out per vertex and is two-sided.
         /// </summary>
         public const string MeshVertex = @"#version 300 es
 precision highp float;
@@ -59,7 +59,10 @@ void main() {
     gl_Position = u_viewProj * vec4(pos, 1.0);
 }";
 
-        /// <summary>u_mode: 0 plain colour, 1 texture, 2 texture with cutout alpha (uploaded premultiplied, so edges do not fringe).</summary>
+        /// <summary>
+        ///     u_mode: 0 plain colour, 1 texture, 2 texture with cutout alpha (uploaded premultiplied, so edges do not
+        ///     fringe).
+        /// </summary>
         public const string MeshFragment = @"#version 300 es
 precision highp float;
 uniform sampler2D u_tex;
@@ -82,7 +85,7 @@ void main() {
     o_color = vec4(min(c * v_light, vec3(1.0)), 1.0);
 }";
 
-        /// <summary>2D shapes in device pixels from the top-left; see <see cref="VectorBatch"/> for the kinds.</summary>
+        /// <summary>2D shapes in device pixels from the top-left; see <see cref="VectorBatch" /> for the kinds.</summary>
         public const string VectorVertex = @"#version 300 es
 precision highp float;
 layout(location = 0) in vec2 a_pos;

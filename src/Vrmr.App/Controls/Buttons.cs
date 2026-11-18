@@ -6,11 +6,17 @@ using Avalonia.Media;
 
 namespace VRMR.App.Controls
 {
-    /// <summary>A button that shows an icon, alone or before its text. Icon-only buttons need a tooltip: it also becomes the accessible name.</summary>
+    /// <summary>
+    ///     A button that shows an icon, alone or before its text. Icon-only buttons need a tooltip: it also becomes the
+    ///     accessible name.
+    /// </summary>
     public class IconButton : Button
     {
-        public static readonly StyledProperty<Geometry> IconProperty = AvaloniaProperty.Register<IconButton, Geometry>(nameof(Icon));
-        public static readonly StyledProperty<bool> IconFilledProperty = AvaloniaProperty.Register<IconButton, bool>(nameof(IconFilled));
+        public static readonly StyledProperty<Geometry> IconProperty =
+            AvaloniaProperty.Register<IconButton, Geometry>(nameof(Icon));
+
+        public static readonly StyledProperty<bool> IconFilledProperty =
+            AvaloniaProperty.Register<IconButton, bool>(nameof(IconFilled));
 
         public Geometry Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
         public bool IconFilled { get => GetValue(IconFilledProperty); set => SetValue(IconFilledProperty, value); }
@@ -25,8 +31,11 @@ namespace VRMR.App.Controls
     /// <summary>An icon button that stays pressed while on (loop, live, the gizmo).</summary>
     public class IconToggle : ToggleButton
     {
-        public static readonly StyledProperty<Geometry> IconProperty = AvaloniaProperty.Register<IconToggle, Geometry>(nameof(Icon));
-        public static readonly StyledProperty<bool> IconFilledProperty = AvaloniaProperty.Register<IconToggle, bool>(nameof(IconFilled));
+        public static readonly StyledProperty<Geometry> IconProperty =
+            AvaloniaProperty.Register<IconToggle, Geometry>(nameof(Icon));
+
+        public static readonly StyledProperty<bool> IconFilledProperty =
+            AvaloniaProperty.Register<IconToggle, bool>(nameof(IconFilled));
 
         public Geometry Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
         public bool IconFilled { get => GetValue(IconFilledProperty); set => SetValue(IconFilledProperty, value); }
@@ -41,7 +50,8 @@ namespace VRMR.App.Controls
     /// <summary>A small on/off chip (the view chips: Mesh, Skeleton, Devices…). Dimmed when what it shows is not available.</summary>
     public class ToggleChip : ToggleButton
     {
-        public static readonly StyledProperty<bool> AvailableProperty = AvaloniaProperty.Register<ToggleChip, bool>(nameof(Available), true);
+        public static readonly StyledProperty<bool> AvailableProperty =
+            AvaloniaProperty.Register<ToggleChip, bool>(nameof(Available), true);
 
         /// <summary>False when the view has nothing of this kind to show right now (the chip still remembers its state).</summary>
         public bool Available { get => GetValue(AvailableProperty); set => SetValue(AvailableProperty, value); }

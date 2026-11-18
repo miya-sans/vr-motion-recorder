@@ -6,7 +6,10 @@ using VRMR.App.Views.Settings;
 
 namespace VRMR.App.Views.FirstRun
 {
-    /// <summary>The first-run guide. It shows itself while its view-model is open, with the keyboard focus on the button that goes on.</summary>
+    /// <summary>
+    ///     The first-run guide. It shows itself while its view-model is open, with the keyboard focus on the button that
+    ///     goes on.
+    /// </summary>
     public partial class FirstRunView : UserControl
     {
         FirstRunViewModel _model;

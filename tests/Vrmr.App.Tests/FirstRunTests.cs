@@ -6,7 +6,6 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using VRMR.App.Composition;
 using VRMR.App.Platform;
-using VRMR.App.Services;
 using VRMR.App.ViewModels;
 using VRMR.App.Views.FirstRun;
 using Xunit;
@@ -25,14 +24,18 @@ namespace VRMR.App.Tests
             return (data, ui, host, new FirstRunViewModel(host));
         }
 
-        static void WaitForEnvironment(ManualDispatcher ui, AppHost host) =>
-            Assert.True(ui.WaitFor(() => host.Environment.Report != null && !host.Environment.Checking), "the environment check did not finish");
+        static void WaitForEnvironment(ManualDispatcher ui, AppHost host)
+        {
+            Assert.True(ui.WaitFor(() => host.Environment.Report != null && !host.Environment.Checking),
+                "the environment check did not finish");
+        }
 
         [Fact]
         public void TheGuideOpensByItselfOnlyUntilItHasBeenSeen()
         {
             var (data, ui, host, guide) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.False(guide.IsOpen); // the shell decides when
                 Assert.True(guide.IsFirstRun);
@@ -58,7 +61,8 @@ namespace VRMR.App.Tests
         public void TheStepsGoForwardAndBackAndFinishCloses()
         {
             var (data, ui, host, guide) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 guide.Open();
                 Assert.True(guide.ShowsFound);
@@ -92,9 +96,11 @@ namespace VRMR.App.Tests
         public void WhatWasFoundComesFromTheEnvironmentAndCanBeCheckedAgain()
         {
             var (data, ui, host, guide) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
-                Assert.Equal(new[] { "SteamVR", "VRChat", "VRChat's OSC switch", "Blender", "Unity projects" }, guide.Found.Select(r => r.Title).ToArray());
+                Assert.Equal(new[] { "SteamVR", "VRChat", "VRChat's OSC switch", "Blender", "Unity projects" },
+                    guide.Found.Select(r => r.Title).ToArray());
                 guide.Open();
                 WaitForEnvironment(ui, host);
                 Assert.False(guide.IsChecking);
@@ -126,7 +132,8 @@ namespace VRMR.App.Tests
         public void InPortableModeTheRecordingsFolderIsShownAndFixed()
         {
             var (data, ui, host, guide) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.True(guide.IsPortable);
                 Assert.False(guide.CanMoveFolder);
@@ -134,7 +141,11 @@ namespace VRMR.App.Tests
                 Assert.False(guide.FolderMoved);
 
                 bool asked = false;
-                guide.PickFolder = (title, start) => { asked = true; return Task.FromResult(Path.Combine(data.Root, "elsewhere")); };
+                guide.PickFolder = (title, start) =>
+                {
+                    asked = true;
+                    return Task.FromResult(Path.Combine(data.Root, "elsewhere"));
+                };
                 guide.BrowseFolderCommand.Execute(null);
                 Assert.False(asked);
                 Assert.Equal(host.Settings.RecordingsDir, guide.RecordingsFolder);
@@ -145,7 +156,8 @@ namespace VRMR.App.Tests
         public void AnAvatarCanBeAddedFromTheGuideOrLeftForLater()
         {
             var (data, ui, host, guide) = Start();
-            using (data) using (host)
+            using (data)
+            using (host)
             {
                 Assert.False(guide.HasOwnAvatar);
                 Assert.Contains("mannequin", guide.AvatarState);
@@ -185,7 +197,8 @@ namespace VRMR.App.Tests
                 Assert.False(view.IsVisible); // closed until its view-model opens
 
                 guide.Open();
-                Assert.True(HeadlessUi.WaitFor(() => view.IsVisible && host.Environment.Report != null && !guide.IsChecking));
+                Assert.True(HeadlessUi.WaitFor(() =>
+                    view.IsVisible && host.Environment.Report != null && !guide.IsChecking));
                 string suffix = scale == 1 ? "" : "-150";
                 for (int step = 0; step < FirstRunViewModel.StepCount; step++)
                 {

@@ -19,17 +19,22 @@
 
     <c:Section Header="Where your data is" StateKey="settings.about.data">
       <StackPanel>
-        <TextBlock Classes="note" Text="Portable mode: everything is inside the data folder the app was started with." IsVisible="{Binding IsPortable}" />
+        <TextBlock Classes="note" Text="Portable mode: everything is inside the data folder the app was started with."
+                   IsVisible="{Binding IsPortable}" />
         <c:FieldRow Label="Settings and calibrations" ToolTip.Tip="The settings, the calibration library and the log">
           <Grid ColumnDefinitions="*,Auto">
-            <SelectableTextBlock Text="{Binding AppDataFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenAppDataCommand}" Margin="{DynamicResource GapLeft}" />
+            <SelectableTextBlock Text="{Binding AppDataFolder}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenAppDataCommand}"
+                    Margin="{DynamicResource GapLeft}" />
           </Grid>
         </c:FieldRow>
         <c:FieldRow Label="Recordings" ToolTip.Tip="Your takes. The folder can be changed under Folders.">
           <Grid ColumnDefinitions="*,Auto">
-            <SelectableTextBlock Text="{Binding RecordingsFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenRecordingsCommand}" Margin="{DynamicResource GapLeft}" />
+            <SelectableTextBlock Text="{Binding RecordingsFolder}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenRecordingsCommand}"
+                    Margin="{DynamicResource GapLeft}" />
           </Grid>
         </c:FieldRow>
       </StackPanel>
@@ -37,7 +42,8 @@
 
     <c:Section Header="Help" StateKey="settings.about.help">
       <StackPanel>
-        <TextBlock Classes="note" Text="The log says what the app did and what went wrong: attach it when you report a problem. The setup guide checks SteamVR, VRChat, Blender and Unity again and walks through the folders and the avatar." />
+        <TextBlock Classes="note"
+                   Text="The log says what the app did and what went wrong: attach it when you report a problem. The setup guide checks SteamVR, VRChat, Blender and Unity again and walks through the folders and the avatar." />
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
           <Button Content="Open log" Command="{Binding OpenLogCommand}" />
           <Button Content="Run the setup guide again" Command="{Binding RunSetupGuideCommand}" />

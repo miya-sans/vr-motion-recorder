@@ -1,6 +1,6 @@
 using System.Linq;
-using Avalonia.Controls;
 using Avalonia.Headless;
+using VRMR.App.Composition;
 using VRMR.App.Platform;
 using VRMR.App.Services;
 using VRMR.App.ViewModels;
@@ -10,13 +10,13 @@ using Xunit;
 namespace VRMR.App.Tests
 {
     /// <summary>
-    /// Renders the main screens and states without showing a window. With VRMR_SHOTS set the frames are saved as PNG
-    /// for looking at; the assertions only check that each state was reached and drawn.
+    ///     Renders the main screens and states without showing a window. With VRMR_SHOTS set the frames are saved as PNG
+    ///     for looking at; the assertions only check that each state was reached and drawn.
     /// </summary>
     [Collection("app")]
     public class ScreenshotTests
     {
-        static MainWindow Open(Composition.AppHost host, double width = 1400, double height = 860, double scale = 1)
+        static MainWindow Open(AppHost host, double width = 1400, double height = 860, double scale = 1)
         {
             var window = new MainWindow(new ShellViewModel(host)) { Width = width, Height = height };
             window.Show();
@@ -55,7 +55,8 @@ namespace VRMR.App.Tests
                 Assert.True(HeadlessUi.WaitFor(() => shell.Library.Items.Count > 0));
                 HeadlessUi.Capture(window, "02-library");
                 shell.Library.Selected = shell.Library.Items.Last();
-                Assert.True(HeadlessUi.WaitFor(() => host.Session.Solve == SolveState.Done, 60000), "the take did not solve: " + host.Session.SolveError);
+                Assert.True(HeadlessUi.WaitFor(() => host.Session.Solve == SolveState.Done, 60000),
+                    "the take did not solve: " + host.Session.SolveError);
                 HeadlessUi.Settle(200);
                 Assert.NotNull(host.Session.Clip);
                 Assert.False(shell.Takes.IsLive);

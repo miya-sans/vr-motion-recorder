@@ -22,7 +22,8 @@
   </UserControl.Styles>
 
   <Border Background="{DynamicResource ScrimBrush}">
-    <Border Classes="popover" Width="{DynamicResource FirstRunWidth}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="{DynamicResource FirstRunPad}">
+    <Border Classes="popover" Width="{DynamicResource FirstRunWidth}" HorizontalAlignment="Center"
+            VerticalAlignment="Center" Padding="{DynamicResource FirstRunPad}">
       <StackPanel>
         <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource SettingsTitleGap}">
           <TextBlock Text="Welcome to VR Motion Recorder" Classes="page" />
@@ -33,7 +34,8 @@
         <Panel MinHeight="{DynamicResource FirstRunBodyHeight}">
           <!-- 1: what was found -->
           <StackPanel IsVisible="{Binding ShowsFound}">
-            <TextBlock Text="{Binding FoundSummary}" Classes="note" Classes.warning="{Binding FoundNeedsAttention}" Margin="{DynamicResource StatusRowGap}" />
+            <TextBlock Text="{Binding FoundSummary}" Classes="note" Classes.warning="{Binding FoundNeedsAttention}"
+                       Margin="{DynamicResource StatusRowGap}" />
             <ItemsControl x:Name="FoundList" ItemsSource="{Binding Found}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:StatusRowViewModel">
@@ -42,26 +44,36 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
-              <c:IconButton Classes="outlined" Icon="{DynamicResource Icon.Refresh}" Content="Check again" Command="{Binding CheckAgainCommand}"
+              <c:IconButton Classes="outlined" Icon="{DynamicResource Icon.Refresh}" Content="Check again"
+                            Command="{Binding CheckAgainCommand}"
                             ToolTip.Tip="Look at this computer again, after starting VRChat or installing something" />
-              <TextBlock Text="Checking…" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding IsChecking}" />
+              <TextBlock Text="Checking…" Classes="secondary" VerticalAlignment="Center"
+                         IsVisible="{Binding IsChecking}" />
             </StackPanel>
           </StackPanel>
 
           <!-- 2: where takes are kept -->
           <StackPanel IsVisible="{Binding ShowsFolder}">
-            <TextBlock Classes="note" Text="Every take is saved as one file in this folder. You can move it later under Settings → Folders; takes already recorded stay where they are." />
+            <TextBlock Classes="note"
+                       Text="Every take is saved as one file in this folder. You can move it later under Settings → Folders; takes already recorded stay where they are." />
             <Border Classes="card" Margin="{DynamicResource SettingsBlockGap}">
               <Grid ColumnDefinitions="Auto,*">
-                <c:Icon Data="{DynamicResource Icon.Folder}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Top" Margin="{DynamicResource Pad1}" />
-                <SelectableTextBlock Grid.Column="1" x:Name="FolderText" Text="{Binding RecordingsFolder}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="{DynamicResource GapLeftSmall}" />
+                <c:Icon Data="{DynamicResource Icon.Folder}" Foreground="{DynamicResource TextSecondaryBrush}"
+                        VerticalAlignment="Top" Margin="{DynamicResource Pad1}" />
+                <SelectableTextBlock Grid.Column="1" x:Name="FolderText" Text="{Binding RecordingsFolder}"
+                                     TextWrapping="Wrap" VerticalAlignment="Center"
+                                     Margin="{DynamicResource GapLeftSmall}" />
               </Grid>
             </Border>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space3}" IsVisible="{Binding CanMoveFolder}" Margin="{DynamicResource GapRow}">
-              <Button Content="Browse…" Command="{Binding BrowseFolderCommand}" ToolTip.Tip="Keep takes in another folder: a drive with more room, say" />
-              <Button Classes="link" Content="Use the default folder" Command="{Binding UseDefaultFolderCommand}" IsVisible="{Binding FolderMoved}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space3}" IsVisible="{Binding CanMoveFolder}"
+                        Margin="{DynamicResource GapRow}">
+              <Button Content="Browse…" Command="{Binding BrowseFolderCommand}"
+                      ToolTip.Tip="Keep takes in another folder: a drive with more room, say" />
+              <Button Classes="link" Content="Use the default folder" Command="{Binding UseDefaultFolderCommand}"
+                      IsVisible="{Binding FolderMoved}" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock Classes="note" Text="Portable mode: takes stay inside the data folder the app was started with." IsVisible="{Binding IsPortable}" />
+            <TextBlock Classes="note" Text="Portable mode: takes stay inside the data folder the app was started with."
+                       IsVisible="{Binding IsPortable}" />
             <Panel IsVisible="{Binding FolderState.NeedsAttention}">
               <s:StatusRow DataContext="{Binding FolderState}" />
             </Panel>
@@ -69,8 +81,10 @@
 
           <!-- 3: the avatar -->
           <StackPanel IsVisible="{Binding ShowsAvatar}">
-            <TextBlock Classes="note" Text="Takes are solved onto a base model: your avatar's skeleton and mesh. Add the files your avatar came with: its .unitypackage (or the .zip it came in) together with its face-tracking add-on, or a Unity model (.fbx with its .meta). The files are only read, and no Unity project is needed." />
-            <c:IconButton x:Name="AddAvatarButton" Classes="accent" Icon="{DynamicResource Icon.Plus}" Content="Add avatar…" Command="{Binding AddAvatarCommand}" IsEnabled="{Binding !IsImporting}"
+            <TextBlock Classes="note"
+                       Text="Takes are solved onto a base model: your avatar's skeleton and mesh. Add the files your avatar came with: its .unitypackage (or the .zip it came in) together with its face-tracking add-on, or a Unity model (.fbx with its .meta). The files are only read, and no Unity project is needed." />
+            <c:IconButton x:Name="AddAvatarButton" Classes="accent" Icon="{DynamicResource Icon.Plus}"
+                          Content="Add avatar…" Command="{Binding AddAvatarCommand}" IsEnabled="{Binding !IsImporting}"
                           HorizontalAlignment="Left" Margin="{DynamicResource SettingsBlockGap}" />
             <Border Classes="card" IsVisible="{Binding IsImporting}" Margin="{DynamicResource GapRow}">
               <StackPanel Spacing="{DynamicResource Space2}">
@@ -79,10 +93,12 @@
               </StackPanel>
             </Border>
             <Grid ColumnDefinitions="Auto,*" Margin="{DynamicResource GapRow}">
-              <c:Icon Data="{DynamicResource Icon.Avatar}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Top" Margin="{DynamicResource StatusIconMargin}" />
+              <c:Icon Data="{DynamicResource Icon.Avatar}" Foreground="{DynamicResource TextSecondaryBrush}"
+                      VerticalAlignment="Top" Margin="{DynamicResource StatusIconMargin}" />
               <TextBlock Grid.Column="1" Text="{Binding AvatarState}" Classes="fact" />
             </Grid>
-            <TextBlock Classes="note" Text="You can go on without one: add or change avatars at any time under Settings → Avatars." />
+            <TextBlock Classes="note"
+                       Text="You can go on without one: add or change avatars at any time under Settings → Avatars." />
           </StackPanel>
         </Panel>
 
@@ -90,8 +106,10 @@
           <Button x:Name="SkipButton" Classes="ghost" Content="Skip setup" Command="{Binding SkipCommand}"
                   ToolTip.Tip="Close the guide. Everything in it is also under Settings, and the guide can be run again from Settings → About." />
           <Button Grid.Column="2" Content="Back" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" />
-          <Button Grid.Column="3" x:Name="NextButton" Classes="accent" Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Margin="{DynamicResource GapLeft}" />
-          <Button Grid.Column="3" x:Name="FinishButton" Classes="accent" Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Margin="{DynamicResource GapLeft}" />
+          <Button Grid.Column="3" x:Name="NextButton" Classes="accent" Content="Next" Command="{Binding NextCommand}"
+                  IsVisible="{Binding !IsLastStep}" Margin="{DynamicResource GapLeft}" />
+          <Button Grid.Column="3" x:Name="FinishButton" Classes="accent" Content="Finish"
+                  Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Margin="{DynamicResource GapLeft}" />
         </Grid>
       </StackPanel>
     </Border>

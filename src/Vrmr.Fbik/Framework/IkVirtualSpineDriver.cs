@@ -1,30 +1,40 @@
 // Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
 // Static framework reads (IkLocalBoneDriver.*Control, IkHeightDriver, IkSettingsDefaults,
 // Time.deltaTime, IkLocalPlayer) are replaced by the owning FbikRig context and an explicit dt.
+
 namespace VRMR.Fbik
 {
     public sealed class IkVirtualSpineDriver
     {
+        readonly IkNodPivotSampler nodPivotSampler = new();
         readonly FbikRig rig;
-        private bool initialized;
-        private float lenNeckToChest, lenChestToSpine, lenSpineToHips, lenSpineTotal, chestTransform, spineTransform, restHipsLocalY;
-#pragma warning disable CS0649 // hipsRestDropY is never assigned upstream either (always 0)
-        private float restHeadLocalY, hipsRestDropY;
-#pragma warning restore CS0649
-        private float3 hipsFromEyeTposeXZ, headFromEyeTposeXZ, yawPivotFromEyeTposeXZ, eyeFromHeadTpose, hipsFromHeadTpose;
-        private float3 restChordDir, chestRestPerp, spineRestPerp;
-        private float chestRestAlong, spineRestAlong;
-        private float tposeNeckMinusEyeY;
-        private readonly IkNodPivotSampler nodPivotSampler = new IkNodPivotSampler(30);
-        private float3 gazeSwingLever;
-        private bool lengthsDirty = true;
-        private NativeArray<IkVirtualSpineCore.SpineSolveState> solveState;
         public bool HipsFreezeToTpose = false;
+        float chestRestAlong, spineRestAlong;
+        float3 gazeSwingLever;
+        float3 hipsFromEyeTposeXZ, headFromEyeTposeXZ, yawPivotFromEyeTposeXZ, eyeFromHeadTpose, hipsFromHeadTpose;
+        bool initialized;
+
+        float lenNeckToChest,
+            lenChestToSpine,
+            lenSpineToHips,
+            lenSpineTotal,
+            chestTransform,
+            spineTransform,
+            restHipsLocalY;
+
+        bool lengthsDirty = true;
+        float3 restChordDir, chestRestPerp, spineRestPerp;
+#pragma warning disable CS0649 // hipsRestDropY is never assigned upstream either (always 0)
+        float restHeadLocalY, hipsRestDropY;
+#pragma warning restore CS0649
+        NativeArray<IkVirtualSpineCore.SpineSolveState> solveState;
+        float tposeNeckMinusEyeY;
         public IkVirtualSpineDriver(FbikRig rig) { this.rig = rig; }
+
         public void Initialize()
         {
             if (initialized) return;
-            IkBoneDriver b = rig.Bones;
+            var b = rig.Bones;
             b.HeadControl.HasVirtualOverride = true;
             b.NeckControl.HasVirtualOverride = true;
             b.ChestControl.HasVirtualOverride = true;
@@ -35,6 +45,7 @@ namespace VRMR.Fbik
             lengthsDirty = true;
             initialized = true;
         }
+
         public void OnHeightChanged()
         {
             lengthsDirty = true;
@@ -42,16 +53,17 @@ namespace VRMR.Fbik
             gazeSwingLever = float3.zero;
             if (solveState.IsCreated)
             {
-                IkVirtualSpineCore.SpineSolveState s = solveState[0];
+                var s = solveState[0];
                 s.HeadBaselineInitialized = 0;
                 solveState[0] = s;
             }
         }
+
         public void Simulate(float deltaTime)
         {
             if (!initialized) return;
-            IkBoneDriver bones = rig.Bones;
-            FbikSettings set = rig.Settings;
+            var bones = rig.Bones;
+            var set = rig.Settings;
             var eye = bones.EyeControl;
             var head = bones.HeadControl;
             var neck = bones.NeckControl;
@@ -73,36 +85,42 @@ namespace VRMR.Fbik
             {
                 freshEye = eye.OutGoingData;
             }
+
             if (lengthsDirty)
             {
                 RecomputeSegmentLengths(eye, head, neck, chest, spine, hips);
                 gazeSwingLever = eyeFromHeadTpose;
                 lengthsDirty = false;
             }
+
             if (rig.IsVR && set.VSpineNodPivotEstimate)
             {
-                IkNodPivotSettings pivotSettings = IkNodPivotEstimatorCore.Defaults();
+                var pivotSettings = IkNodPivotEstimatorCore.Defaults();
                 pivotSettings.Scale = rig.AvatarToDefaultRatioScaledWithAvatarScale;
-                gazeSwingLever = nodPivotSampler.Update(freshEye.position, freshEye.rotation, deltaTime, eyeFromHeadTpose, in pivotSettings);
+                gazeSwingLever = nodPivotSampler.Update(freshEye.position, freshEye.rotation, deltaTime,
+                    eyeFromHeadTpose, in pivotSettings);
             }
             else
             {
                 gazeSwingLever = eyeFromHeadTpose;
             }
-            NativeArray<IkBoneSimState> simStates = bones.SimStates;
-            Matrix4x4 parentMatrix = rig.localToWorldMatrix;
+
+            var simStates = bones.SimStates;
+            var parentMatrix = rig.localToWorldMatrix;
             bool isVR = rig.IsVR;
             float torsoYawDeadzoneDeg = set.VSpineTorsoYawDeadzoneDeg;
             if (rig.IsProne)
             {
                 torsoYawDeadzoneDeg = 0f;
             }
+
             var leftFoot = bones.LeftFootControl;
             var rightFoot = bones.RightFootControl;
-            bool headPinnedHips = TrackerOwned(hips) == 0 && (TrackerOwned(chest) == 0 || chest.TrackerFollowsBody) && !rig.IsProne;
+            bool headPinnedHips = TrackerOwned(hips) == 0 && (TrackerOwned(chest) == 0 || chest.TrackerFollowsBody) &&
+                                  !rig.IsProne;
             bool leftFootTracked = leftFoot.HasTracked;
             bool rightFootTracked = rightFoot.HasTracked;
-            IkVirtualSpineCore.SpineSolveParams p = new IkVirtualSpineCore.SpineSolveParams
+            var p = new IkVirtualSpineCore.SpineSolveParams
             {
                 Dt = deltaTime,
                 Scale = rig.AvatarToDefaultRatioScaledWithAvatarScale,
@@ -125,8 +143,8 @@ namespace VRMR.Fbik
                 ChestTposeY = chest.TposeLocalScaled.position.y,
                 SpineTposeY = spine.TposeLocalScaled.position.y,
                 TposeHips = hips.TposeLocalScaled.position,
-                LeftFootPos = leftFootTracked ? (float3)leftFoot.OutGoingData.position : float3.zero,
-                RightFootPos = rightFootTracked ? (float3)rightFoot.OutGoingData.position : float3.zero,
+                LeftFootPos = leftFootTracked ? leftFoot.OutGoingData.position : float3.zero,
+                RightFootPos = rightFootTracked ? rightFoot.OutGoingData.position : float3.zero,
                 LeftFootTracked = (byte)(leftFootTracked ? 1 : 0),
                 RightFootTracked = (byte)(rightFootTracked ? 1 : 0),
                 ChestPitchFrac = set.VSpineChestPitchFrac,
@@ -166,7 +184,7 @@ namespace VRMR.Fbik
                 SpineRestAlong = spineRestAlong,
                 SpineRestPerp = spineRestPerp,
                 HeadPinnedHips = (byte)(headPinnedHips ? 1 : 0),
-                HipsFromHeadRest = hipsFromHeadTpose,
+                HipsFromHeadRest = hipsFromHeadTpose
             };
             new IkVirtualSpineCore.IkVirtualSpineSolveJob
             {
@@ -182,28 +200,42 @@ namespace VRMR.Fbik
                 SkipNeck = TrackerOwned(neck),
                 SkipChest = TrackerOwned(chest),
                 SkipSpine = TrackerOwned(spine),
-                SkipHips = TrackerOwned(hips),
+                SkipHips = TrackerOwned(hips)
             }.Run();
         }
-        private static byte TrackerOwned(IkBoneControl c) => (byte)(c.HasTracked ? 1 : 0);
-        private static float3 ResolveTargetPos(IkBoneControl c, IkBoneControl eye, in IkCalibratedCoords freshEye)
+
+        static byte TrackerOwned(IkBoneControl c)
         {
-            IkBoneControl target = ResolveTarget(c);
-            return ReferenceEquals(target, eye) ? (float3)freshEye.position : (float3)target.OutGoingData.position;
+            return (byte)(c.HasTracked ? 1 : 0);
         }
-        private static quaternion ResolveTargetRot(IkBoneControl c, IkBoneControl eye, in IkCalibratedCoords freshEye)
+
+        static float3 ResolveTargetPos(IkBoneControl c, IkBoneControl eye, in IkCalibratedCoords freshEye)
         {
-            IkBoneControl target = ResolveTarget(c);
-            return ReferenceEquals(target, eye) ? (quaternion)freshEye.rotation : (quaternion)target.OutGoingData.rotation;
+            var target = ResolveTarget(c);
+            return ReferenceEquals(target, eye) ? freshEye.position : (float3)target.OutGoingData.position;
         }
-        private static IkBoneControl ResolveTarget(IkBoneControl c) => c.TargetIndex >= 0 ? c.Owner.Controls[c.TargetIndex] : c;
-        public static void RestOffsetFromChord(float3 bone, float3 hips, float3 chord, float chordLenSq, out float along, out float3 perp)
+
+        static quaternion ResolveTargetRot(IkBoneControl c, IkBoneControl eye, in IkCalibratedCoords freshEye)
         {
-            float3 d = bone - hips;
+            var target = ResolveTarget(c);
+            return ReferenceEquals(target, eye) ? freshEye.rotation : (quaternion)target.OutGoingData.rotation;
+        }
+
+        static IkBoneControl ResolveTarget(IkBoneControl c)
+        {
+            return c.TargetIndex >= 0 ? c.Owner.Controls[c.TargetIndex] : c;
+        }
+
+        public static void RestOffsetFromChord(float3 bone, float3 hips, float3 chord, float chordLenSq,
+            out float along, out float3 perp)
+        {
+            var d = bone - hips;
             along = chordLenSq > 1e-10f ? math.dot(d, chord) / chordLenSq : 0f;
             perp = d - chord * along;
         }
-        private void RecomputeSegmentLengths(IkBoneControl eye, IkBoneControl head, IkBoneControl neck, IkBoneControl chest, IkBoneControl spine, IkBoneControl hips)
+
+        void RecomputeSegmentLengths(IkBoneControl eye, IkBoneControl head, IkBoneControl neck, IkBoneControl chest,
+            IkBoneControl spine, IkBoneControl hips)
         {
             float3 pHead = head.TposeLocalScaled.position;
             float3 pNeck = neck.TposeLocalScaled.position;
@@ -217,7 +249,7 @@ namespace VRMR.Fbik
             chestTransform = math.saturate(lenNeckToChest / lenSpineTotal);
             spineTransform = math.saturate((lenNeckToChest + lenChestToSpine) / lenSpineTotal);
             restHipsLocalY = pNeck.y - lenSpineTotal;
-            float3 restChord = pNeck - pHips;
+            var restChord = pNeck - pHips;
             float restChordLenSq = math.lengthsq(restChord);
             restChordDir = restChordLenSq > 1e-10f ? restChord * math.rsqrt(restChordLenSq) : new float3(0f, 1f, 0f);
             RestOffsetFromChord(pChest, pHips, restChord, restChordLenSq, out chestRestAlong, out chestRestPerp);

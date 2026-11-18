@@ -7,7 +7,9 @@ namespace VRMR.Tests
     {
         /// <summary>Standing, deepest in the squat, after the turn, waving.</summary>
         public static readonly double[] Times = { 1.0, 2.25, 4.6, 5.7 };
-        public static readonly string[] Bones = { "Hips", "Head", "LeftHand", "RightHand", "LeftLowerLeg", "RightFoot" };
+
+        public static readonly string[] Bones =
+            { "Hips", "Head", "LeftHand", "RightHand", "LeftLowerLeg", "RightFoot" };
 
         public static IEnumerable<object[]> Rows => new[]
         {
@@ -34,7 +36,7 @@ namespace VRMR.Tests
             new object[] { 5.7, "LeftHand", -0.00907f, 1.37580f, 0.57806f },
             new object[] { 5.7, "RightHand", 0.04991f, 1.94041f, -0.27319f },
             new object[] { 5.7, "LeftLowerLeg", -0.05536f, 0.47571f, -0.04979f },
-            new object[] { 5.7, "RightFoot", 0.08402f, 0.08573f, -0.12842f },
+            new object[] { 5.7, "RightFoot", 0.08402f, 0.08573f, -0.12842f }
         };
     }
 }
