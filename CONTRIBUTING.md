@@ -53,6 +53,11 @@ SteamVR adds controllers, trackers and finger tracking.
 
 ## Style
 
+- Rider: use **Full Cleanup** on changed code. The shared `VRMotionRecorder.sln.DotSettings` selects that profile;
+  `.editorconfig` supplies the repository's syntax and formatting rules and takes precedence over Rider settings.
+  Enable EditorConfig support and review the cleanup diff before committing. The baseline is Rider 2026.3;
+  member layout and unspecified cleanup options use its built-in defaults. `dotnet format` supports the standard
+  EditorConfig rules but does not replace Rider's full cleanup or member rearrangement.
 - C#: the code style is in `.editorconfig`. Public types and members get a one-line `///` summary that says what
   they are for, not how they work.
 - Tests: one behaviour per test, named as a sentence (`SaveThenLoadKeepsParametersAndMetadata`).

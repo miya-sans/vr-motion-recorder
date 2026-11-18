@@ -13,7 +13,7 @@
 
 ## Rider code conventions
 
-These conventions reflect the repository's Rider cleanup, rather than assumptions about Rider defaults. `VRMotionRecorder.sln.DotSettings` currently contains a dictionary entry, not a formatting profile. Use the cleaned files in `src/` as examples, including `Vrmr.App/Services/PlaybackClock.cs`, `Vrmr.App/Services/EditHistory.cs`, and `Vrmr.Core/MathUtil.cs`.
+These conventions reflect the repository's Rider cleanup. `.editorconfig` defines shared formatting and syntax choices, including Rider-specific rules; `VRMotionRecorder.sln.DotSettings` selects the built-in Full Cleanup profile used in Rider 2026.3. Keep these files aligned when changing conventions. Member layout and cleanup actions not explicitly configured here use Rider's built-in defaults, so review their output when upgrading Rider. Use the cleaned files in `src/` as examples, including `Vrmr.App/Services/PlaybackClock.cs`, `Vrmr.App/Services/EditHistory.cs`, and `Vrmr.Core/MathUtil.cs`.
 
 - **Layout:** use four spaces for C#, block-scoped namespaces, and opening braces on their own line for expanded blocks. Keep `using` directives outside namespaces, with `System` first; remove unused imports and unnecessary qualification when the name remains unambiguous.
 - **Method bodies:** use block bodies for methods, operators, and overrides, even when they only return an expression. Keep expression-bodied properties and simple accessors, such as `public bool CanUndo => _undo.Count > 0;`. Short constructors and simple accessor blocks may remain on one line where the cleaned code does so.
