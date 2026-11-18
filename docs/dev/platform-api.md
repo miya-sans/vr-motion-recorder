@@ -1,20 +1,19 @@
 # Platform API
 
-What the app (and the CLI and the tests) call to find folders, look at the machine, load settings and get a body to
-solve onto. Everything here is UI-free and lives in the libraries; all types are in the `VRMR` namespace.
+What the app (and the CLI and the tests) call to find folders, look at the machine, load settings and get a body to solve onto. Everything here is UI-free and lives in the libraries; all types are in the `VRMR` namespace.
 
-| Need | Type | Project |
-|---|---|---|
-| Where the app's own files are | `AppPaths` | `Vrmr.Core` |
-| The machine, read-only (known folders, registry, processes) | `IMachine`, `Machine.Real`, `SandboxMachine` | `Vrmr.Core` |
-| VRChat's folders, SteamVR, Steam, Blender, Unity projects | `VrcFolders`, `SteamVRLocator`, `SteamLocator`, `BlenderInstalls`, `UnityProjects` | `Vrmr.Core` |
-| First-run guide and Settings status rows | `EnvironmentProbe` | `Vrmr.Core` |
-| Delete to the Recycle Bin | `RecycleBin` | `Vrmr.Core` |
-| Windows efficiency mode | `EfficiencyMode` | `Vrmr.Core` |
-| User settings | `Settings` | `Vrmr.Model` |
-| The built-in avatar | `Mannequin`, `MannequinMesh` | `Vrmr.Model`, `Vrmr.Avatars` |
-| Avatar library (built-in entry, aliases, face mesh) | `AvatarLibrary`, `AvatarEntry` | `Vrmr.Avatars` |
-| Live devices without allocations | `OpenVRSource.CopyDevices` | `Vrmr.Capture` |
+| Need                                                        | Type                                                                               | Project                      |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------- |
+| Where the app's own files are                               | `AppPaths`                                                                         | `Vrmr.Core`                  |
+| The machine, read-only (known folders, registry, processes) | `IMachine`, `Machine.Real`, `SandboxMachine`                                       | `Vrmr.Core`                  |
+| VRChat's folders, SteamVR, Steam, Blender, Unity projects   | `VrcFolders`, `SteamVRLocator`, `SteamLocator`, `BlenderInstalls`, `UnityProjects` | `Vrmr.Core`                  |
+| First-run guide and Settings status rows                    | `EnvironmentProbe`                                                                 | `Vrmr.Core`                  |
+| Delete to the Recycle Bin                                   | `RecycleBin`                                                                       | `Vrmr.Core`                  |
+| Windows efficiency mode                                     | `EfficiencyMode`                                                                   | `Vrmr.Core`                  |
+| User settings                                               | `Settings`                                                                         | `Vrmr.Model`                 |
+| The built-in avatar                                         | `Mannequin`, `MannequinMesh`                                                       | `Vrmr.Model`, `Vrmr.Avatars` |
+| Avatar library (built-in entry, aliases, face mesh)         | `AvatarLibrary`, `AvatarEntry`                                                     | `Vrmr.Avatars`               |
+| Live devices without allocations                            | `OpenVRSource.CopyDevices`                                                         | `Vrmr.Capture`               |
 
 ## Start-up
 
@@ -26,9 +25,7 @@ var settings = Settings.Load();               // migrates older files, keeps key
 var library = new AvatarLibrary(settings);    // always has the built-in mannequin
 ```
 
-`AppPaths.Use` is the only global switch. Code that still uses the older statics (`Settings.AppDataDir`,
-`VrcPaths.LogDir`, `CalibrationPresets.Dir`, `PunchIn.FilePath`) reads the same `AppPaths.Current`, so one call moves
-everything.
+`AppPaths.Use` is the only global switch. Code that still uses the older statics (`Settings.AppDataDir`, `VrcPaths.LogDir`, `CalibrationPresets.Dir`, `PunchIn.FilePath`) reads the same `AppPaths.Current`, so one call moves everything.
 
 ## AppPaths
 
@@ -81,14 +78,9 @@ Normal runs keep the locations the app has always used, so existing data is foun
 <dir>\Machine\      what the sandboxed machine sees: LocalLow\VRChat\VRChat\, Local\openvr\, ...
 ```
 
-With `isolated: true` (the default, and what `--data` uses) `Machine` is a `SandboxMachine` rooted at
-`<dir>\Machine`: VRChat's folder, SteamVR's path file, the registry and the process list are all empty unless a test
-puts something there. Nothing in the real profile is read or written, so a test launch cannot touch a user's takes,
-settings, VRChat or SteamVR. `isolated: false` keeps the app's files in the folder but looks at the real machine
-(a portable install).
+With `isolated: true` (the default, and what `--data` uses) `Machine` is a `SandboxMachine` rooted at `<dir>\Machine`: VRChat's folder, SteamVR's path file, the registry and the process list are all empty unless a test puts something there. Nothing in the real profile is read or written, so a test launch cannot touch a user's takes, settings, VRChat or SteamVR. `isolated: false` keeps the app's files in the folder but looks at the real machine (a portable install).
 
-`Settings.RecordingsDir` and `Settings.AvatarLibraryDir` remain the folders actually used (the user can change them);
-`AppPaths` only supplies their defaults.
+`Settings.RecordingsDir` and `Settings.AvatarLibraryDir` remain the folders actually used (the user can change them); `AppPaths` only supplies their defaults.
 
 ## IMachine
 
@@ -118,9 +110,7 @@ public sealed class SandboxMachine : IMachine          // tests, --data, UI prev
 }
 ```
 
-Files are read with `System.IO` as usual: a sandbox works because every path starts from one of its known folders or
-registry values. To fake an installed program in a test, create its files under the sandbox and (if the look-up uses
-the registry) call `SetRegistry`.
+Files are read with `System.IO` as usual: a sandbox works because every path starts from one of its known folders or registry values. To fake an installed program in a test, create its files under the sandbox and (if the look-up uses the registry) call `SetRegistry`.
 
 ## Looking things up
 
@@ -146,13 +136,11 @@ UnityProjects.Find(machine, extraPaths)   // List<UnityProjectInfo>, from Unity 
 UnityProjects.HasBridge(projectDir)
 ```
 
-`userPath` is `Settings.BlenderPath`: a `blender.exe` or the folder that holds it; it wins over everything found.
-`BlenderLocator` (`Vrmr.Export`) still opens exports in Blender and uses the same list.
+`userPath` is `Settings.BlenderPath`: a `blender.exe` or the folder that holds it; it wins over everything found. `BlenderLocator` (`Vrmr.Export`) still opens exports in Blender and uses the same list.
 
 ## EnvironmentProbe
 
-For the first-run guide and the status rows in Settings. It reports and never changes anything. Run it on a worker
-(it reads the registry and lists a few folders: tens of milliseconds, more with many Unity projects).
+For the first-run guide and the status rows in Settings. It reports and never changes anything. Run it on a worker (it reads the registry and lists a few folders: tens of milliseconds, more with many Unity projects).
 
 ```csharp
 public enum ProbeState { Ok, Attention, Missing, Unknown }
@@ -194,23 +182,21 @@ public static class EnvironmentProbe
 }
 ```
 
-| `Id` | Ok when | Optional |
-|---|---|---|
-| `steamvr` | SteamVR is installed (the summary says whether it is running) | yes |
-| `vrchat` | VRChat's data folder exists | no |
-| `vrchat.osc` | VRChat's own setting says OSC is on (`Unknown` when the setting cannot be read) | no |
-| `vrchat.log` | VRChat has written a log the app can follow | yes |
-| `blender` | at least one Blender was found | yes |
-| `unity` | at least one Unity project was found (`Attention` when none has the bridge) | yes |
-| `folder.recordings` | the takes folder exists or can be created, and is writable | no |
-| `folder.avatars` | the same for the avatar library folder | no |
-| `folder.appdata` | the same for the settings folder | no |
+| `Id`                | Ok when                                                                         | Optional |
+| ------------------- | ------------------------------------------------------------------------------- | -------- |
+| `steamvr`           | SteamVR is installed (the summary says whether it is running)                   | yes      |
+| `vrchat`            | VRChat's data folder exists                                                     | no       |
+| `vrchat.osc`        | VRChat's own setting says OSC is on (`Unknown` when the setting cannot be read) | no       |
+| `vrchat.log`        | VRChat has written a log the app can follow                                     | yes      |
+| `blender`           | at least one Blender was found                                                  | yes      |
+| `unity`             | at least one Unity project was found (`Attention` when none has the bridge)     | yes      |
+| `folder.recordings` | the takes folder exists or can be created, and is writable                      | no       |
+| `folder.avatars`    | the same for the avatar library folder                                          | no       |
+| `folder.appdata`    | the same for the settings folder                                                | no       |
 
-Writable is tested with a temporary file that Windows deletes when the handle closes; a folder that does not exist
-yet is judged by its nearest existing parent and is not created.
+Writable is tested with a temporary file that Windows deletes when the handle closes; a folder that does not exist yet is judged by its nearest existing parent and is not created.
 
-OSC: VRChat keeps the switch in its own settings (registry). The probe reads it and never writes it; the guide can
-only tell the user where to turn it on (Action Menu → Options → OSC → Enabled).
+OSC: VRChat keeps the switch in its own settings (registry). The probe reads it and never writes it; the guide can only tell the user where to turn it on (Action Menu → Options → OSC → Enabled).
 
 ## Settings
 
@@ -230,12 +216,8 @@ public sealed class Settings
 
 - Older files load as before; `SettingsMigrations` upgrades them step by step and is idempotent.
 - Keys the running version does not know are kept and written back, so two versions can share one file.
-- Folders that are still at their default are not written to the file: the file carries no machine paths until the
-  user picks a folder.
-- **Owned by the app:** window position, size and panel state live in `AppPaths.UiStateFile`. The retired WinForms
-  keys (`wx`, `wy`, `ww`, `wh`, `wmax`, `nlaHeight`) have no application-facing fields; loaded values are preserved
-  through the unknown-key round trip, and new settings files do not create them. `LastScene` remains a legacy field.
-  Do not add UI state to `Settings`.
+- Folders that are still at their default are not written to the file: the file carries no machine paths until the user picks a folder.
+- **Owned by the app:** window position, size and panel state live in `AppPaths.UiStateFile`. The retired WinForms keys (`wx`, `wy`, `ww`, `wh`, `wmax`, `nlaHeight`) have no application-facing fields; loaded values are preserved through the unknown-key round trip, and new settings files do not create them. `LastScene` remains a legacy field. Do not add UI state to `Settings`.
 
 ## Avatars
 
@@ -260,13 +242,7 @@ public sealed class MannequinMesh                   // Vrmr.Avatars: built in co
 }
 ```
 
-The mannequin has no FBX, so `AvatarMeshLoader.ForProfile` returns null for it; a view that wants a mesh checks
-`Mannequin.Is(profile)` first and draws `MannequinMesh.For(profile)` (about 5,000 vertices, 10,000 triangles).
-Skinning is one node per vertex: `world = nodePos + nodeRot * restRot⁻¹ * (position − restPos) * scale`, with the
-profile's `RestWorldPos/Rot` and the node transforms of `BakedClip.EvaluateNodes`. `Skin` does exactly that on the
-CPU without allocating; a GPU view uploads `Positions`, `Normals`, `Node` and `Color` once and does the same in the
-vertex shader. `AvatarProfile.Generic(eyeHeight)`, the fallback the solver uses for a take with no avatar at all, is
-the same mannequin sized to that eye height.
+The mannequin has no FBX, so `AvatarMeshLoader.ForProfile` returns null for it; a view that wants a mesh checks `Mannequin.Is(profile)` first and draws `MannequinMesh.For(profile)` (about 5,000 vertices, 10,000 triangles). Skinning is one node per vertex: `world = nodePos + nodeRot * restRot⁻¹ * (position − restPos) * scale`, with the profile's `RestWorldPos/Rot` and the node transforms of `BakedClip.EvaluateNodes`. `Skin` does exactly that on the CPU without allocating; a GPU view uploads `Positions`, `Normals`, `Node` and `Color` once and does the same in the vertex shader. `AvatarProfile.Generic(eyeHeight)`, the fallback the solver uses for a take with no avatar at all, is the same mannequin sized to that eye height.
 
 ```csharp
 library.BuiltIn                         // the mannequin's AvatarEntry (BuiltIn == true; cannot be removed or saved)
@@ -279,19 +255,11 @@ entry.Aliases                           // names that mean this base model (was 
 entry.FaceMesh                          // the mesh with the face-tracking shapes, found at import
 ```
 
-Aliases replace the table of names that used to be in the code. At import they are taken from the package's own
-names (`AvatarAliases`): the model file, the prefabs that use the model, the package file; a name counts only when one
-meaningful word is left after dropping version numbers and generic words. An avatar worn in VRChat whose name
-contains an alias is matched to that entry. Entry files written before this keep working: their `match` list is read
-as aliases (and still written, so a build from before the change keeps its names too).
+Aliases replace the table of names that used to be in the code. At import they are taken from the package's own names (`AvatarAliases`): the model file, the prefabs that use the model, the package file; a name counts only when one meaningful word is left after dropping version numbers and generic words. An avatar worn in VRChat whose name contains an alias is matched to that entry. Entry files written before this keep working: their `match` list is read as aliases (and still written, so a build from before the change keeps its names too).
 
-`FaceMeshFor` is what `Settings.FaceMeshPath == ""` means: the entry's `FaceMesh`, found by `FaceMeshFinder` at
-import (for entries imported earlier, on first use, by reading the FBX once: call it from a worker), else the mesh of
-the skeleton with the most face shapes, else `FaceMeshFinder.Fallback`. The exporters still take a plain mesh path;
-whoever fills their options calls `library.FaceMeshFor(profile, settings.FaceMeshPath)`.
+`FaceMeshFor` is what `Settings.FaceMeshPath == ""` means: the entry's `FaceMesh`, found by `FaceMeshFinder` at import (for entries imported earlier, on first use, by reading the FBX once: call it from a worker), else the mesh of the skeleton with the most face shapes, else `FaceMeshFinder.Fallback`. The exporters still take a plain mesh path; whoever fills their options calls `library.FaceMeshFor(profile, settings.FaceMeshPath)`.
 
-`BlenderLocator.OpenExport(manifest, inUnityProject, settings.BlenderPath)` opens an export in the user's Blender, or
-the best one found.
+`BlenderLocator.OpenExport(manifest, inUnityProject, settings.BlenderPath)` opens an export in the user's Blender, or the best one found.
 
 ## Capture helpers
 
@@ -300,20 +268,14 @@ int n = openVr.CopyDevices(buffer, DeviceFilter.Connected);   // fills caller-ow
 int n = openVr.CopyDevices(buffer, DeviceFilter.TrackedBody); // HMD, controllers, trackers with a valid pose
 ```
 
-`buffer` is a `OpenVRSource.Device[]` the caller keeps (64 is always enough: `OpenVRSource.MaxDevices`); null slots
-are filled on first use. `Devices()` and `Snapshot()` still exist for one-off use; a view that refreshes on a timer
-or per frame should use `CopyDevices`.
+`buffer` is a `OpenVRSource.Device[]` the caller keeps (64 is always enough: `OpenVRSource.MaxDevices`); null slots are filled on first use. `Devices()` and `Snapshot()` still exist for one-off use; a view that refreshes on a timer or per frame should use `CopyDevices`.
 
-`OpenVRSource.OnHand` now hands out arrays that are reused for the next sample: a handler that keeps them copies
-them (the recorder does). `VrcLogTailer` can be pointed at any folder and driven by hand for tests:
-`new VrcLogTailer(folder, startThread: false)` and `Poll()`.
+`OpenVRSource.OnHand` now hands out arrays that are reused for the next sample: a handler that keeps them copies them (the recorder does). `VrcLogTailer` can be pointed at any folder and driven by hand for tests: `new VrcLogTailer(folder, startThread: false)` and `Poll()`.
 
 ```csharp
 EfficiencyMode.Update(windowActive, minimised, recording);    // call when any of the three changes
 ```
 
-It asks Windows for efficiency mode (EcoQoS) while the window is in the background and nothing is being recorded,
-and leaves it otherwise. The capture threads opt out on their own, so live data keeps its timing while the UI and
-the workers are throttled. On systems without the feature the call does nothing.
+It asks Windows for efficiency mode (EcoQoS) while the window is in the background and nothing is being recorded, and leaves it otherwise. The capture threads opt out on their own, so live data keeps its timing while the UI and the workers are throttled. On systems without the feature the call does nothing.
 
 `--no-capture` needs no API: the app simply does not call `Recorder.Start()`.

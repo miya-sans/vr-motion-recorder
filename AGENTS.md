@@ -58,6 +58,9 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and [docs/archite
 
 ## Project constraints
 
+- Build the primary capture workflow around SteamVR alone. Avatar selection, tracker assignment, calibration, recording and export must work with VRChat closed. Keep VRChat video player events, HUMR and OSC optional.
+- The take format is under development. Changes may break older takes without a compatibility reader or migration. Store the inputs needed to reproduce a standalone solve in the take itself.
+- Defer physics until a concrete capture or editing need justifies it.
 - Preserve raw recordings. Scene edits must not change recorded inputs, and solving must remain deterministic for the same inputs.
 - Follow the existing read-only interaction with VRChat and SteamVR; preserve explicitly enabled face replay behavior.
 - Avoid per-frame allocations in capture, solve inner loops, and drawing. Keep solves, file reads, and exports off the UI thread, and redraw only when needed.
