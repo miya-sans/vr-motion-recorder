@@ -1,2 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Preserve unused locals and fields in the derived solver code. -->
+    <NoWarn>$(NoWarn);0168;0219;0414;0649</NoWarn>
+  </PropertyGroup>
 </Project>

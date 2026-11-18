@@ -9,8 +9,8 @@
     <Deterministic>true</Deterministic>
     <InvariantGlobalization>false</InvariantGlobalization>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <!-- 1591 missing XML docs; 0168/0219/0414/0649 unused locals and fields in the solver code -->
-    <NoWarn>$(NoWarn);1591;0168;0219;0414;0649;CA1416</NoWarn>
+    <!-- 1591 missing XML docs; CA1416 platform compatibility -->
+    <NoWarn>$(NoWarn);1591;CA1416</NoWarn>
     <!-- all build output under artifacts/ (bin, obj, publish), nothing next to the sources -->
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
