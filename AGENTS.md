@@ -29,6 +29,16 @@ These conventions reflect the repository's Rider cleanup, rather than assumption
 
 Apply these conventions to new or changed code without running a repository-wide cleanup for an unrelated task. In `Vrmr.Fbik`, retain the current Rider-cleaned layout and the existing naming exceptions; do not restore the older compressed formatting.
 
+## Build warnings and analyzers
+
+- **Warning policy:** do not introduce new warnings. Fix warnings caused by the current change and report pre-existing warnings separately. Avoid unrelated warning cleanup; an existing warning count is not a permanent allowed baseline.
+- **Obsolete APIs (`SYSLIB0014`, `CS0618`):** use supported APIs when writing or modifying affected code: `HttpClient` for HTTP requests, `SKFont` for glyph lookup, and bitmap saving overloads accepting `BitmapEncoderOptions`. Preserve existing timeout, cancellation, resource ownership, and output behavior during migrations.
+- **Async tests (`xUnit1031`):** use `async Task` tests and await asynchronous operations. Avoid `.Result`, `.Wait()`, and `.GetAwaiter().GetResult()` in tests. Preserve UI-thread dispatch requirements; do not copy synchronous infrastructure bridges into new tests.
+- **Collection assertions (`xUnit2029`):** use `Assert.DoesNotContain(collection, predicate)` to assert that matching elements are absent. Keep `Assert.Empty` for assertions that an entire collection is empty.
+- **WinForms DPI (`WFO0003`):** configure high DPI through `ApplicationHighDpiMode` or `Application.SetHighDpiMode`, without duplicating DPI settings in the manifest.
+- **Compatibility names (`CS8981`):** preserve deliberate Unity.Mathematics-compatible shim names such as `math` and `quaternion`. Do not rename them solely to silence warnings or extend this naming convention to ordinary application types.
+- **Suppressions:** prefer fixing the cause. Any necessary new suppression must cover the smallest practical scope and explain the compatibility requirement; do not broadly disable analyzers or add solution-wide suppressions.
+
 ## Repository layout and boundaries
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and [docs/architecture.md](docs/architecture.md) for dependencies and data flow.
@@ -73,6 +83,6 @@ Other useful checks:
 - Integration packaging: `python integrations/package.py dist`.
 - Run the existing app: `dotnet run --project src/Vrmr.App.WinForms -c Release`.
 
-Run validation appropriate to the change; documentation-only edits do not require building or running tests. Report what was checked and any checks that could not run.
+Run validation appropriate to the change; documentation-only edits do not require building or running tests. Report what was checked and any checks that could not run. Distinguish new warnings from pre-existing warnings in validation reports.
 
 For changes that could affect solved motion, follow the regression procedure in `CONTRIBUTING.md`: produce before and after dumps using `vrmr dump <takesDir> <outDir>`, then compare with `python tools/compare_dumps.py <before> <after>`. Use copies of available takes, and report if suitable data is unavailable. Changes not intended to alter motion must produce `IDENTICAL`; intentional changes must describe the measured difference.
