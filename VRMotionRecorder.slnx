@@ -9,7 +9,6 @@
     <Project Path="src/Vrmr.Scene/Vrmr.Scene.csproj" />
     <Project Path="src/Vrmr.Export/Vrmr.Export.csproj" />
     <Project Path="src/Vrmr.Cli/Vrmr.Cli.csproj" />
-    <Project Path="src/Vrmr.App.WinForms/Vrmr.App.WinForms.csproj" />
     <Project Path="src/Vrmr.App/Vrmr.App.csproj" />
     <Project Path="src/Vrmr.Render/Vrmr.Render.csproj" />
   </Folder>

@@ -35,7 +35,6 @@ Apply these conventions to new or changed code without running a repository-wide
 - **Obsolete APIs (`SYSLIB0014`, `CS0618`):** use supported APIs when writing or modifying affected code: `HttpClient` for HTTP requests, `SKFont` for glyph lookup, and bitmap saving overloads accepting `BitmapEncoderOptions`. Preserve existing timeout, cancellation, resource ownership, and output behavior during migrations.
 - **Async tests (`xUnit1031`):** use `async Task` tests and await asynchronous operations. Avoid `.Result`, `.Wait()`, and `.GetAwaiter().GetResult()` in tests. Preserve UI-thread dispatch requirements; do not copy synchronous infrastructure bridges into new tests.
 - **Collection assertions (`xUnit2029`):** use `Assert.DoesNotContain(collection, predicate)` to assert that matching elements are absent. Keep `Assert.Empty` for assertions that an entire collection is empty.
-- **WinForms DPI (`WFO0003`):** configure high DPI through `ApplicationHighDpiMode` or `Application.SetHighDpiMode`, without duplicating DPI settings in the manifest.
 - **Compatibility names (`CS8981`):** preserve deliberate Unity.Mathematics-compatible shim names such as `math` and `quaternion`. Do not rename them solely to silence warnings or extend this naming convention to ordinary application types.
 - **Suppressions:** prefer fixing the cause. Any necessary new suppression must cover the smallest practical scope and explain the compatibility requirement; do not broadly disable analyzers or add solution-wide suppressions.
 
@@ -48,7 +47,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and [docs/archite
 - `src/Vrmr.Capture`: OpenVR, OSC, VRChat logs, and recording.
 - `src/Vrmr.Avatars`, `src/Vrmr.Scene`, and `src/Vrmr.Export`: avatar loading, scene evaluation, and exporters.
 - `src/Vrmr.Render` and `src/Vrmr.App`: GPU rendering and the Avalonia app. Follow [docs/ui-design.md](docs/ui-design.md) for UI changes.
-- `src/Vrmr.App.WinForms`: the existing WinForms app, frozen during the Avalonia migration. Consult [docs/STATUS.md](docs/STATUS.md) before UI work.
+- Avalonia is the only desktop UI. Consult [docs/STATUS.md](docs/STATUS.md) for unfinished features; implement desktop UI work in `src/Vrmr.App`.
 - `src/Vrmr.Cli`: command-line tools. Keep shared libraries independent of the apps and preserve the CLI's cross-platform build.
 - `integrations/blender` and `integrations/unity`: separate integrations outside the .NET solution; read their READMEs before changing them.
 - `tests/Vrmr.Tests`, `tests/Vrmr.App.Tests`, and `tests/Vrmr.Render.Tests`: library, app, and renderer tests.
@@ -81,7 +80,7 @@ Other useful checks:
 
 - Cross-platform libraries and CLI: `dotnet build src/Vrmr.Cli/Vrmr.Cli.csproj -c Release`.
 - Integration packaging: `python integrations/package.py dist`.
-- Run the existing app: `dotnet run --project src/Vrmr.App.WinForms -c Release`.
+- Run the desktop app: `dotnet run --project src/Vrmr.App -c Release`.
 
 Run validation appropriate to the change; documentation-only edits do not require building or running tests. Report what was checked and any checks that could not run. Distinguish new warnings from pre-existing warnings in validation reports.
 

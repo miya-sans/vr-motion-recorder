@@ -20,7 +20,6 @@ Dependencies point downwards only. Nothing depends on the app.
 | `Vrmr.Render` | GPU renderer and the 3D view control | Core, Model, Avatars |
 | `Vrmr.App` | The desktop app (Avalonia): views, view-models, services | everything above |
 | `Vrmr.Cli` | `vrmr`: command-line access for tests, batch work and benchmarks | everything but Capture, Render, App |
-| `Vrmr.App.WinForms` | The previous UI. Frozen; it stays until the Avalonia app has replaced every feature, then it is removed | everything but Render, App |
 | `tests/Vrmr.Tests` | Unit and synthetic end-to-end tests | the libraries |
 
 The integrations live outside the solution, in their own languages: `integrations/blender` (Python add-on) and

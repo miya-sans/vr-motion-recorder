@@ -12,7 +12,7 @@ git clone https://github.com/miya-sans/vrc-motion-recorder
 cd vrc-motion-recorder
 dotnet build VRMotionRecorder.slnx -c Release
 dotnet test --solution VRMotionRecorder.slnx -c Release
-dotnet run --project src/Vrmr.App.WinForms -c Release
+dotnet run --project src/Vrmr.App -c Release
 ```
 
 `build.cmd` does the build and the tests in one go on Windows. All build output goes to `artifacts/`.

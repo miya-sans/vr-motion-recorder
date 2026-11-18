@@ -3,6 +3,9 @@
 Every feature of the previous (WinForms) UI's Takes mode, settings and export, where it lives in the Avalonia app,
 and its state. The Scene (NLA) workspace has its own table once it is ported.
 
+The previous UI has been removed. This checklist remains a historical feature reference and a backlog for the
+Avalonia app; unfinished features have no fallback desktop implementation.
+
 **States.** *Done*: built and exercised on a copy of a real take (or, where no take is involved, in the running
 window). *Built*: in the app and covered by tests on a made-up take, not yet exercised on a real one. *Simulated*:
 built and exercised with generated data through the recorder's real sources (SteamVR devices fed with

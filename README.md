@@ -9,7 +9,7 @@ running. It solves the body on your avatar's own skeleton the way VRChat does, l
 arrange them in a scene editor, and exports FBX and Unity animation clips. A Blender add-on and a Unity package
 carry the result through to editing and rendering.
 
-> **Status:** interim version. The working app is the WinForms one in `src/Vrmr.App.WinForms`; the new app, the GPU renderer and the in-software Humanoid clip are in progress. See [docs/STATUS.md](docs/STATUS.md).
+> **Status:** interim version. Avalonia (`src/Vrmr.App`) is the only desktop app. The Scene workspace, pose tool and layer recorder are not yet available; the GPU renderer and in-software Humanoid clip are still in progress. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Who it is for
 
@@ -103,8 +103,9 @@ Two options are useful for trying things out; with `dotnet run`, put them after 
 **Editing**
 
 - Trim, cut and place takes, with undo. Nothing changes the recording.
-- A scene editor with tracks and strips: cuts and scored transitions, body-part layers, keyframes with an IK pose
-  tool, re-recording parts of the body, editing what the solve is fed, foot lock.
+- Planned for the Avalonia app: a scene editor with tracks and strips, scored transitions, body-part layers,
+  keyframes with an IK pose tool, re-recording, input editing and foot lock. The scene engine exists, but its desktop
+  workspace is not yet available.
 
 **Export and pipeline**
 
@@ -132,7 +133,7 @@ You need the [.NET SDK 10](https://dotnet.microsoft.com/download) or later.
 ```
 git clone https://github.com/miya-sans/vrc-motion-recorder
 cd vrc-motion-recorder
-dotnet run --project src/Vrmr.App.WinForms -c Release
+dotnet run --project src/Vrmr.App -c Release
 ```
 
 [CONTRIBUTING.md](CONTRIBUTING.md) covers tests, the project layout and the rules for contributions.

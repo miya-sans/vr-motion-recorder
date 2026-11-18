@@ -1,5 +1,8 @@
 # Scenes
 
+> **Availability:** the Avalonia Scene workspace, pose tool and layer recorder are not yet implemented. This page
+> describes the scene engine and intended editing workflow; there is no alternative desktop scene editor in this repository.
+
 A scene arranges takes on tracks, in the manner of a non-linear animation (NLA) editor: cut and join them, layer
 body parts from different takes, add keyframes, re-record parts, and export the whole thing. **Takes are only
 read.** Cutting, moving or deleting strips, layering, keyframing and re-recording never change a recording.

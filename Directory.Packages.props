@@ -12,7 +12,6 @@
     <!-- rendering and images -->
     <PackageVersion Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageVersion Include="SkiaSharp" Version="4.157.0" />
-    <PackageVersion Include="System.Drawing.Common" Version="10.0.15" />
     <!-- tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
     <PackageVersion Include="Avalonia.Headless" Version="12.1.6" />

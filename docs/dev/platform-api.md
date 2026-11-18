@@ -233,7 +233,7 @@ public sealed class Settings
 - Folders that are still at their default are not written to the file: the file carries no machine paths until the
   user picks a folder.
 - **Owned by the app, not by `Settings`:** window position and size (`WindowX`, `WindowY`, `WindowW`, `WindowH`,
-  `WindowMax`), `NlaHeight`, `LastScene`. They stay readable for the previous UI. The new app keeps its own window and
+  `WindowMax`), `NlaHeight`, `LastScene`. They stay readable for settings-file compatibility. The Avalonia app keeps its own window and
   panel state in `AppPaths.UiStateFile` and should not add UI state to `Settings`.
 
 ## Avatars
