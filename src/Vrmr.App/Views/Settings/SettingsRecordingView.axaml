@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Settings.SettingsRecordingView"
+             x:DataType="vm:SettingsRecordingViewModel">
+  <!-- Recording: what starts and stops a take, the preview while recording, and the calibrations saved along the way. -->
+  <StackPanel>
+    <c:Section Header="Start and stop" StateKey="settings.recording.start">
+      <StackPanel>
+        <c:FieldRow Label="Global hotkey" CanReset="{Binding HotkeyChanged}" ResetCommand="{Binding ResetHotkeyCommand}"
+                    ToolTip.Tip="A key that starts and stops recording from anywhere, also while VRChat has the focus. Type it (F9, Ctrl+Shift+R), or use Press to set.">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox x:Name="HotkeyBox" Text="{Binding Hotkey, UpdateSourceTrigger=LostFocus}" PlaceholderText="None" />
+            <c:IconToggle Grid.Column="1" x:Name="CaptureToggle" Classes="outlined" Icon="{DynamicResource Icon.Keyboard}" Content="Press to set" Margin="{DynamicResource GapLeft}"
+                          ToolTip.Tip="Click, then press the key or the combination to use. Tab or Esc leaves the hotkey as it is." />
+          </Grid>
+        </c:FieldRow>
+        <TextBlock Text="{Binding HotkeyProblem}" Classes="note warning" IsVisible="{Binding HasHotkeyProblem}" />
+        <TextBlock Text="{Binding HotkeyNote}" Classes="note" />
+        <c:FieldRow Label="Avatar toggle parameter"
+                    ToolTip.Tip="An avatar parameter (a bool) that starts and stops recording when it changes: add a toggle with this name to your avatar's menu to record from inside VRChat. Leave it empty to switch this off.">
+          <TextBox Text="{Binding TriggerParameter, UpdateSourceTrigger=LostFocus}" PlaceholderText="None" />
+        </c:FieldRow>
+        <CheckBox Content="Follow the world's HUMR recorder" IsChecked="{Binding FollowHumr}"
+                  ToolTip.Tip="In a world with a HUMR recorder, recording starts and stops together with the world's record button." />
+      </StackPanel>
+    </c:Section>
+
+    <c:Section Header="While recording" StateKey="settings.recording.preview">
+      <CheckBox Content="3D preview while recording" IsChecked="{Binding PreviewWhileRecording}"
+                ToolTip.Tip="On: the 3D view follows you while recording, at 15 frames a second. Off: it updates 4 times a second, which leaves more of the computer to VRChat. The recording itself is the same either way." />
+    </c:Section>
+
+    <c:Section Header="Calibration" StateKey="settings.recording.calibration">
+      <StackPanel>
+        <CheckBox Content="Save every VRChat calibration" IsChecked="{Binding SaveCalibrations}"
+                  ToolTip.Tip="Each time you calibrate full-body tracking in VRChat, where your trackers were is saved to the calibration library, so takes can be solved with it later." />
+        <CheckBox Content="New takes use the latest calibration" IsChecked="{Binding UseLatestCalibration}"
+                  ToolTip.Tip="A new take is linked to the newest calibration in the library that fits it. Off: pick the calibration for each take in the inspector." />
+      </StackPanel>
+    </c:Section>
+  </StackPanel>
+</UserControl>

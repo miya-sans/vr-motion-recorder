@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:VRMR.App.Controls"
+        xmlns:vm="using:VRMR.App.ViewModels"
+        xmlns:v="using:VRMR.App.Views"
+        xmlns:takes="using:VRMR.App.Views.Takes"
+        xmlns:scene="using:VRMR.App.Views.Scene"
+        xmlns:vp="using:VRMR.App.Viewport"
+        x:Class="VRMR.App.Views.MainWindow"
+        x:DataType="vm:ShellViewModel"
+        Title="VR Motion Recorder"
+        Icon="/Assets/vrmr.ico"
+        Width="1400" Height="860" MinWidth="1100" MinHeight="700">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- ============================================================ top bar -->
+    <Border Grid.Row="0" Classes="panel" Height="{DynamicResource TopBarHeight}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="12,0">
+        <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}" Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
+                      Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}" ToolTip.Tip="{Binding RecordTip}" MinWidth="116" VerticalAlignment="Center"
+                      FontFeatures="{DynamicResource TabularFigures}" />
+        <c:SegmentedControl Grid.Column="1" x:Name="WorkspaceSwitch" IsVisible="{Binding SceneAvailable}" SelectedIndex="{Binding WorkspaceIndex}" Margin="16,0,0,0" VerticalAlignment="Center" MinWidth="160">
+          <ListBoxItem ToolTip.Tip="Record, trim and solve single takes">Takes</ListBoxItem>
+          <ListBoxItem ToolTip.Tip="Arrange takes on tracks, blend and keyframe them">Scene</ListBoxItem>
+        </c:SegmentedControl>
+        <ItemsControl Grid.Column="3" ItemsSource="{Binding Sources}" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="6" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SourcePillViewModel">
+              <c:StatusPill Label="{Binding Label}" StateText="{Binding StateText}" State="{Binding Level}" AutomationProperties.Name="{Binding Label}">
+                <c:StatusPill.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight" ShowMode="TransientWithDismissOnPointerMoveAway">
+                    <StackPanel MaxWidth="320" Spacing="8">
+                      <TextBlock Text="{Binding Label}" Classes="title" />
+                      <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" LineHeight="18" />
+                      <Border Classes="card" IsVisible="{Binding HasFix}">
+                        <Grid ColumnDefinitions="Auto,*">
+                          <c:Icon Data="{DynamicResource Icon.Info}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top" Margin="0,2,8,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Fix}" TextWrapping="Wrap" LineHeight="18" />
+                        </Grid>
+                      </Border>
+                    </StackPanel>
+                  </Flyout>
+                </c:StatusPill.Flyout>
+              </c:StatusPill>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" Margin="12,0,0,0" VerticalAlignment="Center">
+          <c:IconButton Icon="{DynamicResource Icon.Settings}" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings (Ctrl+,)" />
+          <c:IconButton Icon="{DynamicResource Icon.Help}" Command="{Binding ToggleHelpCommand}" ToolTip.Tip="Keyboard shortcuts and help (F1)" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ============================================================ workspace -->
+    <Grid Grid.Row="1" x:Name="MainGrid" ColumnDefinitions="260,Auto,*,Auto,320">
+      <!-- library -->
+      <Border Grid.Column="0" x:Name="LibraryHost" Classes="panel" IsVisible="{Binding LibraryOpen}">
+        <v:LibraryPanel DataContext="{Binding Library}" />
+      </Border>
+      <GridSplitter Grid.Column="1" x:Name="LibrarySplitter" Width="1" ResizeDirection="Columns" IsVisible="{Binding LibraryOpen}" />
+
+      <!-- centre: view, transport, timeline -->
+      <Grid Grid.Column="2" x:Name="CentreGrid" RowDefinitions="*,Auto,Auto,168">
+        <Panel Grid.Row="0" x:Name="ViewHost" ClipToBounds="True">
+          <vp:GpuView x:Name="View" />
+          <!-- Takes: overlay controls of the 3D view -->
+          <Panel IsVisible="{Binding IsTakes}">
+            <takes:ViewOverlay DataContext="{Binding Takes}" />
+          </Panel>
+          <scene:SceneWorkspaceView x:Name="SceneView" IsVisible="{Binding IsScene}" />
+          <!-- panel fold buttons -->
+          <c:IconButton Icon="{DynamicResource Icon.PanelLeft}" Command="{Binding ToggleLibraryCommand}" ToolTip.Tip="Show or hide the library (Ctrl+1)"
+                        HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8" />
+          <c:IconButton Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}" ToolTip.Tip="Show or hide the inspector (Ctrl+2)"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" />
+          <v:ToastHost VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16" />
+        </Panel>
+        <Border Grid.Row="1" Classes="panel" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineTop}">
+          <Panel>
+            <Panel IsVisible="{Binding IsTakes}">
+              <takes:TransportBar DataContext="{Binding Takes}" />
+            </Panel>
+            <ContentControl x:Name="SceneTransportHost" IsVisible="{Binding IsScene}" />
+          </Panel>
+        </Border>
+        <GridSplitter Grid.Row="2" x:Name="TimelineSplitter" Height="1" ResizeDirection="Rows" IsVisible="{Binding TimelineOpen}" />
+        <Panel Grid.Row="3" x:Name="TimelineHost" IsVisible="{Binding TimelineOpen}">
+          <c:TimelineControl x:Name="Timeline" Model="{Binding Takes.Timeline}" IsVisible="{Binding IsTakes}" />
+          <ContentControl x:Name="SceneTimelineHost" IsVisible="{Binding IsScene}" />
+        </Panel>
+      </Grid>
+
+      <!-- inspector -->
+      <GridSplitter Grid.Column="3" x:Name="InspectorSplitter" Width="1" ResizeDirection="Columns" IsVisible="{Binding InspectorOpen}" />
+      <Border Grid.Column="4" x:Name="InspectorHost" Classes="panel" IsVisible="{Binding InspectorOpen}">
+        <Panel>
+          <Panel IsVisible="{Binding IsTakes}">
+            <takes:TakesInspector x:Name="TakesInspectorView" DataContext="{Binding Takes}" />
+          </Panel>
+          <ContentControl x:Name="SceneInspectorHost" IsVisible="{Binding IsScene}" />
+        </Panel>
+      </Border>
+
+      <!-- pages over the workspace -->
+      <ContentControl Grid.ColumnSpan="5" x:Name="PageHost" IsVisible="{Binding SettingsOpen}" />
+      <ContentControl Grid.ColumnSpan="5" x:Name="FirstRunHost" IsVisible="{Binding FirstRun.IsOpen}" />
+      <v:HelpOverlay Grid.ColumnSpan="5" IsVisible="{Binding HelpOpen}" />
+    </Grid>
+
+    <!-- ============================================================ status bar -->
+    <Border Grid.Row="2" Classes="panel" Height="{DynamicResource StatusBarHeight}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineTop}">
+      <Grid ColumnDefinitions="*,Auto,Auto" Margin="12,0">
+        <TextBlock x:Name="StatusMessage" Text="{Binding StatusText}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   Classes.error="{Binding StatusKind, Converter={x:Static v:Converters.IsError}}"
+                   Classes.warning="{Binding StatusKind, Converter={x:Static v:Converters.IsWarning}}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding HasProgress}" Margin="12,0">
+          <TextBlock Text="{Binding ProgressText}" Classes="secondary" VerticalAlignment="Center" />
+          <ProgressBar Width="120" Minimum="0" Maximum="1" Value="{Binding ProgressValue}" IsIndeterminate="{Binding ProgressIndeterminate}" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" DataContext="{Binding Takes}">
+          <ProgressBar Width="80" Minimum="0" Maximum="1" Value="{Binding SolveProgress}" IsVisible="{Binding IsSolving}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding SolveText}" Classes="secondary tabular" VerticalAlignment="Center" Classes.error="{Binding SolveFailed}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

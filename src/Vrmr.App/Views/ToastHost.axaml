@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.ToastHost"
+             x:DataType="vm:ShellViewModel">
+  <!-- Short messages over the view: a result worth a glance, or an error with what to do next. -->
+  <ItemsControl ItemsSource="{Binding Toasts}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Spacing="8" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="vm:ToastViewModel">
+        <Border Classes="popover" MaxWidth="520" MinWidth="240" BoxShadow="0 6 20 0 #55000000">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <Panel VerticalAlignment="Top" Margin="0,2,10,0">
+              <c:Icon Data="{DynamicResource Icon.Info}" Foreground="{DynamicResource AccentBrush}" />
+              <c:Icon Data="{DynamicResource Icon.Warning}" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsWarning}" />
+              <c:Icon Data="{DynamicResource Icon.Warning}" Foreground="{DynamicResource RecordBrush}" IsVisible="{Binding IsError}" />
+              <c:Icon Data="{DynamicResource Icon.Check}" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSuccess}" />
+            </Panel>
+            <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" LineHeight="18" />
+            <Button Grid.Column="2" Classes="link" Content="{Binding ActionLabel}" Command="{Binding RunCommand}" IsVisible="{Binding HasAction}" Margin="12,0,0,0" VerticalAlignment="Center" />
+            <c:IconButton Grid.Column="3" Icon="{DynamicResource Icon.Close}" Command="{Binding CloseCommand}" ToolTip.Tip="Dismiss" Margin="8,-4,-6,-4" VerticalAlignment="Top" />
+          </Grid>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

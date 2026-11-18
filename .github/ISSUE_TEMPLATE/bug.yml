@@ -1,0 +1,94 @@
+name: Bug report
+description: Something does not work, or the recorded motion looks wrong.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The more of this you can fill in, the faster the problem can be found.
+
+        **Before you attach anything:** a take (`.vrmr`) holds your motion, your avatar's id and name, the world
+        name, your VRChat display name and your devices' serial numbers. A scene file links to takes by path. Only
+        attach files you are comfortable sharing in public, and never attach avatar files (FBX, textures, packages).
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Shown in Settings → About. For a build from source, the commit.
+      placeholder: "0.9.0"
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+  - type: input
+    id: steamvr-version
+    attributes:
+      label: SteamVR version
+      description: Leave empty if SteamVR was not running.
+      placeholder: "2.12.14"
+  - type: input
+    id: vrchat-version
+    attributes:
+      label: VRChat version
+      description: The build shown in VRChat's settings, or "Live" / "Open Beta".
+      placeholder: "2026.4.1"
+  - type: input
+    id: headset
+    attributes:
+      label: Headset
+      placeholder: "Model, and how it is tracked (lighthouse, inside-out, ...)"
+  - type: input
+    id: controllers
+    attributes:
+      label: Controllers
+      placeholder: "Model"
+  - type: input
+    id: trackers
+    attributes:
+      label: Body trackers
+      description: How many, which model, and where they are worn.
+      placeholder: "3 (hips, both feet), model ..."
+  - type: input
+    id: face-tracker
+    attributes:
+      label: Face tracking
+      description: The device and the VRCFaceTracking version, if you use face tracking.
+      placeholder: "None"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead. Steps that reproduce it are the most useful thing here.
+      placeholder: |
+        1. ...
+        2. ...
+        Expected: ...
+        Got: ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt
+      description: |
+        The part of `%APPDATA%\VRMotionRecorder\vrmr.log` around the problem. The file is rewritten every time the app starts, so copy it before you restart. Read it through first: it can contain folder paths with your Windows user name, avatar names and world names. Remove what you do not want to share.
+      render: text
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, a short take that shows the problem (see the note at the top), the avatar's base model if it matters.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I looked for an existing issue about this.
+          required: true
+        - label: Nothing I attached contains files or personal details I do not want to be public.
+          required: true

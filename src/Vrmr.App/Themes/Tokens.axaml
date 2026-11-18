@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- The design tokens of docs/ui-design.md. Views use these keys only: no colour, size or font literals in views. -->
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="BgColor">#121317</Color>
+      <Color x:Key="SurfaceColor">#1A1B21</Color>
+      <Color x:Key="RaisedColor">#21232A</Color>
+      <Color x:Key="HoverColor">#2A2C35</Color>
+      <Color x:Key="PressedColor">#32343F</Color>
+      <Color x:Key="BorderColor">#30323C</Color>
+      <Color x:Key="TextColor">#E4E6EC</Color>
+      <Color x:Key="TextSecondaryColor">#9498A6</Color>
+      <Color x:Key="TextFaintColor">#646876</Color>
+      <Color x:Key="AccentColor">#6EA8FF</Color>
+      <Color x:Key="AccentHoverColor">#8AB9FF</Color>
+      <Color x:Key="AccentMutedColor">#34507F</Color>
+      <Color x:Key="OnAccentColor">#0E1420</Color>
+      <Color x:Key="RecordColor">#F04848</Color>
+      <Color x:Key="RecordHoverColor">#FF6060</Color>
+      <Color x:Key="SuccessColor">#56CE84</Color>
+      <Color x:Key="WarningColor">#F0BA50</Color>
+      <Color x:Key="LimbLeftColor">#60A0FF</Color>
+      <Color x:Key="LimbRightColor">#FF7474</Color>
+      <Color x:Key="VrcPoseColor">#B48CFF</Color>
+      <Color x:Key="StationColor">#96A0B9</Color>
+      <Color x:Key="ViewTopColor">#1B1D25</Color>
+      <Color x:Key="ViewBottomColor">#101116</Color>
+      <Color x:Key="GridColor">#2A2D38</Color>
+      <Color x:Key="ScrimColor">#B0080809</Color>
+      <Color x:Key="ShadowColor">#66000000</Color>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="BgColor">#EEF0F4</Color>
+      <Color x:Key="SurfaceColor">#FAFBFC</Color>
+      <Color x:Key="RaisedColor">#FFFFFF</Color>
+      <Color x:Key="HoverColor">#E6E9EF</Color>
+      <Color x:Key="PressedColor">#D9DDE6</Color>
+      <Color x:Key="BorderColor">#D2D6DF</Color>
+      <Color x:Key="TextColor">#1B1D23</Color>
+      <Color x:Key="TextSecondaryColor">#5A5F6E</Color>
+      <Color x:Key="TextFaintColor">#8A8FA0</Color>
+      <Color x:Key="AccentColor">#2F6FE0</Color>
+      <Color x:Key="AccentHoverColor">#4A85EE</Color>
+      <Color x:Key="AccentMutedColor">#C9DAFA</Color>
+      <Color x:Key="OnAccentColor">#FFFFFF</Color>
+      <Color x:Key="RecordColor">#D93636</Color>
+      <Color x:Key="RecordHoverColor">#E85050</Color>
+      <Color x:Key="SuccessColor">#1F9D57</Color>
+      <Color x:Key="WarningColor">#B97A10</Color>
+      <Color x:Key="LimbLeftColor">#2F6FE0</Color>
+      <Color x:Key="LimbRightColor">#D94F4F</Color>
+      <Color x:Key="VrcPoseColor">#7A4FD6</Color>
+      <Color x:Key="StationColor">#6F7890</Color>
+      <Color x:Key="ViewTopColor">#F4F5F8</Color>
+      <Color x:Key="ViewBottomColor">#DFE2E9</Color>
+      <Color x:Key="GridColor">#C9CDD8</Color>
+      <Color x:Key="ScrimColor">#80EEF0F4</Color>
+      <Color x:Key="ShadowColor">#33000000</Color>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Brushes -->
+  <SolidColorBrush x:Key="BgBrush" Color="{DynamicResource BgColor}" />
+  <SolidColorBrush x:Key="SurfaceBrush" Color="{DynamicResource SurfaceColor}" />
+  <SolidColorBrush x:Key="RaisedBrush" Color="{DynamicResource RaisedColor}" />
+  <SolidColorBrush x:Key="HoverBrush" Color="{DynamicResource HoverColor}" />
+  <SolidColorBrush x:Key="PressedBrush" Color="{DynamicResource PressedColor}" />
+  <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}" />
+  <SolidColorBrush x:Key="TextBrush" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource TextSecondaryColor}" />
+  <SolidColorBrush x:Key="TextFaintBrush" Color="{DynamicResource TextFaintColor}" />
+  <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}" />
+  <SolidColorBrush x:Key="AccentHoverBrush" Color="{DynamicResource AccentHoverColor}" />
+  <SolidColorBrush x:Key="AccentMutedBrush" Color="{DynamicResource AccentMutedColor}" />
+  <SolidColorBrush x:Key="OnAccentBrush" Color="{DynamicResource OnAccentColor}" />
+  <SolidColorBrush x:Key="RecordBrush" Color="{DynamicResource RecordColor}" />
+  <SolidColorBrush x:Key="RecordHoverBrush" Color="{DynamicResource RecordHoverColor}" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}" />
+  <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
+  <SolidColorBrush x:Key="LimbLeftBrush" Color="{DynamicResource LimbLeftColor}" />
+  <SolidColorBrush x:Key="LimbRightBrush" Color="{DynamicResource LimbRightColor}" />
+  <SolidColorBrush x:Key="VrcPoseBrush" Color="{DynamicResource VrcPoseColor}" />
+  <SolidColorBrush x:Key="StationBrush" Color="{DynamicResource StationColor}" />
+  <SolidColorBrush x:Key="GridBrush" Color="{DynamicResource GridColor}" />
+  <SolidColorBrush x:Key="ScrimBrush" Color="{DynamicResource ScrimColor}" />
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource AccentColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="RecordSoftBrush" Color="{DynamicResource RecordColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="SuccessSoftBrush" Color="{DynamicResource SuccessColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="WarningSoftBrush" Color="{DynamicResource WarningColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="NeutralSoftBrush" Color="{DynamicResource TextSecondaryColor}" Opacity="0.16" />
+  <LinearGradientBrush x:Key="ViewBackgroundBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="{DynamicResource ViewTopColor}" />
+    <GradientStop Offset="1" Color="{DynamicResource ViewBottomColor}" />
+  </LinearGradientBrush>
+
+  <!-- Type: Inter; 13 body, 12 secondary, 11 captions, 15 semibold section titles -->
+  <FontFamily x:Key="UiFont">fonts:Inter#Inter, Segoe UI, sans-serif</FontFamily>
+  <sys:Double x:Key="FontBody">13</sys:Double>
+  <sys:Double x:Key="FontSecondary">12</sys:Double>
+  <sys:Double x:Key="FontCaption">11</sys:Double>
+  <sys:Double x:Key="FontTitle">15</sys:Double>
+  <!-- numbers that change while playing use tabular figures so they do not jitter -->
+  <FontFeatureCollection x:Key="TabularFigures">tnum</FontFeatureCollection>
+
+  <!-- Spacing: a 4 px grid -->
+  <sys:Double x:Key="Space1">4</sys:Double>
+  <sys:Double x:Key="Space2">8</sys:Double>
+  <sys:Double x:Key="Space3">12</sys:Double>
+  <sys:Double x:Key="Space4">16</sys:Double>
+  <sys:Double x:Key="Space6">24</sys:Double>
+  <Thickness x:Key="Pad1">4</Thickness>
+  <Thickness x:Key="Pad2">8</Thickness>
+  <Thickness x:Key="Pad3">12</Thickness>
+  <Thickness x:Key="Pad4">16</Thickness>
+  <Thickness x:Key="PadPanel">12,8,12,12</Thickness>
+  <Thickness x:Key="PadControl">10,0</Thickness>
+  <Thickness x:Key="GapRow">0,0,0,8</Thickness>
+  <Thickness x:Key="GapRowSmall">0,0,0,4</Thickness>
+  <Thickness x:Key="GapLeft">8,0,0,0</Thickness>
+  <Thickness x:Key="GapLeftSmall">4,0,0,0</Thickness>
+  <Thickness x:Key="GapTop">0,8,0,0</Thickness>
+  <Thickness x:Key="GapTopSmall">0,4,0,0</Thickness>
+  <Thickness x:Key="Hairline">1</Thickness>
+  <Thickness x:Key="HairlineBottom">0,0,0,1</Thickness>
+  <Thickness x:Key="HairlineTop">0,1,0,0</Thickness>
+  <Thickness x:Key="HairlineLeft">1,0,0,0</Thickness>
+  <Thickness x:Key="HairlineRight">0,0,1,0</Thickness>
+
+  <!-- Sizes: controls 28 high (32 in the top bar), corners 6 on controls and 8 on panels and popovers -->
+  <sys:Double x:Key="ControlHeight">28</sys:Double>
+  <sys:Double x:Key="TopBarControlHeight">32</sys:Double>
+  <sys:Double x:Key="TopBarHeight">48</sys:Double>
+  <sys:Double x:Key="StatusBarHeight">24</sys:Double>
+  <sys:Double x:Key="IconSize">16</sys:Double>
+  <sys:Double x:Key="LibraryWidth">260</sys:Double>
+  <sys:Double x:Key="InspectorWidth">320</sys:Double>
+  <sys:Double x:Key="FieldLabelWidth">104</sys:Double>
+  <CornerRadius x:Key="RadiusControl">6</CornerRadius>
+  <CornerRadius x:Key="RadiusPanel">8</CornerRadius>
+  <CornerRadius x:Key="RadiusPill">14</CornerRadius>
+  <CornerRadius x:Key="RadiusBadge">3</CornerRadius>
+
+  <!-- Motion: 120 ms ease-out for popovers and expanders -->
+  <sys:TimeSpan x:Key="MotionFast">0:0:0.12</sys:TimeSpan>
+</ResourceDictionary>

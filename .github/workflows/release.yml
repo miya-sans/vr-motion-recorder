@@ -1,0 +1,60 @@
+# Pushing a tag like v1.2.3 builds the downloads and creates a DRAFT release with them attached.
+# Review the draft on GitHub, edit the notes, then publish it by hand.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    name: Build and draft the release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Version from the tag
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: |
+          dotnet build VRMotionRecorder.slnx -c Release
+          dotnet test --solution VRMotionRecorder.slnx -c Release --no-build
+
+      - name: Publish the app (self-contained, win-x64)
+        shell: pwsh
+        run: dotnet publish src/Vrmr.App/Vrmr.App.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:VERSION -o dist/VRMotionRecorder
+
+      - name: Add licence and notices, then zip
+        shell: pwsh
+        run: |
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md dist/VRMotionRecorder/
+          ./.github/scripts/collect-licenses.ps1 -AssetsFile artifacts/obj/Vrmr.App/project.assets.json -OutDir dist/VRMotionRecorder/licenses
+          Compress-Archive -Path dist/VRMotionRecorder -DestinationPath "dist/VRMotionRecorder-$env:VERSION-win-x64.zip"
+
+      - name: Package the Blender add-on and the Unity package
+        run: python integrations/package.py dist
+
+      - name: Create the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft --verify-tag --generate-notes \
+            --title "VR Motion Recorder $VERSION" \
+            dist/VRMotionRecorder-$VERSION-win-x64.zip \
+            dist/vrmr_bridge-*.zip \
+            dist/vrmr_bridge.py \
+            dist/com.vrmr.motion-bridge-*.tgz

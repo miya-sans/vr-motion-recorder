@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>VRMR.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Vrmr.Core/Vrmr.Core.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Model/Vrmr.Model.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Avatars/Vrmr.Avatars.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Fbik/Vrmr.Fbik.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Solve/Vrmr.Solve.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Capture/Vrmr.Capture.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Scene/Vrmr.Scene.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Export/Vrmr.Export.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Settings.StatusRow"
+             x:DataType="vm:StatusRowViewModel">
+  <!-- What the app found for one thing: a dot in the colours of the top bar's pills, the fact, and what to do about it. -->
+  <UserControl.Styles>
+    <Style Selector="Ellipse.dot">
+      <Setter Property="Width" Value="{DynamicResource StatusDotSize}" />
+      <Setter Property="Height" Value="{DynamicResource StatusDotSize}" />
+      <Setter Property="Margin" Value="{DynamicResource StatusDotMargin}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Fill" Value="{DynamicResource TextFaintBrush}" />
+    </Style>
+    <Style Selector="Ellipse.dot.ok">
+      <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+    <Style Selector="Ellipse.dot.attention">
+      <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+    </Style>
+    <Style Selector="TextBlock.fact">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="LineHeight" Value="{DynamicResource StatusLineHeight}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <Ellipse Classes="dot" Classes.ok="{Binding IsOk}" Classes.attention="{Binding NeedsAttention}" />
+    <StackPanel Grid.Column="1">
+      <TextBlock Text="{Binding Title}" FontWeight="Medium" Classes="fact" IsVisible="{Binding HasTitle}" />
+      <TextBlock Text="{Binding Summary}" Classes="fact" Classes.secondary="{Binding HasTitle}" />
+      <TextBlock Text="{Binding Action}" Classes="fact secondary" IsVisible="{Binding HasAction}" />
+    </StackPanel>
+  </Grid>
+</UserControl>

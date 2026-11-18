@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Takes.DevicesView"
+             x:DataType="vm:DevicesViewModel">
+  <!-- What VRChat and SteamVR send right now: the avatar worn, the devices with battery and tracking, the face. -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="{DynamicResource PadPanel}">
+      <c:Section Header="Avatar in VRChat" StateKey="live.avatar">
+        <StackPanel>
+          <TextBlock Text="{Binding Wearing}" FontWeight="Medium" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding WearingNote}" Classes="note" Classes.warning="{Binding WearingWarning}" Margin="0,4,0,8"
+                     IsVisible="{Binding WearingNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <c:FieldRow Label="Base model" IsVisible="{Binding HasBaseModels}"
+                      ToolTip.Tip="The avatar the live view and new takes are solved onto. Picking one links it to the avatar you wear now, and it is remembered.">
+            <ComboBox ItemsSource="{Binding BaseModels}" SelectedIndex="{Binding BaseModelIndex}" PlaceholderText="None" />
+          </c:FieldRow>
+        </StackPanel>
+      </c:Section>
+
+      <c:Section Header="SteamVR devices" StateKey="live.devices" Summary="{Binding DevicesSummary}">
+        <StackPanel>
+          <TextBlock Text="{Binding DeviceStatus}" Classes="note" IsVisible="{Binding DeviceStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <ItemsControl ItemsSource="{Binding Devices}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DeviceRowViewModel">
+                <Border Classes="card" Margin="0,0,0,4">
+                  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                    <Panel Grid.RowSpan="2" Width="10" Height="10" Margin="2,0,10,0" VerticalAlignment="Center">
+                      <Ellipse Fill="{DynamicResource TextBrush}" Opacity="0.9" IsVisible="{Binding Tracked}" />
+                      <Ellipse Fill="{DynamicResource LimbLeftBrush}" IsVisible="{Binding IsLeft}" />
+                      <Ellipse Fill="{DynamicResource LimbRightBrush}" IsVisible="{Binding IsRight}" />
+                      <Ellipse Fill="{DynamicResource WarningBrush}" IsVisible="{Binding IsTracker}" />
+                      <Ellipse Fill="{DynamicResource RaisedBrush}" Stroke="{DynamicResource TextFaintBrush}" StrokeThickness="1.5" IsVisible="{Binding !Tracked}" />
+                    </Panel>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="caption" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" IsVisible="{Binding HasBattery}">
+                      <ProgressBar Width="34" MinWidth="34" Height="6" MinHeight="6" Minimum="0" Maximum="1" Value="{Binding Battery}" VerticalAlignment="Center"
+                                   Classes.low="{Binding BatteryLow}" Classes.mid="{Binding BatteryMid}" Classes.ok="{Binding !BatteryLow}" />
+                      <TextBlock Text="{Binding BatteryText}" Classes="secondary tabular" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Grid.Row="1" Text="{Binding TrackingText}" FontSize="{DynamicResource FontCaption}" HorizontalAlignment="Right" Margin="8,2,0,0"
+                               Classes.success="{Binding TrackingOk}" Classes.warning="{Binding TrackingDegraded}" Classes.error="{Binding TrackingLost}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding PlayArea}" Classes="secondary" Margin="{DynamicResource GapTopSmall}"
+                     IsVisible="{Binding PlayArea, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+      </c:Section>
+
+      <c:Section Header="Face tracking" StateKey="live.face">
+        <StackPanel>
+          <TextBlock Text="No face tracking data is arriving." Classes="note" IsVisible="{Binding NoFace}" />
+          <ItemsControl ItemsSource="{Binding Face}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FaceValueViewModel">
+                <Grid ColumnDefinitions="140,*" Height="18">
+                  <TextBlock Text="{Binding Name}" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <ProgressBar Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Value}" Height="6" MinHeight="6" VerticalAlignment="Center" Classes="mid" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </c:Section>
+
+      <c:Section Header="Connections" StateKey="live.connections" IsExpanded="False" Summary="{Binding ConnectionsSummary}">
+        <SelectableTextBlock Text="{Binding Connections}" Classes="mono" TextWrapping="Wrap" LineHeight="16" />
+      </c:Section>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

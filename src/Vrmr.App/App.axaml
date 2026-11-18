@@ -1,0 +1,36 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VRMR.App.App"
+             Name="VR Motion Recorder"
+             RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Themes/Tokens.axaml" />
+        <ResourceInclude Source="/Themes/Icons.axaml" />
+        <ResourceInclude Source="/Themes/Controls.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme DensityStyle="Compact">
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Dark" Accent="#6EA8FF" RegionColor="#121317" ErrorText="#F04848"
+                               AltHigh="#121317" AltMediumHigh="#1A1B21" AltMedium="#1A1B21" AltMediumLow="#21232A" AltLow="#21232A"
+                               BaseHigh="#E4E6EC" BaseMediumHigh="#C8CBD4" BaseMedium="#9498A6" BaseMediumLow="#646876" BaseLow="#30323C"
+                               ChromeAltLow="#C8CBD4" ChromeHigh="#646876" ChromeLow="#1A1B21" ChromeMedium="#21232A" ChromeMediumLow="#21232A"
+                               ChromeDisabledHigh="#30323C" ChromeDisabledLow="#646876" ChromeGray="#646876" ChromeBlackHigh="#000000" ChromeBlackMedium="#CC000000"
+                               ChromeBlackMediumLow="#66000000" ChromeBlackLow="#33000000" ChromeWhite="#FFFFFF"
+                               ListLow="#2A2C35" ListMedium="#32343F" />
+        <ColorPaletteResources x:Key="Light" Accent="#2F6FE0" RegionColor="#EEF0F4" ErrorText="#D93636"
+                               AltHigh="#FFFFFF" AltMediumHigh="#FAFBFC" AltMedium="#FAFBFC" AltMediumLow="#FFFFFF" AltLow="#FFFFFF"
+                               BaseHigh="#1B1D23" BaseMediumHigh="#3A3E4A" BaseMedium="#5A5F6E" BaseMediumLow="#8A8FA0" BaseLow="#D2D6DF"
+                               ChromeAltLow="#3A3E4A" ChromeHigh="#8A8FA0" ChromeLow="#FAFBFC" ChromeMedium="#FFFFFF" ChromeMediumLow="#FFFFFF"
+                               ChromeDisabledHigh="#D2D6DF" ChromeDisabledLow="#8A8FA0" ChromeGray="#8A8FA0" ChromeBlackHigh="#000000" ChromeBlackMedium="#CC000000"
+                               ChromeBlackMediumLow="#66000000" ChromeBlackLow="#33000000" ChromeWhite="#FFFFFF"
+                               ListLow="#E6E9EF" ListMedium="#D9DDE6" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="/Themes/Styles.axaml" />
+  </Application.Styles>
+</Application>

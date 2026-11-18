@@ -1,0 +1,26 @@
+{
+    "name": "com.vrmr.motion-bridge",
+    "version": "1.4.0",
+    "displayName": "VR Motion Bridge",
+    "description": "Unity side of VR Motion Recorder. Sets up exported FBX clips as Humanoid, writes humanoid, face and parameter clips, and builds Timelines from exported takes and scenes so they play on your avatar.",
+    "unity": "2022.3",
+    "documentationUrl": "https://github.com/miya-sans/vrc-motion-recorder/blob/main/integrations/unity/com.vrmr.motion-bridge/README.md",
+    "changelogUrl": "https://github.com/miya-sans/vrc-motion-recorder/blob/main/integrations/unity/com.vrmr.motion-bridge/CHANGELOG.md",
+    "licensesUrl": "https://github.com/miya-sans/vrc-motion-recorder/blob/main/integrations/unity/com.vrmr.motion-bridge/LICENSE.md",
+    "license": "MIT",
+    "keywords": [
+        "vrchat",
+        "motion capture",
+        "animation",
+        "timeline",
+        "humanoid",
+        "face tracking"
+    ],
+    "author": {
+        "name": "VR Motion Recorder contributors",
+        "url": "https://github.com/miya-sans/vrc-motion-recorder"
+    },
+    "dependencies": {
+        "com.unity.timeline": "1.7.7"
+    }
+}

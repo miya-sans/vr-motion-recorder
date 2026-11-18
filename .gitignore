@@ -1,0 +1,65 @@
+# Build output
+bin/
+obj/
+artifacts/
+dist/
+publish/
+TestResults/
+*.user
+*.suo
+.vs/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+
+# Local downloads (never part of the repo)
+tools/blender-mcp-download/
+
+# User data: recordings, scenes, exports, calibration, settings
+*.vrmr
+*.vrmscene
+*.vrmavatar.json
+*.vrmr.json
+*.vrmrscene.json
+*.face.json
+Exports/
+Recordings/
+# avatar library folders (personal), not the source folder of the same name
+/Avatars/
+**/Documents/Avatars/
+realappdata/
+settings.json
+steamvr_room.json
+
+# Avatar and model files: never commit (paid assets)
+*.fbx
+*.FBX
+*.blend
+*.blend1
+*.unitypackage
+*.prefab
+*.anim
+*.controller
+*.asset
+*.psd
+*.tga
+*.exr
+*.zip
+*.7z
+
+# Images are ignored unless they are the project's own (icon, docs)
+*.png
+*.jpg
+*.jpeg
+*.bmp
+!assets/**
+!docs/**
+!integrations/**/icon.png
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store

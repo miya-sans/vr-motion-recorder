@@ -1,0 +1,95 @@
+name: Device report
+description: Tell us how the app works with your headset, controllers or trackers, with measurements if you have them.
+labels: [device]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The head and hand offsets and the body behaviour were measured against VRChat on one setup (see
+        [docs/accuracy.md](https://github.com/miya-sans/vrc-motion-recorder/blob/main/docs/accuracy.md)). Reports
+        from other hardware decide which devices get their own profile. A report that says "works fine" is useful too.
+
+        Please leave serial numbers out of what you type. Only attach takes you are comfortable sharing in public:
+        a take holds your motion, your avatar's id and name, the world name, your VRChat display name and your
+        devices' serial numbers.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      placeholder: "0.9.0"
+    validations:
+      required: true
+  - type: input
+    id: headset
+    attributes:
+      label: Headset
+      description: Model, and how it is tracked.
+      placeholder: "Model, lighthouse / inside-out"
+    validations:
+      required: true
+  - type: input
+    id: controllers
+    attributes:
+      label: Controllers
+      description: Model, and the name SteamVR shows for them if you know it.
+    validations:
+      required: true
+  - type: input
+    id: trackers
+    attributes:
+      label: Body trackers
+      description: How many, which model, where they are worn, and how they reach SteamVR (lighthouse, a driver, a bridge app).
+      placeholder: "None"
+  - type: input
+    id: connection
+    attributes:
+      label: How the headset reaches SteamVR
+      description: Native, a wired link, or a streaming app (and its version).
+  - type: input
+    id: versions
+    attributes:
+      label: SteamVR and VRChat versions
+  - type: dropdown
+    id: works
+    attributes:
+      label: What works
+      multiple: true
+      options:
+        - Devices show up in the live view
+        - Head and hands follow the devices
+        - Body trackers get the right roles
+        - VRChat's calibration is detected
+        - Finger tracking is recorded
+        - The solved body matches what I saw in VRChat
+    validations:
+      required: true
+  - type: textarea
+    id: problems
+    attributes:
+      label: What looks wrong
+      description: For example "the hands sit about 3 cm behind the controllers" or "the left elbow tracker is taken for a knee".
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements
+      description: |
+        Any numbers you have. The most useful ones come from a take recorded in a world with a HUMR recorder (VRChat's logging set to Full), because it holds VRChat's own pose next to the raw devices:
+        - how far the head, hands, hips and feet are from their devices, as the app reports after a solve (cm);
+        - the distance between the app's bones and VRChat's bones, if you measured it;
+        - your controller's hand position relative to the controller, if you measured it.
+
+        Say how you measured, and with which calibration settings (spine lock, by height or by arm span).
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Device list from the log
+      description: The lines of `%APPDATA%\VRMotionRecorder\vrmr.log` that list the SteamVR devices, with serial numbers removed.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed serial numbers and anything else I do not want to be public.
+          required: true

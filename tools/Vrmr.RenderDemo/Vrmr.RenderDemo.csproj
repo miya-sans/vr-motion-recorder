@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- a console program, so the benchmark's numbers print where it was started -->
+    <OutputType>Exe</OutputType>
+    <AssemblyName>vrmr-render-demo</AssemblyName>
+    <RootNamespace>VRMR.RenderDemo</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Vrmr.Core/Vrmr.Core.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Model/Vrmr.Model.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Avatars/Vrmr.Avatars.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Fbik/Vrmr.Fbik.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Solve/Vrmr.Solve.csproj" />
+    <ProjectReference Include="../../src/Vrmr.Render/Vrmr.Render.csproj" />
+  </ItemGroup>
+</Project>

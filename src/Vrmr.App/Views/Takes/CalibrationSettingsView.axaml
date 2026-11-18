@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Takes.CalibrationSettingsView"
+             x:DataType="vm:CalibrationSettingsViewModel">
+  <!-- The calibration settings editor, shared by the Take inspector (the take's own settings) and Settings (the defaults). -->
+  <StackPanel>
+    <c:FieldRow Label="Height" ToolTip.Tip="How your size is found. VRChat's User Real Height is what VRChat itself uses; Measure takes the headset's height at the calibration moment.">
+      <ComboBox ItemsSource="{Binding HeightModes}" SelectedIndex="{Binding HeightModeIndex}" />
+    </c:FieldRow>
+    <c:FieldRow Label="{Binding HeightValueLabel}" ToolTip.Tip="{Binding HeightValueTip}">
+      <Panel>
+        <c:NumberField Value="{Binding HeightValue}" Minimum="0" Maximum="5" Step="0.01" Decimals="{Binding HeightValueDecimals}" Unit="{Binding HeightValueUnit}"
+                       IsVisible="{Binding HeightValueEditable}" HorizontalAlignment="Left" Width="110" />
+        <TextBlock Text="{Binding HeightReadout}" Classes="secondary" VerticalAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HeightValueEditable}" />
+      </Panel>
+    </c:FieldRow>
+    <c:FieldRow Label="Spine" ToolTip.Tip="With a hip tracker. Lock head keeps the head on the headset and lets the hips leave their tracker; Lock hips does the opposite; Lock both bends the spine to keep both.">
+      <ComboBox ItemsSource="{Binding SpineModes}" SelectedIndex="{Binding SpineIndex}" />
+    </c:FieldRow>
+    <c:FieldRow Label="Measure" ToolTip.Tip="How the avatar is matched to you: by height (best for full-body tracking) or by arm span (controllers in the T-pose).">
+      <ComboBox ItemsSource="{Binding MeasureModes}" SelectedIndex="{Binding MeasureIndex}" />
+    </c:FieldRow>
+    <CheckBox Content="Follow VRChat's spine and measurement" IsChecked="{Binding FollowVrc}" Margin="{DynamicResource GapRowSmall}"
+              ToolTip.Tip="Use the spine mode and measurement VRChat had while recording, and switch when they changed during the take, as VRChat did. Spine and Measure above then only apply to takes without that information." />
+    <c:FieldRow Label="Trackers" ToolTip.Tip="Which trackers drive the body. Their roles stay as they are; a tracker that is off is ignored by the solve.">
+      <WrapPanel>
+        <c:ToggleChip Content="Hips" IsChecked="{Binding UseHips}" Margin="0,2,4,2" Classes="solid" />
+        <c:ToggleChip Content="Chest" IsChecked="{Binding UseChest}" Margin="0,2,4,2" Classes="solid" />
+        <c:ToggleChip Content="Feet" IsChecked="{Binding UseFeet}" Margin="0,2,4,2" Classes="solid" />
+        <c:ToggleChip Content="Knees" IsChecked="{Binding UseKnees}" Margin="0,2,4,2" Classes="solid" />
+        <c:ToggleChip Content="Elbows" IsChecked="{Binding UseElbows}" Margin="0,2,4,2" Classes="solid" />
+      </WrapPanel>
+    </c:FieldRow>
+
+    <c:Section Header="Advanced" Level="2" IsExpanded="False" StateKey="take.cal.advanced" Summary="{Binding AdvancedSummary}" SummaryTone="Accent">
+      <StackPanel>
+        <CheckBox Content="Keep feet on their trackers" IsChecked="{Binding KeepFeetPlanted}"
+                  ToolTip.Tip="With Lock head: when a leg cannot reach its foot tracker, the hips come down a little instead of the foot leaving its tracker, as VRChat does. Lock hips and Lock both keep the hips and let the foot lift." />
+        <CheckBox Content="Ignore head tilt at calibration" IsChecked="{Binding UprightCalibration}"
+                  ToolTip.Tip="Turns the head upright before the trackers are bound. A calibration is often confirmed while looking down at the menu." />
+        <CheckBox Content="Hang from the headset, like VRChat" IsChecked="{Binding HangFromHeadset}"
+                  ToolTip.Tip="VRChat binds the trackers with the avatar hanging from your headset, so its feet can end up a little below the floor with straight legs. Off: the avatar is stood on the floor at calibration and the knees bend instead." />
+        <CheckBox Content="VRChat's head and hand offsets" IsChecked="{Binding VrcHands}"
+                  ToolTip.Tip="Puts the hand bone where VRChat puts it relative to an Index controller, and the head bone 4 cm behind the headset. Off: SteamVR's own wrist pose and the avatar's eyes at the headset." />
+        <CheckBox Content="Shoulder movement" IsChecked="{Binding ShoulderTracking}" ToolTip.Tip="Lets the shoulders shrug and reach with the arms." />
+        <CheckBox Content="Steps without foot trackers" IsChecked="{Binding ProceduralFeet}"
+                  ToolTip.Tip="Makes the feet step by themselves when the take has no foot trackers. Tracked feet always follow their trackers." />
+        <CheckBox Content="Follow VRChat's avatar scaling" IsChecked="{Binding FollowAvatarScale}" Margin="{DynamicResource GapRowSmall}"
+                  ToolTip.Tip="Off: the avatar keeps its own size even when you resized it in VRChat during the take. On: the body follows those size changes." />
+        <c:FieldRow Label="Avatar scale" CanReset="{Binding AvatarScaleChanged}" ResetCommand="{Binding ResetAvatarScaleCommand}"
+                    ToolTip.Tip="0 keeps the avatar's own size as uploaded. Any other value forces that size.">
+          <c:NumberField Value="{Binding AvatarScale}" Minimum="0" Maximum="20" Step="0.01" Decimals="3" HorizontalAlignment="Left" Width="110" />
+        </c:FieldRow>
+        <c:FieldRow Label="Hand rotation" CanReset="{Binding HandRotChanged}" ResetCommand="{Binding ResetHandRotationCommand}"
+                    ToolTip.Tip="Corrects the hand angle for this take, X / Y / Z in degrees (mirrored for the right hand).">
+          <Grid ColumnDefinitions="*,4,*,4,*">
+            <c:NumberField Value="{Binding HandRotX}" Minimum="-60" Maximum="60" Step="1" Decimals="0" Unit="°" ShowSign="True" ToolTip.Tip="X" />
+            <c:NumberField Grid.Column="2" Value="{Binding HandRotY}" Minimum="-60" Maximum="60" Step="1" Decimals="0" Unit="°" ShowSign="True" ToolTip.Tip="Y" />
+            <c:NumberField Grid.Column="4" Value="{Binding HandRotZ}" Minimum="-60" Maximum="60" Step="1" Decimals="0" Unit="°" ShowSign="True" ToolTip.Tip="Z" />
+          </Grid>
+        </c:FieldRow>
+      </StackPanel>
+    </c:Section>
+  </StackPanel>
+</UserControl>

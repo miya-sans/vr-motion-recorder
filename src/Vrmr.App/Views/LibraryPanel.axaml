@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.LibraryPanel"
+             x:DataType="vm:LibraryViewModel">
+  <!-- The library: search on top, takes newest first with what they contain, actions at the bottom. -->
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="{DynamicResource PadPanel}">
+    <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource GapRowSmall}" MinHeight="{DynamicResource ControlHeight}">
+      <TextBlock Text="Takes" Classes="title" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Text="{Binding CountText}" Classes="caption" VerticalAlignment="Center" />
+    </Grid>
+    <TextBox Grid.Row="1" x:Name="SearchBox" Text="{Binding Search}" PlaceholderText="Search name, avatar or world" Margin="{DynamicResource GapRow}"
+             ToolTip.Tip="Filter the takes (Ctrl+F)">
+      <TextBox.InnerLeftContent>
+        <c:Icon Data="{DynamicResource Icon.Search}" Foreground="{DynamicResource TextFaintBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+      </TextBox.InnerLeftContent>
+      <TextBox.InnerRightContent>
+        <c:IconButton Icon="{DynamicResource Icon.Close}" Command="{Binding ClearSearchCommand}" ToolTip.Tip="Clear the search"
+                      IsVisible="{Binding Search, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" MinHeight="24" MinWidth="24" />
+      </TextBox.InnerRightContent>
+    </TextBox>
+
+    <ListBox Grid.Row="2" x:Name="TakeList" Classes="plain" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" SelectionMode="Single">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:TakeItemViewModel">
+          <StackPanel Margin="10,6,8,6" ToolTip.Tip="{Binding Tip}" Background="Transparent">
+            <StackPanel.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Show in folder" Command="{Binding $parent[ListBox].((vm:LibraryViewModel)DataContext).RevealCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="Delete…" Command="{Binding $parent[ListBox].((vm:LibraryViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding}" />
+              </ContextMenu>
+            </StackPanel.ContextMenu>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="1" Text="{Binding Length}" Classes="secondary tabular" Margin="{DynamicResource GapLeft}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+              <TextBlock Text="{Binding Subtitle}" Classes="caption" TextTrimming="CharacterEllipsis" Classes.warning="{Binding Unreadable}" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Border Classes="badge" Background="{DynamicResource NeutralSoftBrush}" IsVisible="{Binding NoDevices}" ToolTip.Tip="No SteamVR devices in this take: there is nothing for the IK solve">
+                  <TextBlock Text="NO VR" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Border>
+                <Border Classes="badge" Background="{DynamicResource SuccessSoftBrush}" IsVisible="{Binding HasVrcIk}" ToolTip.Tip="VRChat's own IK was captured (a HUMR world): a reference body">
+                  <TextBlock Text="VRC IK" Foreground="{DynamicResource SuccessBrush}" />
+                </Border>
+                <Border Classes="badge" Background="{DynamicResource AccentSoftBrush}" IsVisible="{Binding HasFingers}" ToolTip.Tip="Finger tracking">
+                  <TextBlock Text="HANDS" Foreground="{DynamicResource AccentBrush}" />
+                </Border>
+                <Border Classes="badge" Background="{DynamicResource WarningSoftBrush}" IsVisible="{Binding HasFace}" ToolTip.Tip="Face tracking">
+                  <TextBlock Text="FACE" Foreground="{DynamicResource WarningBrush}" />
+                </Border>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <c:EmptyState Grid.Row="2" Icon="{DynamicResource Icon.Take}" IsVisible="{Binding IsEmpty}" Title="No takes yet"
+                  Text="Press Record while VRChat runs with OSC on: your first take appears here. Or open a take from somewhere else."
+                  ActionLabel="Open a take…" Command="{Binding OpenFileCommand}" />
+    <c:EmptyState Grid.Row="2" Icon="{DynamicResource Icon.Search}" IsVisible="{Binding NoMatches}" Text="No take matches the search."
+                  ActionLabel="Clear the search" Command="{Binding ClearSearchCommand}" />
+    <TextBlock Grid.Row="2" Text="Reading the takes…" Classes="secondary" IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="2" Margin="{DynamicResource GapTop}">
+      <c:IconButton Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenFolderCommand}" ToolTip.Tip="Open the recordings folder" />
+      <c:IconButton Icon="{DynamicResource Icon.Import}" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open a take file from anywhere (Ctrl+O)" />
+      <c:IconButton Icon="{DynamicResource Icon.Reveal}" Command="{Binding RevealCommand}" ToolTip.Tip="Show the selected take in its folder" />
+      <c:IconButton Icon="{DynamicResource Icon.Trash}" Command="{Binding DeleteCommand}" ToolTip.Tip="Move the selected take to the Recycle Bin" />
+    </StackPanel>
+  </Grid>
+</UserControl>

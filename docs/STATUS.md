@@ -1,0 +1,114 @@
+# Project status
+
+This is an interim version: it builds and the tests pass. The new Avalonia app (`src/Vrmr.App`) now covers basic work
+on takes (record, review, trim, export) but has not been used with SteamVR and VRChat running; the WinForms app stays
+the reference and the fallback, and the only place for scenes. This page says what works, what is in progress and what
+is planned.
+
+Last updated: 2026-11-18.
+
+## What works today
+
+| Area | State |
+|---|---|
+| Build | `dotnet build VRMotionRecorder.slnx -c Release` builds every project on .NET 10. |
+| Tests | `tests/Vrmr.Tests`: 97 pass. `tests/Vrmr.Render.Tests`: 16 pass. `tests/Vrmr.App.Tests`: 179 pass (7 of them need copies of real takes through `VRMR_PRIVATE_DATA` and are skipped without). |
+| Working app | `src/Vrmr.App.WinForms` (the previous UI, now on .NET 10). Run it with `dotnet run --project src/Vrmr.App.WinForms -c Release`. It records, solves, edits takes and scenes, and exports as before. |
+| Solve | Unchanged by the refactor: bit-identical results before and after on ten takes and a test scene (`vrmr dump` + `tools/compare_dumps.py`). About 1.7 times faster on .NET 10 than on .NET Framework. |
+| Exports | FBX, Unity `.anim` (transform, face, parameters) and the manifests are identical in content to those of the previous build. |
+| Performance of the working app | The 3D view now draws only when something changed. Measured on a 1100 x 640 view: paused with the avatar mesh 2.5 CPU cores before, none after; playing 5.8 before, 1.4 after; scene playback 3.3 before, 0.7 after. Playback is still paced by a timer at about 35 frames per second. |
+| Engine structure | Libraries with one-way dependencies: Core, Fbik, Model, Avatars, Solve, Capture, Scene, Export. See `docs/architecture.md`. |
+| Generalisation | One paths service, no fixed install folders, detection of SteamVR, VRChat, Blender and Unity projects, settings with a schema version, avatar name aliases stored with each library entry, a built-in mannequin for users without an avatar. See `docs/dev/platform-api.md`. |
+| Capture | The VRChat log is followed with one open handle instead of being reopened many times a second; cheaper SteamVR waiting. |
+| Repository | MIT licence, third-party notices, README and docs, CI and release workflows, issue forms, original icon, the Unity editor scripts as a package, the Blender add-on with an extension manifest. |
+| Command line | `vrmr info`, `vrmr dump` (regression check), `vrmr humanoid` (experimental, see below). |
+
+## In progress (in the tree, not finished)
+
+### New desktop app (`src/Vrmr.App`, Avalonia 12)
+
+**What a user can do in it now:** open, play, scrub, trim, cut and undo takes; see the avatar's textured mesh with its
+face in the GPU 3D view (or the built-in mannequin); move and turn a take; change body and calibration settings and
+see the re-solve; export a take in every format; change settings; get through the first-run guide; and, with SteamVR
+and VRChat running, see the live devices, record (button, global hotkey, avatar parameter, in-world recorder), capture
+a calibration and replay the face. `docs/dev/ui-parity.md` has the state of every feature of the previous UI.
+
+How it was checked:
+- **3D view** (`Vrmr.Render` through `Viewport/GpuView`): same silhouette as the previous software renderer on a real
+  take in nine frame and camera pairs (intersection over union 0.9999 or better, colours within 3/255 on average).
+  With a take open: paused draws nothing (0.001 to 0.003 CPU cores); playing holds 60 frames per second at about
+  0.1 (render demo) to 0.26 (whole app) CPU cores.
+- **Export, Settings, first-run guide**: driven in the running window on a copy of a take with a scratch data folder.
+  All nine export choices write their files; the body clip equals an engine bake of the same take. Settings changed
+  in each category were kept over a restart.
+- **SteamVR and VRChat** were never running: the recorder's real sources were fed with generated data (devices
+  through `OpenVRSource.Feed`, OSC as UDP packets on a private port, VRChat's log as a file in a sandbox folder),
+  see `tests/Vrmr.App.Tests/LiveSourceTests.cs`.
+
+**Still needs the WinForms app:** scenes (the Scene workspace is switched off by `AppFeatures.SceneWorkspace` until the
+scene editor is ported), the pose tool and the layer recorder.
+
+**Needs checking on real hardware** (could not be done on the development machine):
+1. Connecting to SteamVR itself: devices, tracker roles, play area, finger tracking, reconnecting after a restart.
+2. The global record hotkey while VRChat has the focus.
+3. OSCQuery both ways (VRChat finds the app; the app reads the avatar's name and parameters), and the VRChat pill's
+   "no OSC" state.
+4. The live 3D view with real devices, base stations and VRChat's own IK avatar in a world with a HUMR recorder.
+5. Recording next to VRChat and SteamVR: the view at 15 frames per second with bones only, its CPU cost, no lost
+   device samples.
+6. A VRChat calibration being caught by the calibration watcher; "Capture now" with real trackers.
+7. Face replay arriving in VRChat (the tests only use a stand-in sender).
+8. The record trigger parameter from a real avatar menu.
+
+Known gaps: memory use with an avatar mesh is about 700 MB (230 MB with the old skeleton view); multisampling is not
+offered in the settings; dragging the placement gizmo with the mouse was not tried in a real window; many drop-downs
+and text boxes have no accessible name; once in five window runs the whole window repainted for a while when idle
+(timeline included, so not the 3D view's pacing; not reproduced, cause unknown).
+
+### GPU renderer (`src/Vrmr.Render`, `tools/Vrmr.RenderDemo`)
+- In the solution and in the new app (above). `vrmr-render-demo <folder> --bench` measures the four states of the old
+  view; `--shot` draws frames off screen (OpenGL ES through ANGLE).
+- Not done: gizmos other than the placement handle and the pose tool (Scene workspace).
+
+### One Humanoid clip written by the app (`src/Vrmr.Export/Humanoid*.cs`)
+Goal: a single Unity Humanoid `.anim` per take (body, IK goals and face in one clip) that needs no Unity to make.
+- Established by experiment in Unity (batch mode, scratch project): the muscle-to-rotation model reproduces Unity to
+  0.00007 degrees over 871 poses on 24 skeletons; how the per-bone axes follow from the T-pose; twist sharing;
+  missing optional bones; the centre-of-mass weights and human scale; the IK goal curves.
+- Known gap: the body rotation is exact on single-muscle poses but only approximate on compound poses (0.014 degrees
+  on average at half range, 0.12 at full range).
+- A converter, a key reducer and a writer exist (about 1,000 lines) and compile. **They have not been verified in
+  Unity**, so the option is off by default (`ClipExportOptions.HumanoidAnim`). Today's way to get a Humanoid clip is
+  still the Unity package, which copies the clip Unity makes from the exported FBX.
+
+## Planned (not started)
+
+1. **Verify the Humanoid clip in Unity**: play it on the recorded avatar and on a second avatar and compare bone
+   positions with the solve, with the FBX imported as Humanoid and as Generic, and with Unity's own clip. Then turn it
+   on by default and make the Unity package use it.
+2. **Foot sliding**: measure how far planted feet travel in VRChat's own IK (HUMR recordings), in the solve, in the
+   FBX and in the Humanoid clip with foot IK off and on, on the recorded avatar and on another one, to say where the
+   sliding comes from and what foot IK corrects.
+3. **IK quality against HUMR**: a per-bone error budget of the solve against VRChat's own IK, then try changes to the
+   VRChat-matched arm, spine and knee code and keep only those that measurably improve the match.
+4. **Scene workspace in the new app**: port the scene (NLA) editor, the pose tool and the layer recorder.
+5. **Check the new app on real hardware** (the list under "New desktop app") and record before and after numbers
+   with SteamVR running.
+6. **Round-trip checks** of take and scene exports in Blender and Unity on the new build.
+7. **Remove `src/Vrmr.App.WinForms`** once the new app has every feature (`docs/dev/ui-parity.md` all done and
+   exercised).
+8. **Per-controller hand and head offsets** as profiles (today's values were measured with one controller model).
+9. **Before the repository is ever made public**: review the VRChat-matched arm, spine and knee code. It was written
+   to reproduce VRChat's behaviour and follows the structure of the IK library VRChat builds on; the names and
+   comments are neutral, the structure is unchanged. The repository is private for this reason.
+
+## Known limits of this version
+
+- The new app replaces the WinForms app for takes once the hardware checks above are done; scenes still need the
+  WinForms app.
+- Unity's Humanoid muscle space cannot represent every pose (for example a twist of the shoulder bone), so a Humanoid
+  clip can differ from the solved pose; the exact pose in Unity is the FBX imported as Generic, or the transform clip
+  on a Generic Animator.
+- The release workflow publishes `src/Vrmr.App`, which has no Scene workspace yet; a release for scene work would
+  have to publish `src/Vrmr.App.WinForms` instead.
+- The CI workflows have not been run yet.

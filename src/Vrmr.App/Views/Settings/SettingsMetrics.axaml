@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- Sizes of the Settings page and the first-run guide that Themes/Tokens.axaml does not name. All on the 4 px grid. -->
+
+  <!-- the page: a category list on the left, the category in a column of readable width -->
+  <sys:Double x:Key="SettingsNavWidth">208</sys:Double>
+  <sys:Double x:Key="SettingsContentWidth">720</sys:Double>
+  <Thickness x:Key="SettingsHeaderPad">24,0,12,0</Thickness>
+  <Thickness x:Key="SettingsNavPad">8,12</Thickness>
+  <Thickness x:Key="SettingsNavItemPad">12,0</Thickness>
+  <Thickness x:Key="SettingsPagePad">32,20,32,32</Thickness>
+  <Thickness x:Key="SettingsTitleGap">0,0,0,4</Thickness>
+  <Thickness x:Key="SettingsIntroGap">0,0,0,16</Thickness>
+
+  <!-- rows: labels are longer here than in the inspector -->
+  <sys:Double x:Key="SettingsLabelWidth">168</sys:Double>
+  <!-- what belongs to a checkbox sits under its text -->
+  <Thickness x:Key="SettingsIndent">28,0,0,8</Thickness>
+  <Thickness x:Key="SettingsBlockGap">0,4,0,12</Thickness>
+  <sys:Double x:Key="SettingsListMaxHeight">264</sys:Double>
+  <sys:Double x:Key="SettingsShortListMaxHeight">132</sys:Double>
+  <Thickness x:Key="SettingsListItemPad">10,6</Thickness>
+  <!-- buttons that wrap onto a second line keep their distance in both directions -->
+  <Thickness x:Key="SettingsWrapGap">0,0,8,8</Thickness>
+
+  <!-- status rows: the dot sits on the first line of text -->
+  <sys:Double x:Key="StatusDotSize">8</sys:Double>
+  <Thickness x:Key="StatusDotMargin">0,5,10,0</Thickness>
+  <Thickness x:Key="StatusRowGap">0,0,0,10</Thickness>
+  <!-- an icon in the place of the dot -->
+  <Thickness x:Key="StatusIconMargin">0,1,8,0</Thickness>
+  <sys:Double x:Key="StatusLineHeight">18</sys:Double>
+
+  <!-- the first-run guide: one card that only grows when a step has more to say -->
+  <sys:Double x:Key="FirstRunWidth">620</sys:Double>
+  <sys:Double x:Key="FirstRunBodyHeight">300</sys:Double>
+  <Thickness x:Key="FirstRunPad">24</Thickness>
+</ResourceDictionary>

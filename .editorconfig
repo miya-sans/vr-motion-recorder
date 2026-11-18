@@ -1,0 +1,88 @@
+# Code style for VR Motion Recorder. Editors and `dotnet format` read this file.
+# It describes the style the code already has; nothing here is enforced as a build error.
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Line endings are left to git: the C# files are a mix of LF and CRLF, and a rule here would touch every line.
+
+[*.{csproj,props,targets,slnx,axaml,xml,manifest,config}]
+indent_size = 2
+
+[*.{json,asmdef,yml,yaml,toml}]
+indent_size = 2
+
+# Unity's own JSON files use four spaces
+[integrations/unity/**.{json,asmdef}]
+indent_size = 4
+
+[*.md]
+# two trailing spaces are a line break in Markdown
+trim_trailing_whitespace = false
+
+[*.meta]
+# written by Unity: keep them byte for byte
+indent_size = 2
+trim_trailing_whitespace = false
+insert_final_newline = unset
+
+[*.{cmd,bat}]
+end_of_line = crlf
+
+[*.sh]
+end_of_line = lf
+
+[*.cs]
+# Layout: braces on their own line, block-scoped namespaces, usings outside the namespace with System first.
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+# Short statements and blocks may share a line (the solver and the maths code rely on it).
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+csharp_style_namespace_declarations = block_scoped:silent
+csharp_using_directive_placement = outside_namespace:silent
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# Language use: `var` wherever the type is clear, built-in type names, no `this.`, braces optional for one-liners.
+csharp_style_var_for_built_in_types = false:silent
+csharp_style_var_when_type_is_apparent = true:silent
+csharp_style_var_elsewhere = true:silent
+dotnet_style_predefined_type_for_locals_parameters_members = true:silent
+dotnet_style_predefined_type_for_member_access = true:silent
+dotnet_style_qualification_for_field = false:silent
+dotnet_style_qualification_for_property = false:silent
+dotnet_style_qualification_for_method = false:silent
+dotnet_style_qualification_for_event = false:silent
+csharp_prefer_braces = false:silent
+# `private` is left out where it is the default.
+dotnet_style_require_accessibility_modifiers = omit_if_default:silent
+
+# Naming: PascalCase for types and members, _camelCase for private fields, camelCase for locals and parameters.
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = silent
+
+# The IK solver keeps the shape of the code it is derived from: leave its formatting alone.
+[src/Vrmr.Fbik/**.cs]
+csharp_style_namespace_declarations = unset
+dotnet_naming_rule.private_fields_underscore.severity = none
+
+[*.py]
+indent_size = 4
+max_line_length = 160

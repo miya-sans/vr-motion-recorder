@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest something the app, the Blender add-on or the Unity package should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The goal or the problem, in your own words. This matters more than the solution.
+      placeholder: "When I record ..., I would like to ..."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working. A rough sketch is fine.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+      description: Workarounds, other tools, or why they fall short.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Recording
+        - Body solve and calibration
+        - Face tracking
+        - Avatars
+        - Takes (review and editing)
+        - Scenes
+        - Export
+        - Blender add-on
+        - Unity package
+        - Something else
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I looked for an existing request about this.
+          required: true

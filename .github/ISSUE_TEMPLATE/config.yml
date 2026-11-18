@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea to talk through
+    url: https://github.com/miya-sans/vrc-motion-recorder/discussions
+    about: Ask how something works, or sketch an idea before it becomes a feature request.
+  - name: Security problem
+    url: https://github.com/miya-sans/vrc-motion-recorder/security/advisories/new
+    about: Report a vulnerability privately. Please do not open a public issue for it.
+  - name: Documentation
+    url: https://github.com/miya-sans/vrc-motion-recorder/tree/main/docs
+    about: How the app works, calibration, avatars, scenes, export and file formats.

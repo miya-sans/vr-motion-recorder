@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Settings.SettingsAvatarsView"
+             x:DataType="vm:SettingsAvatarsViewModel">
+  <!-- Avatars: the library of base models. Add on top, the list, then the selected avatar's name, VRChat names and actions. -->
+  <StackPanel>
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource GapRow}">
+      <c:IconButton x:Name="AddButton" Classes="accent" Icon="{DynamicResource Icon.Plus}" Content="Add avatar…" Command="{Binding AddCommand}" IsVisible="{Binding !IsEmpty}"
+                    ToolTip.Tip="Add a base model: pick the avatar's .unitypackage (or the .zip it came in) together with its face-tracking add-on, or a Unity model (.fbx with its .meta). The files are only read, and no Unity project is needed." />
+      <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenFolderCommand}" ToolTip.Tip="Open the avatar library folder" />
+      <c:IconButton Grid.Column="3" Icon="{DynamicResource Icon.Refresh}" Command="{Binding ReloadCommand}" ToolTip.Tip="Read the library folder again (after changing its files by hand)" />
+    </Grid>
+
+    <!-- the import says what it is doing where its result will appear -->
+    <Border Classes="card" IsVisible="{Binding IsImporting}" Margin="{DynamicResource GapRow}">
+      <StackPanel Spacing="{DynamicResource Space2}">
+        <TextBlock Text="{Binding ImportMessage}" TextTrimming="CharacterEllipsis" />
+        <ProgressBar IsIndeterminate="True" />
+      </StackPanel>
+    </Border>
+
+    <c:EmptyState IsVisible="{Binding IsEmpty}" Icon="{DynamicResource Icon.Avatar}" Title="No avatar of your own yet"
+                  Text="Add a Booth avatar's .unitypackage or .zip together with its face-tracking add-on, or a Unity model (.fbx with its .meta). Until then takes are solved onto the built-in mannequin."
+                  ActionLabel="Add avatar…" Command="{Binding AddCommand}" />
+
+    <StackPanel IsVisible="{Binding !IsEmpty}">
+      <ListBox x:Name="AvatarList" Classes="plain" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" SelectionMode="Single"
+               MaxHeight="{DynamicResource SettingsListMaxHeight}" Margin="{DynamicResource SettingsBlockGap}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:AvatarRowViewModel">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{DynamicResource SettingsListItemPad}">
+              <c:Icon Data="{DynamicResource Icon.Avatar}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="{DynamicResource GapLeft}" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="{DynamicResource GapLeftSmall}">
+                <Border Classes="badge" Background="{DynamicResource AccentSoftBrush}" IsVisible="{Binding IsDefault}" ToolTip.Tip="Used for avatars that match nothing in the library">
+                  <TextBlock Text="DEFAULT" Foreground="{DynamicResource AccentBrush}" />
+                </Border>
+                <Border Classes="badge" Background="{DynamicResource NeutralSoftBrush}" IsVisible="{Binding IsBuiltIn}" ToolTip.Tip="Comes with the app: a plain humanoid for takes whose avatar is not in the library">
+                  <TextBlock Text="BUILT IN" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Border>
+                <Border Classes="badge" Background="{DynamicResource WarningSoftBrush}" IsVisible="{Binding FbxMissing}" ToolTip.Tip="The model file is gone: takes still solve, but the 3D view shows the skeleton only. Add the avatar again to get its mesh back.">
+                  <TextBlock Text="FBX MISSING" Foreground="{DynamicResource WarningBrush}" />
+                </Border>
+              </StackPanel>
+              <TextBlock Grid.Column="3" Text="{Binding Summary}" Classes="secondary tabular" VerticalAlignment="Center" Margin="{DynamicResource GapLeft}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <c:FieldRow Label="Name" ToolTip.Tip="The name this base model is listed under. Its files, its links and the takes that use it stay as they are.">
+        <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding CanEdit}" />
+      </c:FieldRow>
+      <c:FieldRow Label="VRChat names"
+                  ToolTip.Tip="Parts of VRChat avatar names that mean this base model, separated by commas. An avatar whose name contains one of them is solved onto this model.">
+        <TextBox Text="{Binding VrChatNames, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding CanEdit}" PlaceholderText="Parts of the avatar's name, separated by commas" />
+      </c:FieldRow>
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource SettingsBlockGap}">
+        <Button Content="Make default" Command="{Binding MakeDefaultCommand}" IsEnabled="{Binding CanMakeDefault}"
+                ToolTip.Tip="Solve avatars that match nothing in the library onto this base model" />
+        <Button Content="Face-tracking animator…" Command="{Binding AddFaceAnimatorCommand}" IsEnabled="{Binding CanEdit}"
+                ToolTip.Tip="Pick the avatar's face-tracking add-on (.unitypackage or .zip) and, if it needs one, its face-tracking framework. Takes then play the add-on's own face shapes (tongue, mouth corrections) as VRChat shows them. A framework installed in a linked Unity project is found by itself." />
+        <Button Content="Remove…" Command="{Binding RemoveCommand}" IsEnabled="{Binding CanEdit}"
+                ToolTip.Tip="Remove this base model from the library: its files go to the Recycle Bin. Takes keep their own copy of the skeleton." />
+      </StackPanel>
+
+      <c:Section Header="Details" Level="2" IsExpanded="False" StateKey="settings.avatars.details">
+        <SelectableTextBlock Text="{Binding Details}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap"
+                             LineHeight="{DynamicResource StatusLineHeight}" />
+      </c:Section>
+    </StackPanel>
+
+    <c:Section Header="Last import" Level="2" IsExpanded="False" StateKey="settings.avatars.import" IsVisible="{Binding HasImportReport}"
+               ToolTip.Tip="What the last Add found in the files, step by step">
+      <SelectableTextBlock Text="{Binding ImportReport}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap"
+                           LineHeight="{DynamicResource StatusLineHeight}" />
+    </c:Section>
+
+    <c:Section Header="Unity project models" Level="2" IsExpanded="False" StateKey="settings.avatars.unity"
+               ToolTip.Tip="For an avatar that lives in a Unity project instead of this library">
+      <StackPanel>
+        <TextBlock Classes="note" Text="For an avatar whose model stays in a Unity project instead of this library. Link the project itself under Folders." />
+        <TextBlock Classes="note" Text="{Binding WornAvatar}" />
+        <WrapPanel>
+          <c:IconButton Classes="outlined" Icon="{DynamicResource Icon.Link}" Content="Link the avatar worn now to a Unity model…" Command="{Binding LinkWornCommand}" Margin="{DynamicResource SettingsWrapGap}"
+                        ToolTip.Tip="Pick the model (.fbx with its .meta) of the avatar you wear in VRChat right now. From then on that avatar is solved onto it." />
+          <c:IconButton Classes="outlined" Icon="{DynamicResource Icon.Export}" Content="Export FBX with face shapes…" Command="{Binding ExportFaceFbxCommand}" Margin="{DynamicResource SettingsWrapGap}"
+                        ToolTip.Tip="Writes a copy of the FBX of the avatar on screen with the shapes a face-tracking add-on (BlendShare) adds in Unity, and its textures next to it, for Blender or other tools. Avatars added from a package already have these shapes." />
+        </WrapPanel>
+      </StackPanel>
+    </c:Section>
+  </StackPanel>
+</UserControl>

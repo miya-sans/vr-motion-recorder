@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>vrmr</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj" />
+    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj" />
+    <ProjectReference Include="../Vrmr.Avatars/Vrmr.Avatars.csproj" />
+    <ProjectReference Include="../Vrmr.Fbik/Vrmr.Fbik.csproj" />
+    <ProjectReference Include="../Vrmr.Solve/Vrmr.Solve.csproj" />
+    <ProjectReference Include="../Vrmr.Scene/Vrmr.Scene.csproj" />
+    <ProjectReference Include="../Vrmr.Export/Vrmr.Export.csproj" />
+  </ItemGroup>
+</Project>

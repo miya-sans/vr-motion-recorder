@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>VRMotionRecorder.Legacy</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);WFAC010;WFO1000;SYSLIB0014</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Vrmr.Core/Vrmr.Core.csproj" />
+    <ProjectReference Include="../Vrmr.Model/Vrmr.Model.csproj" />
+    <ProjectReference Include="../Vrmr.Avatars/Vrmr.Avatars.csproj" />
+    <ProjectReference Include="../Vrmr.Fbik/Vrmr.Fbik.csproj" />
+    <ProjectReference Include="../Vrmr.Solve/Vrmr.Solve.csproj" />
+    <ProjectReference Include="../Vrmr.Capture/Vrmr.Capture.csproj" />
+    <ProjectReference Include="../Vrmr.Scene/Vrmr.Scene.csproj" />
+    <ProjectReference Include="../Vrmr.Export/Vrmr.Export.csproj" />
+  </ItemGroup>
+</Project>

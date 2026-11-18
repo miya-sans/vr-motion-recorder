@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.Settings.SettingsAboutView"
+             x:DataType="vm:SettingsViewModel">
+  <!-- About: the version, where the app keeps its files, the log and the way back into the setup guide. -->
+  <StackPanel>
+    <c:Section Header="VR Motion Recorder" StateKey="settings.about.app">
+      <StackPanel>
+        <c:FieldRow Label="Version">
+          <SelectableTextBlock x:Name="VersionText" Text="{Binding Version}" VerticalAlignment="Center" />
+        </c:FieldRow>
+        <c:FieldRow Label="Licence">
+          <TextBlock Text="MIT licence: free to use, change and share." VerticalAlignment="Center" TextWrapping="Wrap" />
+        </c:FieldRow>
+      </StackPanel>
+    </c:Section>
+
+    <c:Section Header="Where your data is" StateKey="settings.about.data">
+      <StackPanel>
+        <TextBlock Classes="note" Text="Portable mode: everything is inside the data folder the app was started with." IsVisible="{Binding IsPortable}" />
+        <c:FieldRow Label="Settings and calibrations" ToolTip.Tip="The settings, the calibration library and the log">
+          <Grid ColumnDefinitions="*,Auto">
+            <SelectableTextBlock Text="{Binding AppDataFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenAppDataCommand}" Margin="{DynamicResource GapLeft}" />
+          </Grid>
+        </c:FieldRow>
+        <c:FieldRow Label="Recordings" ToolTip.Tip="Your takes. The folder can be changed under Folders.">
+          <Grid ColumnDefinitions="*,Auto">
+            <SelectableTextBlock Text="{Binding RecordingsFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Classes="link" Content="Open" Command="{Binding OpenRecordingsCommand}" Margin="{DynamicResource GapLeft}" />
+          </Grid>
+        </c:FieldRow>
+      </StackPanel>
+    </c:Section>
+
+    <c:Section Header="Help" StateKey="settings.about.help">
+      <StackPanel>
+        <TextBlock Classes="note" Text="The log says what the app did and what went wrong: attach it when you report a problem. The setup guide checks SteamVR, VRChat, Blender and Unity again and walks through the folders and the avatar." />
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+          <Button Content="Open log" Command="{Binding OpenLogCommand}" />
+          <Button Content="Run the setup guide again" Command="{Binding RunSetupGuideCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </c:Section>
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             xmlns:s="using:VRMR.App.Views.Settings"
+             x:Class="VRMR.App.Views.Settings.SettingsPage"
+             x:DataType="vm:SettingsViewModel">
+  <!-- Settings: a page over the workspace. Categories on the left, the chosen one on the right in a column of readable
+       width. Only app-wide settings live here; what belongs to one take is in the inspector. -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Views/Settings/SettingsMetrics.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="ListBox.nav ListBoxItem">
+      <Setter Property="Padding" Value="{DynamicResource SettingsNavItemPad}" />
+      <Setter Property="MinHeight" Value="{DynamicResource TopBarControlHeight}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- labels are longer here than in the inspector -->
+    <Style Selector="c|FieldRow">
+      <Setter Property="LabelWidth" Value="{DynamicResource SettingsLabelWidth}" />
+    </Style>
+    <!-- a line of plain text inside a card or under a field -->
+    <Style Selector="TextBlock.fact">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="LineHeight" Value="{DynamicResource StatusLineHeight}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}">
+    <Border Classes="panel" Height="{DynamicResource TopBarHeight}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
+      <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource SettingsHeaderPad}">
+        <TextBlock Text="Settings" Classes="title" VerticalAlignment="Center" />
+        <c:IconButton Grid.Column="1" x:Name="CloseButton" Icon="{DynamicResource Icon.Close}" Content="Close" Command="{Binding CloseCommand}"
+                      VerticalAlignment="Center" ToolTip.Tip="Back to the workspace (Esc)" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <Border Classes="panel" Width="{DynamicResource SettingsNavWidth}" Padding="{DynamicResource SettingsNavPad}"
+              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineRight}">
+        <ListBox x:Name="CategoryList" Classes="plain nav" ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex}" SelectionMode="AlwaysSelected" />
+      </Border>
+
+      <ScrollViewer Grid.Column="1" x:Name="CategoryScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid Margin="{DynamicResource SettingsPagePad}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="{DynamicResource SettingsContentWidth}" />
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+            <TextBlock Text="{Binding CategoryTitle}" Classes="page" Margin="{DynamicResource SettingsTitleGap}" />
+            <TextBlock Text="{Binding CategoryIntro}" Classes="note" Margin="{DynamicResource SettingsIntroGap}" />
+
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Sources}}">
+              <s:SettingsSourcesView DataContext="{Binding Sources}" />
+            </Panel>
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Recording}}">
+              <s:SettingsRecordingView DataContext="{Binding Recording}" />
+            </Panel>
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Folders}}">
+              <s:SettingsFoldersView DataContext="{Binding Folders}" />
+            </Panel>
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Avatars}}">
+              <s:SettingsAvatarsView DataContext="{Binding Avatars}" />
+            </Panel>
+            <!-- the calibration editor is shared with the inspector; the shell puts it here, editing the defaults -->
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.CalibrationDefaults}}">
+              <ContentControl x:Name="CalibrationDefaultsHost" />
+            </Panel>
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.View}}">
+              <s:SettingsViewOptionsView DataContext="{Binding View}" />
+            </Panel>
+            <Panel IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.About}}">
+              <s:SettingsAboutView />
+            </Panel>
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,22 @@
+# Manifest of the Blender extension (Blender 4.2 and later).
+# `python integrations/package.py <outdir>` zips this file with vrmr_bridge.py (as __init__.py) and the licence.
+# Keep `version` in step with bl_info["version"] in vrmr_bridge.py: the packaging script refuses to run otherwise.
+schema_version = "1.0.0"
+
+id = "vrmr_bridge"
+version = "1.4.0"
+name = "VR Motion Recorder Bridge"
+tagline = "Import VR Motion Recorder takes and scenes, send edits to Unity"
+maintainer = "VR Motion Recorder contributors"
+type = "add-on"
+website = "https://github.com/miya-sans/vrc-motion-recorder"
+
+tags = ["Animation", "Import-Export"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:MIT"]
+copyright = ["2026 miya-sans and VR Motion Recorder contributors"]
+
+[permissions]
+files = "Import takes and scenes, write clips into a Unity project"

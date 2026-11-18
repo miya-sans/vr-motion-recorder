@@ -1,0 +1,156 @@
+// Portions Copyright (c) 2024 MR LUKE B DOOLAN. MIT License: see THIRD_PARTY_NOTICES.md.
+// Plain C#: game-engine, Burst and job-system dependencies are replaced by the VRMR.Fbik shim.
+namespace VRMR.Fbik
+{
+    public static class FbikPlanner
+    {
+        public const float stationaryDelaySeconds = 0.15f, footIKBlendInSpeed = 20f, footIKBlendOutSpeed = 15f;
+        public const bool locomotionFootIK = false, footRotationFromSim = true;
+        public static void Bind(ref FbikSolver job)
+        {
+            ref FbikPlan p = ref job.plan;
+            p.hasHips = job.handleHips.IsBound;
+            p.hasSpine = job.handleSpine.IsBound;
+            p.hasChest = job.handleChest.IsBound;
+            p.hasUpperChest = job.handleUpperChest.IsBound;
+            p.hasNeck = job.handleNeck.IsBound;
+            p.hasHead = job.handleHead.IsBound;
+            int chainLen = job.chainHeadToSpine.IsCreated ? job.chainHeadToSpine.Length : 0;
+            p.hasSpineChain = chainLen >= 3;
+            for (int i = 0; i < chainLen; i++)
+            {
+                if (!job.chainHeadToSpine[i].IsBound)
+                {
+                    p.hasSpineChain = false;
+                }
+            }
+            p.chestIdx = p.hasSpineChain ? job.chainChestIdx : -1;
+            p.hasChestJoint = p.hasSpineChain && chainLen > 3 && p.chestIdx >= 1 && p.chestIdx < chainLen - 2;
+            p.hasSpineRestFrames = p.hasSpineChain && job.chainSpineRestFrames.IsCreated && job.chainSpineRestFrames.Length >= chainLen;
+            p.hasSpineBend = p.hasHips && p.hasChest && (p.hasSpine || p.hasUpperChest);
+            p.hasBodyRight = job.handleLeftUpperArm.IsBound && job.handleRightUpperArm.IsBound;
+            p.torsoFrom = p.hasChest ? job.handleChest : p.hasSpine ? job.handleSpine : job.handleHips;
+            p.torsoTo = p.hasNeck ? job.handleNeck : job.handleHead;
+            p.hasTorso = p.torsoFrom.IsBound && p.torsoTo.IsBound;
+            p.legFrameTo = p.hasChest ? job.handleChest : p.hasSpine ? job.handleSpine : p.hasNeck ? job.handleNeck : job.handleHead;
+            p.hasLegFrame = job.handleLeftUpperLeg.IsBound && job.handleRightUpperLeg.IsBound && p.hasHips && p.legFrameTo.IsBound;
+            p.chestRef = p.hasUpperChest ? job.handleUpperChest : job.handleChest;
+            p.hasChestRef = p.chestRef.IsBound;
+            p.hasLeftShoulder = job.handleLeftShoulder.IsBound;
+            p.hasRightShoulder = job.handleRightShoulder.IsBound;
+            p.hasLeftToe = job.handleLeftToe.IsBound;
+            p.hasRightToe = job.handleRightToe.IsBound;
+            p.hasChestSpring = job.chestSpring.IsCreated && job.chestSpring.Length >= 1;
+            p.hasArmState = job.armState.IsCreated && job.armState.Length >= FbikSolver.armCount;
+            p.hasLegState = job.legState.IsCreated && job.legState.Length >= 2;
+            p.hasLegDiagnostics = job.legDiagnostics.IsCreated && job.legDiagnostics.Length >= 2;
+            p.boundSlots = 0;
+            for (int i = 0; i < FbikSolver.Count; i++)
+            {
+                if (job.SlotHandle(i).IsBound)
+                {
+                    p.boundSlots |= 1u << i;
+                }
+            }
+            p.leftArm.has = job.handleLeftUpperArm.IsBound && job.handleLeftLowerArm.IsBound && job.handleLeftHand.IsBound;
+            p.leftArm.hasUpperTwist = job.handleLeftUpperArmTwist.IsBound && job.handleLeftUpperArm.IsBound && job.handleLeftLowerArm.IsBound;
+            p.leftArm.hasLowerTwist = job.handleLeftLowerArmTwist.IsBound && job.handleLeftLowerArm.IsBound && job.handleLeftHand.IsBound;
+            p.rightArm.has = job.handleRightUpperArm.IsBound && job.handleRightLowerArm.IsBound && job.handleRightHand.IsBound;
+            p.rightArm.hasUpperTwist = job.handleRightUpperArmTwist.IsBound && job.handleRightUpperArm.IsBound && job.handleRightLowerArm.IsBound;
+            p.rightArm.hasLowerTwist = job.handleRightLowerArmTwist.IsBound && job.handleRightLowerArm.IsBound && job.handleRightHand.IsBound;
+            p.leftLeg.has = job.handleLeftUpperLeg.IsBound && job.handleLeftLowerLeg.IsBound && job.handleLeftFoot.IsBound;
+            p.rightLeg.has = job.handleRightUpperLeg.IsBound && job.handleRightLowerLeg.IsBound && job.handleRightFoot.IsBound;
+        }
+        public static void FootIK(ref FbikFrameFacts facts, ref float stationaryTimer, ref float leftBlend, ref float rightBlend, out bool simulate, out bool reengage)
+        {
+            stationaryTimer = facts.moving ? 0f : stationaryTimer + facts.deltaTime;
+            bool ready = facts.footSimReady && (locomotionFootIK || stationaryTimer >= stationaryDelaySeconds) && facts.footIKSetting && !facts.prone && facts.upright;
+            bool leftWant = ready && !facts.leftLegTracked, rightWant = ready && !facts.rightLegTracked;
+            if (facts.leftLegTracked) leftBlend = 0f;
+            if (facts.rightLegTracked) rightBlend = 0f;
+            float leftPrev = leftBlend, rightPrev = rightBlend;
+            leftBlend = Mathf.MoveTowards(leftBlend, leftWant ? 1f : 0f, (leftWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
+            rightBlend = Mathf.MoveTowards(rightBlend, rightWant ? 1f : 0f, (rightWant ? footIKBlendInSpeed : footIKBlendOutSpeed) * facts.deltaTime);
+            facts.leftFootSim = leftBlend;
+            facts.rightFootSim = rightBlend;
+            reengage = facts.footSimReady && ((leftPrev < 0.001f && leftBlend >= 0.001f) || (rightPrev < 0.001f && rightBlend >= 0.001f));
+            simulate = facts.footSimReady && (!facts.leftLegTracked || !facts.rightLegTracked);
+        }
+        public static void Frame(ref FbikSolver job, in FbikFrameFacts facts)
+        {
+            ref FbikPlan p = ref job.plan;
+            p.hipsTracked = facts.hipsTracked;
+            p.chestTracked = facts.chestTracked;
+            p.prone = facts.prone && !facts.hipsTracked;
+            p.chestChain = facts.chestTracked && p.hasChest;
+            p.headChain = !p.chestChain && p.hasHead;
+            bool chestPinsBody = facts.chestTracked && !facts.chestFollowsBody;
+            p.crouchOffset = !chestPinsBody && !facts.hipsTracked && !facts.seated && !facts.prone;
+            p.gaitPelvis = !facts.hipsTracked && facts.footSimReady && Mathf.Min(facts.leftFootSim, facts.rightFootSim) > 0.001f;
+            p.headPinnedHips = !facts.hipsTracked && !chestPinsBody && !facts.seated && !facts.prone;
+            p.leftShoulderTracked = facts.leftShoulderTracked;
+            p.rightShoulderTracked = facts.rightShoulderTracked;
+            p.leftShoulderWeight = facts.leftShoulderTracked ? Mathf.Clamp01(facts.leftShoulderWeight) : 0f;
+            p.rightShoulderWeight = facts.rightShoulderTracked ? Mathf.Clamp01(facts.rightShoulderWeight) : 0f;
+            p.leftShoulder = Shoulder(p.hasLeftShoulder, job.shoulderSolveEnabled, p.leftShoulderWeight > 0f);
+            p.rightShoulder = Shoulder(p.hasRightShoulder, job.shoulderSolveEnabled, p.rightShoulderWeight > 0f);
+            p.leftToeTracked = facts.leftToeTracked;
+            p.rightToeTracked = facts.rightToeTracked;
+            Arm(ref p.leftArm, ref job, facts.leftHandWeight, facts.leftElbowTracked, facts.leftElbowRoll);
+            Arm(ref p.rightArm, ref job, facts.rightHandWeight, facts.rightElbowTracked, facts.rightElbowRoll);
+            Leg(ref p.leftLeg, ref job, in facts, true);
+            Leg(ref p.rightLeg, ref job, in facts, false);
+            p.leftToeDriven = p.hasLeftToe && facts.leftToeTracked;
+            p.rightToeDriven = p.hasRightToe && facts.rightToeTracked;
+            p.leftToeSurface = p.hasLeftToe && !facts.leftToeTracked && p.leftLeg.target == FbikSource.Sim && facts.leftToeBend;
+            p.rightToeSurface = p.hasRightToe && !facts.rightToeTracked && p.rightLeg.target == FbikSource.Sim && facts.rightToeBend;
+            job.playerUp = Up(job.playerUp);
+            job.offsetRotationHips = Unit(job.offsetRotationHips);
+            job.offsetRotationHead = Unit(job.offsetRotationHead);
+            job.offsetRotationChest = Unit(job.offsetRotationChest);
+            job.offsetRotationLeftFoot = Unit(job.offsetRotationLeftFoot);
+            job.offsetRotationRightFoot = Unit(job.offsetRotationRightFoot);
+            job.offsetRotationLeftToe = Unit(job.offsetRotationLeftToe);
+            job.offsetRotationRightToe = Unit(job.offsetRotationRightToe);
+            job.offsetRotationLeftShoulder = Unit(job.offsetRotationLeftShoulder);
+            job.offsetRotationRightShoulder = Unit(job.offsetRotationRightShoulder);
+            job.offsetRotationLeftHand = Unit(job.offsetRotationLeftHand);
+            job.offsetRotationRightHand = Unit(job.offsetRotationRightHand);
+        }
+        static FbikShoulderMode Shoulder(bool has, bool solve, bool tracked) => !has ? FbikShoulderMode.None : tracked ? FbikShoulderMode.Tracker : solve ? FbikShoulderMode.Solve : FbikShoulderMode.None;
+        static void Arm(ref FbikArmPlan arm, ref FbikSolver job, float weight, bool elbowTracked, bool roll)
+        {
+            arm.weight = weight;
+            arm.solve = weight > 0f && arm.has;
+            arm.trackerHint = elbowTracked;
+            arm.hintRoll = elbowTracked && roll;
+            arm.upperTwist = arm.hasUpperTwist;
+            arm.lowerTwist = arm.hasLowerTwist;
+            arm.elbowProtect = job.collisionsEnabled && job.protectElbow && job.plan.hasChest && job.plan.hasNeck && (!elbowTracked || job.collideTrackedElbow);
+        }
+        static void Leg(ref FbikLegPlan leg, ref FbikSolver job, in FbikFrameFacts facts, bool isLeft)
+        {
+            bool tracked = isLeft ? facts.leftLegTracked : facts.rightLegTracked, kneeTracked = isLeft ? facts.leftKneeTracked : facts.rightKneeTracked;
+            bool simRotation = isLeft ? facts.leftSimFootRotation : facts.rightSimFootRotation, roll = isLeft ? facts.leftKneeRoll : facts.rightKneeRoll;
+            float sim = isLeft ? facts.leftFootSim : facts.rightFootSim;
+            bool simActive = facts.footSimReady && sim > 0.001f;
+            leg.tracked = tracked;
+            leg.kneeTracked = kneeTracked;
+            leg.target = tracked ? FbikSource.Tracker : simActive ? FbikSource.Sim : FbikSource.None;
+            leg.weight = tracked ? 1f : simActive ? sim : 0f;
+            leg.solve = leg.weight > 0f && leg.has;
+            leg.preserveTip = leg.target == FbikSource.Sim && !simRotation;
+            leg.hintRoll = kneeTracked && roll;
+        }
+        static Quaternion Unit(Quaternion q) => q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > FbikSolver.sqrEpsilon ? q : Quaternion.identity;
+        static Vector3 Up(Vector3 up)
+        {
+            float m = up.sqrMagnitude;
+            if (m < FbikSolver.sqrEpsilon)
+            {
+                return Vector3.up;
+            }
+            return Mathf.Abs(m - 1f) > 1e-6f ? up / Mathf.Sqrt(m) : up;
+        }
+    }
+}

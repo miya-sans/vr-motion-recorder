@@ -1,0 +1,184 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:c="using:VRMR.App.Controls">
+  <!-- Sizes and looks of the stock controls, on top of the Fluent theme, plus the text and panel classes views use. -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <!-- Fluent's own metrics, brought to the 28 px / 6 px / 13 px system -->
+      <sys:Double x:Key="ControlContentThemeFontSize">13</sys:Double>
+      <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
+      <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+      <sys:Double x:Key="TextControlThemeMinHeight">28</sys:Double>
+      <Thickness x:Key="TextControlThemePadding">8,4,6,4</Thickness>
+      <sys:Double x:Key="ComboBoxMinHeight">28</sys:Double>
+      <Thickness x:Key="ComboBoxPadding">8,3,0,3</Thickness>
+      <sys:Double x:Key="ComboBoxThemeMinWidth">0</sys:Double>
+      <sys:Double x:Key="CheckBoxHeight">28</sys:Double>
+      <sys:Double x:Key="ToolTipContentMaxWidth">340</sys:Double>
+      <sys:Double x:Key="ScrollBarSize">10</sys:Double>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+    <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+
+  <!-- text -->
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="{DynamicResource FontTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.page">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.secondary">
+    <Setter Property="FontSize" Value="{DynamicResource FontSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}" />
+  </Style>
+  <Style Selector="TextBlock.note">
+    <Setter Property="FontSize" Value="{DynamicResource FontSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="LineHeight" Value="17" />
+    <Setter Property="Margin" Value="{DynamicResource GapRow}" />
+  </Style>
+  <Style Selector="TextBlock.warning">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
+  <Style Selector="TextBlock.error">
+    <Setter Property="Foreground" Value="{DynamicResource RecordBrush}" />
+  </Style>
+  <Style Selector="TextBlock.success">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="TextBlock.tabular">
+    <Setter Property="FontFeatures" Value="{DynamicResource TabularFigures}" />
+  </Style>
+  <Style Selector="SelectableTextBlock.mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+
+  <!-- panels -->
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+  </Style>
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="{DynamicResource Pad2}" />
+  </Style>
+  <Style Selector="Border.popover">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusPanel}" />
+    <Setter Property="Padding" Value="{DynamicResource Pad3}" />
+  </Style>
+  <Style Selector="Border.badge">
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusBadge}" />
+    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="Margin" Value="{DynamicResource GapLeftSmall}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.badge > TextBlock">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Rectangle.divider">
+    <Setter Property="Fill" Value="{DynamicResource BorderBrush}" />
+  </Style>
+  <Style Selector="GridSplitter">
+    <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="MinWidth" Value="1" />
+    <Setter Property="MinHeight" Value="1" />
+  </Style>
+
+  <!-- stock controls -->
+  <Style Selector="TextBox">
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+    <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.number">
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+    <Setter Property="FontFeatures" Value="{DynamicResource TabularFigures}" />
+    <Setter Property="MinWidth" Value="56" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+    <Setter Property="MinHeight" Value="{DynamicResource ControlHeight}" />
+    <Setter Property="Padding" Value="8,0,0,0" />
+  </Style>
+  <Style Selector="ToolTip">
+    <Setter Property="FontSize" Value="{DynamicResource FontSecondary}" />
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+  </Style>
+  <Style Selector="ListBox.plain">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.plain ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Margin" Value="0,0,0,2" />
+  </Style>
+  <!-- check box texts are often names (a mesh, a file format): an underscore in them is not an access key -->
+  <Style Selector="CheckBox /template/ ContentPresenter">
+    <Setter Property="RecognizesAccessKey" Value="False" />
+  </Style>
+
+  <Style Selector="ProgressBar">
+    <Setter Property="MinHeight" Value="3" />
+    <Setter Property="Height" Value="3" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.ok">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.mid">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.low">
+    <Setter Property="Foreground" Value="{DynamicResource RecordBrush}" />
+  </Style>
+  <Style Selector="ListBox.plain ListBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.plain ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="ListBox.plain ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="12,0" />
+  </Style>
+</Styles>

@@ -1,0 +1,74 @@
+# Builds and tests every push and pull request.
+#  windows: the whole solution, its tests, and a self-contained build of the app as a download.
+#  linux:   the libraries and the command-line tool, to keep them free of Windows-only code.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    name: Windows (build, test, app)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore VRMotionRecorder.slnx
+      - name: Build
+        run: dotnet build VRMotionRecorder.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test --solution VRMotionRecorder.slnx -c Release --no-build
+      - name: Publish the app
+        run: dotnet publish src/Vrmr.App/Vrmr.App.csproj -c Release -r win-x64 --self-contained true -o dist/VRMotionRecorder
+      - name: Add licence and notices
+        shell: pwsh
+        run: |
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md dist/VRMotionRecorder/
+          ./.github/scripts/collect-licenses.ps1 -AssetsFile artifacts/obj/Vrmr.App/project.assets.json -OutDir dist/VRMotionRecorder/licenses
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: VRMotionRecorder-win-x64
+          path: dist/VRMotionRecorder
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Linux (libraries and CLI)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+      # vrmr references Core, Model, Avatars, Fbik, Solve, Scene and Export, so this builds all of them.
+      - name: Build the libraries and the CLI
+        run: dotnet build src/Vrmr.Cli/Vrmr.Cli.csproj -c Release
+      - name: Test the libraries
+        run: dotnet test --project tests/Vrmr.Tests/Vrmr.Tests.csproj -c Release
+
+  integrations:
+    name: Integrations (package check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Package the Blender add-on and the Unity package
+        run: python3 integrations/package.py dist
+      - name: List the packages
+        run: ls -l dist

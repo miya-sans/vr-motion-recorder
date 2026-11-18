@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:VRMR.App.Controls"
+             xmlns:vm="using:VRMR.App.ViewModels"
+             x:Class="VRMR.App.Views.HelpOverlay"
+             x:DataType="vm:ShellViewModel">
+  <!-- The keyboard map and the three things a new user needs to know. Opens with F1 or the ? button, closes with Esc. -->
+  <Border Background="{DynamicResource ScrimBrush}" PointerPressed="OnScrimPressed">
+    <Border x:Name="Card" Classes="popover" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="760" Padding="{DynamicResource Pad4}">
+      <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Keyboard and mouse" Classes="page" VerticalAlignment="Center" />
+          <c:IconButton Grid.Column="1" Icon="{DynamicResource Icon.Close}" Command="{Binding ToggleHelpCommand}" ToolTip.Tip="Close (Esc)" />
+        </Grid>
+        <Grid ColumnDefinitions="*,24,*" x:Name="Columns">
+          <StackPanel x:Name="LeftColumn" Spacing="4" />
+          <StackPanel Grid.Column="2" x:Name="RightColumn" Spacing="4" />
+        </Grid>
+        <TextBlock Classes="note" Margin="0"
+                   Text="A take keeps what was recorded and never changes it: trims, cuts, calibration and placement are a list of edits, so everything can be undone and solved again at any time." />
+      </StackPanel>
+    </Border>
+  </Border>
+</UserControl>

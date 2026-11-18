@@ -1,0 +1,75 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    The app's icon set: outline icons on a 16 x 16 grid, drawn for this project (MIT, like the rest of the repository).
+    The Icon control strokes them at 1.5 px with round caps; keys ending in "Solid" are filled instead.
+  -->
+
+  <!-- transport -->
+  <StreamGeometry x:Key="Icon.PlaySolid">M5,3 L13,8 L5,13 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.PauseSolid">M4,3 H7 V13 H4 Z M9,3 H12 V13 H9 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.SkipStart">M4,3 V13 M12,3.5 L6.5,8 L12,12.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.SkipEnd">M12,3 V13 M4,3.5 L9.5,8 L4,12.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.StepBack">M10,3.5 L5.5,8 L10,12.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.StepForward">M6,3.5 L10.5,8 L6,12.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Loop">M3,7.5 V6.5 A2,2 0 0 1 5,4.5 H12.5 M10.5,2.5 L12.5,4.5 L10.5,6.5 M13,8.5 V9.5 A2,2 0 0 1 11,11.5 H3.5 M5.5,9.5 L3.5,11.5 L5.5,13.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.RecordSolid">M3,8 A5,5 0 1 0 13,8 A5,5 0 1 0 3,8 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.StopSolid">M4,4 H12 V12 H4 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Live">M6.5,8 A1.5,1.5 0 1 0 9.5,8 A1.5,1.5 0 1 0 6.5,8 M4.8,4.8 A4.5,4.5 0 0 0 4.8,11.2 M11.2,4.8 A4.5,4.5 0 0 1 11.2,11.2 M2.7,2.7 A7.5,7.5 0 0 0 2.7,13.3 M13.3,2.7 A7.5,7.5 0 0 1 13.3,13.3</StreamGeometry>
+
+  <!-- editing -->
+  <StreamGeometry x:Key="Icon.Undo">M3,6 H10 A3.5,3.5 0 0 1 10,13 H6.5 M5.5,3.5 L3,6 L5.5,8.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Redo">M13,6 H6 A3.5,3.5 0 0 0 6,13 H9.5 M10.5,3.5 L13,6 L10.5,8.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Cut">M2.7,4.5 A1.8,1.8 0 1 0 6.3,4.5 A1.8,1.8 0 1 0 2.7,4.5 M2.7,11.5 A1.8,1.8 0 1 0 6.3,11.5 A1.8,1.8 0 1 0 2.7,11.5 M6,5.6 L13.5,12 M6,10.4 L13.5,4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TrimIn">M6.5,3 H4 V13 H6.5 M8.5,8 H13.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TrimOut">M9.5,3 H12 V13 H9.5 M2.5,8 H7.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Keep">M5,3 H3 V13 H5 M11,3 H13 V13 H11 M6,8 H10</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Reset">M3.2,9.5 A5,5 0 1 0 4.2,4.6 M3,2.5 V5 H5.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Origin">M8,1.5 V5 M8,11 V14.5 M1.5,8 H5 M11,8 H14.5 M5.5,8 A2.5,2.5 0 1 0 10.5,8 A2.5,2.5 0 1 0 5.5,8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TurnLeft">M12,13 V8.5 A3,3 0 0 0 9,5.5 H4 M6.5,3 L4,5.5 L6.5,8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TurnRight">M4,13 V8.5 A3,3 0 0 1 7,5.5 H12 M9.5,3 L12,5.5 L9.5,8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Move">M8,2 V14 M2,8 H14 M6.2,3.8 L8,2 L9.8,3.8 M6.2,12.2 L8,14 L9.8,12.2 M3.8,6.2 L2,8 L3.8,9.8 M12.2,6.2 L14,8 L12.2,9.8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Rotate">M12.8,9.5 A5,5 0 1 1 11.8,4.6 M13,2.5 V5 H10.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Gizmo">M8,9.5 V2.5 M8,9.5 L13.5,12.5 M8,9.5 L2.5,12.5 M6.4,4.1 L8,2.5 L9.6,4.1</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Edit">M3,13 L3.6,10.4 L10.5,3.5 L12.5,5.5 L5.6,12.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Pose">M6.7,3.2 A1.3,1.3 0 1 0 9.3,3.2 A1.3,1.3 0 1 0 6.7,3.2 M2.5,6.5 H13.5 M8,6.5 V10 M8,10 L5.5,14 M8,10 L10.5,14</StreamGeometry>
+
+  <!-- files and app -->
+  <StreamGeometry x:Key="Icon.Search">M3,7 A4,4 0 1 0 11,7 A4,4 0 1 0 3,7 M10,10 L13.5,13.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Folder">M2,4.5 A1,1 0 0 1 3,3.5 H6 L7.5,5 H13 A1,1 0 0 1 14,6 V11.5 A1,1 0 0 1 13,12.5 H3 A1,1 0 0 1 2,11.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trash">M3,4.5 H13 M6,4.5 V3 H10 V4.5 M4.5,4.5 L5,13 H11 L11.5,4.5 M7,7 V10.5 M9,7 V10.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Save">M3,3 H11 L13,5 V13 H3 Z M5.5,3 V6 H10 V3 M5.5,13 V9.5 H10.5 V13</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Export">M8,10 V2.5 M5,5.5 L8,2.5 L11,5.5 M3,9.5 V12.5 A1,1 0 0 0 4,13.5 H12 A1,1 0 0 0 13,12.5 V9.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Import">M8,2.5 V10 M5,7 L8,10 L11,7 M3,9.5 V12.5 A1,1 0 0 0 4,13.5 H12 A1,1 0 0 0 13,12.5 V9.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Reveal">M9,3 H13 V7 M13,3 L7.5,8.5 M11,9.5 V12.5 H3.5 V5 H6.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Settings">M2,5 H8 M12,5 H14 M8,5 A2,2 0 1 0 12,5 A2,2 0 1 0 8,5 M2,11 H4 M8,11 H14 M4,11 A2,2 0 1 0 8,11 A2,2 0 1 0 4,11</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Help">M2,8 A6,6 0 1 0 14,8 A6,6 0 1 0 2,8 M6.2,6.5 A1.9,1.9 0 1 1 8,8.4 V9.3 M8,11.3 V11.4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Info">M2,8 A6,6 0 1 0 14,8 A6,6 0 1 0 2,8 M8,7.5 V11 M8,5 V5.1</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Warning">M8,2.5 L14,13 H2 Z M8,6.5 V9.5 M8,11.3 V11.4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Check">M3,8.5 L6.5,12 L13,4.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Close">M4,4 L12,12 M12,4 L4,12</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Plus">M8,3 V13 M3,8 H13</StreamGeometry>
+  <StreamGeometry x:Key="Icon.More">M3.5,8 H3.6 M8,8 H8.1 M12.5,8 H12.6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Refresh">M13,8 A5,5 0 0 1 4,11 M3,8 A5,5 0 0 1 12,5 M12,2.5 V5 H9.5 M4,13.5 V11 H6.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Link">M7,9 A2.5,2.5 0 0 0 10.5,9 L12.5,7 A2.5,2.5 0 0 0 9,3.5 L8,4.5 M9,7 A2.5,2.5 0 0 0 5.5,7 L3.5,9 A2.5,2.5 0 0 0 7,12.5 L8,11.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronRight">M6,3.5 L10.5,8 L6,12.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronDown">M3.5,6 L8,10.5 L12.5,6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronLeft">M10,3.5 L5.5,8 L10,12.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.PanelLeft">M2.5,3 H13.5 V13 H2.5 Z M6,3 V13</StreamGeometry>
+  <StreamGeometry x:Key="Icon.PanelRight">M2.5,3 H13.5 V13 H2.5 Z M10,3 V13</StreamGeometry>
+  <StreamGeometry x:Key="Icon.PanelBottom">M2.5,3 H13.5 V13 H2.5 Z M2.5,9.5 H13.5</StreamGeometry>
+
+  <!-- content -->
+  <StreamGeometry x:Key="Icon.Take">M2.5,3.5 H13.5 V12.5 H2.5 Z M5,3.5 V12.5 M11,3.5 V12.5 M2.5,6.5 H5 M2.5,9.5 H5 M11,6.5 H13.5 M11,9.5 H13.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Scene">M8,2.5 L14,5.5 L8,8.5 L2,5.5 Z M2,8.3 L8,11.3 L14,8.3 M2,11 L8,14 L14,11</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Mesh">M8,2 L13.5,5 V11 L8,14 L2.5,11 V5 Z M2.5,5 L8,8 L13.5,5 M8,8 V14</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Skeleton">M5.2,10.8 L10.8,5.2 M2.8,11.4 A1.5,1.5 0 1 0 4.6,13.2 M11.4,2.8 A1.5,1.5 0 1 1 13.2,4.6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Headset">M2.5,6 A1.5,1.5 0 0 1 4,4.5 H12 A1.5,1.5 0 0 1 13.5,6 V10 A1.5,1.5 0 0 1 12,11.5 H10 L8.8,9.8 H7.2 L6,11.5 H4 A1.5,1.5 0 0 1 2.5,10 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Tracker">M8,2.5 L12.8,5.2 V10.8 L8,13.5 L3.2,10.8 V5.2 Z M6.2,8 A1.8,1.8 0 1 0 9.8,8 A1.8,1.8 0 1 0 6.2,8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Face">M2,8 A6,6 0 1 0 14,8 A6,6 0 1 0 2,8 M6,6.5 V6.6 M10,6.5 V6.6 M5.5,9.5 A3,3 0 0 0 10.5,9.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Avatar">M5.5,5 A2.5,2.5 0 1 0 10.5,5 A2.5,2.5 0 1 0 5.5,5 M3,13.5 A5,5 0 0 1 13,13.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Eye">M1.5,8 C3.5,4.5 12.5,4.5 14.5,8 C12.5,11.5 3.5,11.5 1.5,8 Z M6,8 A2,2 0 1 0 10,8 A2,2 0 1 0 6,8</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Frame">M3,6 V3 H6 M10,3 H13 V6 M13,10 V13 H10 M6,13 H3 V10</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Battery">M2,5.5 H12 V10.5 H2 Z M14,7 V9</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Keyboard">M1.5,4.5 H14.5 V11.5 H1.5 Z M4,7 H4.1 M6.6,7 H6.7 M9.3,7 H9.4 M12,7 H12.1 M5,9.5 H11</StreamGeometry>
+</ResourceDictionary>

@@ -1,0 +1,25 @@
+{
+    "name": "VRMotionBridge.Editor",
+    "rootNamespace": "VRMotionBridge",
+    "references": [
+        "Unity.Timeline",
+        "Unity.Timeline.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.timeline",
+            "expression": "1.0.0",
+            "define": "VRMR_TIMELINE"
+        }
+    ],
+    "noEngineReferences": false
+}
