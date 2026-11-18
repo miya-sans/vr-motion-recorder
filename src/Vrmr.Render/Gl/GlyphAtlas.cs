@@ -26,6 +26,7 @@ namespace VRMR.Render.Gl
         /// <summary>The atlas pixels (coverage), <see cref="Size" /> squared.</summary>
         public readonly byte[] Pixels = new byte[Size * Size];
 
+        readonly SKFont _coverageFont = new();
         readonly Dictionary<int, SKTypeface> _fallback = new();
 
         readonly Dictionary<long, Glyph> _glyphs = new();
@@ -47,6 +48,7 @@ namespace VRMR.Render.Gl
             _canvas?.Dispose();
             _scratch?.Dispose();
             _paint.Dispose();
+            _coverageFont.Dispose();
             _canvas = null;
             _scratch = null;
         }
@@ -119,7 +121,8 @@ namespace VRMR.Render.Gl
 
         SKTypeface FaceFor(int codepoint)
         {
-            if (_face.GetGlyph(codepoint) != 0) return _face;
+            _coverageFont.Typeface = _face;
+            if (_coverageFont.GetGlyph(codepoint) != 0) return _face;
             if (_fallback.TryGetValue(codepoint, out var f)) return f;
             f = SKFontManager.Default.MatchCharacter(codepoint) ?? _face;
             _fallback[codepoint] = f;
