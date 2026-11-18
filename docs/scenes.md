@@ -80,4 +80,4 @@ Camera work is not part of scenes yet. The scene file and the exporters keep a p
 
 - [Architecture](architecture.md): the solve that scenes rerun.
 - [file-formats.md](file-formats.md): the `.vrmscene` file.
-- [ui-design.md](ui-design.md): the keyboard map the app keeps.
+- [ui-design.md](dev/ui-design.md): the keyboard map the app keeps.

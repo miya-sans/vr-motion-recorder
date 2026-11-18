@@ -4,7 +4,7 @@ Every feature of the previous (WinForms) UI's Takes mode, settings and export, w
 
 The previous UI has been removed. This checklist remains a historical feature reference and a backlog for the Avalonia app; unfinished features have no fallback desktop implementation.
 
-**States.** *Done*: built and exercised on a copy of a real take (or, where no take is involved, in the running window). *Built*: in the app and covered by tests on a made-up take, not yet exercised on a real one. *Simulated*: built and exercised with generated data through the recorder's real sources (SteamVR devices fed with `OpenVRSource.Feed`, VRChat's OSC as UDP packets on a private port, VRChat's log as a file in a sandbox folder: `tests/Vrmr.App.Tests/LiveSourceTests.cs`), but never with SteamVR or VRChat themselves, which test runs must not start. `docs/STATUS.md` lists what to check on real hardware. *Waiting*: depends on something that is not in the tree yet. *Open*: not built.
+**States.** *Done*: built and exercised on a copy of a real take (or, where no take is involved, in the running window). *Built*: in the app and covered by tests on a made-up take, not yet exercised on a real one. *Simulated*: built and exercised with generated data through the recorder's real sources (SteamVR devices fed with `OpenVRSource.Feed`, VRChat's OSC as UDP packets on a private port, VRChat's log as a file in a sandbox folder: `tests/Vrmr.App.Tests/LiveSourceTests.cs`), but never with SteamVR or VRChat themselves, which test runs must not start. `docs/dev/STATUS.md` lists what to check on real hardware. *Waiting*: depends on something that is not in the tree yet. *Open*: not built.
 
 Renamed or moved things are marked **→**.
 

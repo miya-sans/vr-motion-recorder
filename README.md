@@ -8,7 +8,7 @@ VR Motion Recorder is a desktop motion capture tool for SteamVR. It records raw 
 
 The first milestone is recording with **only SteamVR running**. You should be able to choose the built-in mannequin or your own avatar, calibrate, record, then reopen and export the take with VRChat closed. SteamVR capture and solving already exist. The current desktop setup still assumes VRChat for parts of avatar selection and calibration, and the standalone workflow still needs testing on real hardware.
 
-The take format can change during this foundation work. A future build may be unable to open takes from an earlier build. See [Project status](docs/STATUS.md) for next actions and previous validation, and the [long-term roadmap](docs/TODO.md) for future development.
+The take format can change during this foundation work. A future build may be unable to open takes from an earlier build. See [Project status](docs/dev/STATUS.md) for next actions and previous validation, and the [long-term roadmap](docs/dev/TODO.md) for future development.
 
 ## Features
 
@@ -63,18 +63,18 @@ Then start `dist\VRMotionRecorder\VRMotionRecorder.exe`. To run straight from th
 
 ## Documentation
 
-| Guide                                                                | Contents                                                          |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| [Features](docs/features.md)                                         | Capture, solving, editing and integrations.                       |
-| [Usage](docs/usage.md)                                               | Recording controls, reviewing takes and exporting animation.      |
-| [Calibration](docs/calibration.md)                                   | VRChat-style calibration, every setting, the calibration library. |
-| [Avatars](docs/avatars.md)                                           | The avatar library, adding a base model you own, the face.        |
-| [Scenes](docs/scenes.md)                                             | The scene editor: tracks, transitions, keyframes, re-recording.   |
-| [Export and pipeline](docs/export-and-pipeline.md)                   | Export formats, Blender and Unity workflows.                      |
-| [File formats](docs/file-formats.md)                                 | `.vrmr`, `.vrmscene`, manifests and sidecars.                     |
-| [Accuracy](docs/accuracy.md)                                         | How the solve was measured against VRChat, and the results.       |
-| [Troubleshooting](docs/troubleshooting.md)                           | No data, no face, no fingers, an avatar that is not recognised.   |
-| [Architecture](docs/architecture.md), [UI design](docs/ui-design.md) | Data flow, body solving, tracking repairs and desktop UI design.  |
+| Guide                                                                    | Contents                                                          |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| [Features](docs/features.md)                                             | Capture, solving, editing and integrations.                       |
+| [Usage](docs/usage.md)                                                   | Recording controls, reviewing takes and exporting animation.      |
+| [Calibration](docs/calibration.md)                                       | VRChat-style calibration, every setting, the calibration library. |
+| [Avatars](docs/avatars.md)                                               | The avatar library, adding a base model you own, the face.        |
+| [Scenes](docs/scenes.md)                                                 | The scene editor: tracks, transitions, keyframes, re-recording.   |
+| [Export and pipeline](docs/export-and-pipeline.md)                       | Export formats, Blender and Unity workflows.                      |
+| [File formats](docs/file-formats.md)                                     | `.vrmr`, `.vrmscene`, manifests and sidecars.                     |
+| [Accuracy](docs/accuracy.md)                                             | How the solve was measured against VRChat, and the results.       |
+| [Troubleshooting](docs/troubleshooting.md)                               | No data, no face, no fingers, an avatar that is not recognised.   |
+| [Architecture](docs/architecture.md), [UI design](docs/dev/ui-design.md) | Data flow, body solving, tracking repairs and desktop UI design.  |
 
 ## Contributing and support
 

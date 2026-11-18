@@ -2,67 +2,43 @@
 
 Thanks for helping. This page gets you from a clone to a running build, and lists the few rules the project keeps.
 
+## Before you start
+
+Check [docs/dev/](docs/dev/) first. Read the [current status](docs/dev/STATUS.md) for next actions and the [roadmap](docs/dev/TODO.md) for long-term plans. Consult the guides relevant to your task. For desktop UI changes, follow the [UI design guide](docs/dev/ui-design.md).
+
 ## Build and run
 
-You need the [.NET SDK 10](https://dotnet.microsoft.com/download) or later. Nothing else: packages are restored from
-nuget.org on the first build.
+Use the [.NET SDK 10](https://dotnet.microsoft.com/download) or later as configured in `global.json`. Run these commands from the repository root.
 
-```
-git clone https://github.com/miya-sans/vrc-motion-recorder
-cd vrc-motion-recorder
+```powershell
 dotnet build VRMotionRecorder.slnx -c Release
-dotnet test --solution VRMotionRecorder.slnx -c Release
+dotnet test --solution VRMotionRecorder.slnx -c Release --no-build
 dotnet run --project src/Vrmr.App -c Release
 ```
 
-`build.cmd` does the build and the tests in one go on Windows. All build output goes to `artifacts/`.
+On Windows, `build.cmd` builds and tests the solution. Build output goes to `artifacts/`. Building, testing and reviewing saved takes work with SteamVR and VRChat closed.
 
-SteamVR and VRChat are not needed to build, test or open existing takes. To record you need VRChat with OSC on;
-SteamVR adds controllers, trackers and finger tracking.
+Choose checks that exercise the change. For library tests, use `dotnet test --project tests/Vrmr.Tests/Vrmr.Tests.csproj -c Release`. Check the cross-platform CLI with `dotnet build src/Vrmr.Cli/Vrmr.Cli.csproj -c Release` and integration packaging with `python integrations/package.py dist`. For documentation-only edits, check the affected links and diff.
 
-## Where things are
+## Project boundaries
 
-`docs/architecture.md` describes the projects and how data flows through them. In short:
+See the [architecture guide](docs/architecture.md) for the project map and data flow. Keep shared libraries independent of the apps and keep the CLI buildable across platforms. Desktop UI work belongs in the Avalonia app. Read the [Blender](integrations/blender/README.md) or [Unity](integrations/unity/com.vrmr.motion-bridge/README.md) integration guide before changing its package.
 
-| Folder | What |
-|---|---|
-| `src/Vrmr.Core`, `Vrmr.Model` | Maths, JSON, file formats, settings |
-| `src/Vrmr.Fbik`, `Vrmr.Solve` | The IK solver and everything that turns a take into a pose |
-| `src/Vrmr.Capture` | OpenVR, OSC, the VRChat log, the recorder |
-| `src/Vrmr.Avatars`, `Vrmr.Scene`, `Vrmr.Export` | Avatar files, the scene editor's model, exporters |
-| `src/Vrmr.Render`, `Vrmr.App` | The 3D view and the desktop app |
-| `src/Vrmr.Cli` | `vrmr`, the command-line tool |
-| `integrations/blender`, `integrations/unity` | The Blender add-on and the Unity editor package |
-| `tests` | Unit and end-to-end tests |
+- Design the main capture workflow for SteamVR alone, including avatar selection, tracker assignment, calibration, recording and export. VRChat OSC, HUMR and video player integration are optional. Keep device and settings access read-only and preserve explicitly enabled face replay.
+- Preserve raw recordings and deterministic solves. Store the calibration inputs needed to reproduce standalone motion in the take. The take format may change during development without supporting earlier files.
+- Keep capture, solving and drawing free of per-frame allocations. Run solves, file reads and exports off the UI thread, and redraw only when needed.
+- Keep personal recordings, scenes, avatar assets, exports, screenshots of paid avatars, machine paths and identifiers out of commits. Check the diff even when `.gitignore` covers the file types.
+- Change the source or generator for build and package outputs. Preserve Unity `.meta` files byte for byte unless the task requires a metadata change. Retain third-party headers and update [the notices](THIRD_PARTY_NOTICES.md) when adding third-party code.
 
-## Rules
+## Checking solved motion
 
-1. **No personal or licensed data in the repository.** No takes (`.vrmr`), scenes, avatar files (FBX, textures,
-   `.unitypackage`, BlendShare assets), exports, screenshots that show a paid avatar, or paths and ids from your own
-   machine. `.gitignore` blocks the usual file types; check `git status` before you commit anyway.
-2. **Changes that are not meant to alter the motion must not alter it.** Before and after your change, run
-   `vrmr dump <folder with copies of your takes> <outDir>` and compare the two dumps with
-   `python tools/compare_dumps.py <before> <after>`. It must say `IDENTICAL`. If your change is meant to alter the
-   motion, say in the pull request what changed, by how much, and how you measured it.
-3. **The app only reads from VRChat and SteamVR.** It never sends input, never takes VRChat's ports, and never
-   writes VRChat's or SteamVR's settings.
-4. **Keep it light.** The app runs next to VRChat. No per-frame allocations in capture, solving or drawing; nothing
-   slow on the UI thread; no timer that only redraws. `docs/architecture.md` has the details.
-5. **Third-party code keeps its notice.** If you bring in code under another licence, add it to
-   `THIRD_PARTY_NOTICES.md` and keep the file headers.
+For changes that could affect motion, run `vrmr dump <takesDir> <outDir>` on copies of the same takes before and after the change. Compare the results with `python tools/compare_dumps.py <before> <after>`. Behaviour-preserving changes must produce `IDENTICAL`. For an intentional motion change, describe what changed, by how much, and how you measured it.
 
-## Style
+## Submitting changes
 
-- Rider: use **Full Cleanup** on changed code. The shared `VRMotionRecorder.sln.DotSettings` selects that profile;
-  `.editorconfig` supplies the repository's syntax and formatting rules and takes precedence over Rider settings.
-  Enable EditorConfig support and review the cleanup diff before committing. The baseline is Rider 2026.3;
-  member layout and unspecified cleanup options use its built-in defaults. `dotnet format` supports the standard
-  EditorConfig rules but does not replace Rider's full cleanup or member rearrangement.
-- C#: the code style is in `.editorconfig`. Public types and members get a one-line `///` summary that says what
-  they are for, not how they work.
-- Tests: one behaviour per test, named as a sentence (`SaveThenLoadKeepsParametersAndMetadata`).
-- UI: follow `docs/ui-design.md`. Colours and sizes come from the theme tokens.
-- Commits: a short imperative subject, then why the change was needed.
+Run Rider **Full Cleanup** on changed code and review its diff. Follow the [code style guide](docs/dev/code-style.md) for C#, Avalonia, solver exceptions and analyzer warnings. Add or update tests for behaviour changes and bug fixes.
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) with a short imperative subject. Explain the reason in the body when useful.
 
 ## Reporting a problem
 
