@@ -82,7 +82,7 @@ namespace VRMR.App.Tests
             if (!string.IsNullOrEmpty(dir) && frame != null)
             {
                 Directory.CreateDirectory(dir);
-                frame.Save(Path.Combine(dir, name + ".png"));
+                frame.Save(Path.Combine(dir, name + ".png"), PngBitmapEncoderOptions.Default);
             }
 
             return frame;
