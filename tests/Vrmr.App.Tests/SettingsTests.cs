@@ -257,10 +257,10 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void UnityProjectsAreAddedThroughTheFolderPicker()
+        public async Task UnityProjectsAreAddedThroughTheFolderPicker()
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = data.NewHost(new AvaloniaUiDispatcher());
                 var folders = new SettingsViewModel(host).Folders;
@@ -280,7 +280,7 @@ namespace VRMR.App.Tests
                 Assert.Equal(project, Assert.Single(folders.Projects).Path);
                 Assert.Same(folders.Projects[0], folders.SelectedProject);
                 Assert.True(
-                    HeadlessUi.WaitFor(() => !host.AvatarService.Scanning && folders.ScanInfo.Contains("1 project")),
+                    await HeadlessUi.WaitForAsync(() => !host.AvatarService.Scanning && folders.ScanInfo.Contains("1 project")),
                     "the scan did not report: " + folders.ScanInfo);
                 Assert.False(folders.Projects[0].Missing);
 
@@ -507,18 +507,18 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void HiddenMeshesOfARealAvatarFollowTheTicks()
+        public async Task HiddenMeshesOfARealAvatarFollowTheTicks()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = PrivateData.NewHost(new AvaloniaUiDispatcher());
                 var settings = new SettingsViewModel(host);
                 var view = settings.View;
-                OpenATake(host);
+                await OpenATake(host);
                 settings.Show(SettingsCategory.View);
                 settings.SetActive(true);
-                Assert.True(HeadlessUi.WaitFor(() => view.HasMeshes, 120000),
+                Assert.True(await HeadlessUi.WaitForAsync(() => view.HasMeshes, 120000),
                     "no meshes were listed: " + view.MeshInfo);
                 var before = host.Settings.PreviewHiddenMeshes.ToList();
                 try
@@ -608,35 +608,35 @@ namespace VRMR.App.Tests
         // ------------------------------------------------------------------------------------------ drawn off screen
 
         /// <summary>On the UI thread: opens the smallest of the private takes and waits for its solve.</summary>
-        static void OpenATake(AppHost host)
+        static async Task OpenATake(AppHost host)
         {
             var opening = host.Session.OpenAsync(PrivateData.Takes()[0]);
-            Assert.True(HeadlessUi.WaitFor(() => opening.IsCompleted, 60000), "the take did not open");
+            Assert.True(await HeadlessUi.WaitForAsync(() => opening.IsCompleted, 60000), "the take did not open");
             Assert.True(
-                HeadlessUi.WaitFor(
+                await HeadlessUi.WaitForAsync(
                     () => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed, 120000),
                 "the take did not solve");
             Assert.True(host.Session.Solve == SolveState.Done, "the solve failed: " + host.Session.SolveError);
         }
 
-        static Window Open(SettingsViewModel settings, AppHost host, double scale = 1)
+        static async Task<Window> Open(SettingsViewModel settings, AppHost host, double scale = 1)
         {
             Section.StateStore = host.UiState;
             var window = new Window
                 { Width = 1400, Height = 860, Content = new SettingsPage { DataContext = settings } };
             window.Show();
             if (scale != 1) window.SetRenderScaling(scale);
-            HeadlessUi.Settle(150);
+            await HeadlessUi.SettleAsync(150);
             return window;
         }
 
         [Theory]
         [InlineData(1.0)]
         [InlineData(1.5)]
-        public void EveryCategoryDraws(double scale)
+        public async Task EveryCategoryDraws(double scale)
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = data.NewHost(new AvaloniaUiDispatcher());
                 TestAvatars.Save(host, "Test avatar one", 1.45f);
@@ -644,14 +644,14 @@ namespace VRMR.App.Tests
                 host.AvatarService.SetDefault(host.AvatarService.Entries[1]);
                 var settings = new SettingsViewModel(host);
                 settings.Show(SettingsCategory.Sources);
-                var window = Open(settings, host, scale);
+                var window = await Open(settings, host, scale);
                 var page = (SettingsPage)window.Content;
-                Assert.True(HeadlessUi.WaitFor(() => host.Environment.Report != null));
+                Assert.True(await HeadlessUi.WaitForAsync(() => host.Environment.Report != null));
                 string suffix = scale == 1 ? "" : "-150";
                 foreach (SettingsCategory category in Enum.GetValues(typeof(SettingsCategory)))
                 {
                     settings.Show(category);
-                    HeadlessUi.Settle(80);
+                    await HeadlessUi.SettleAsync(80);
                     Assert.Equal((int)category, page.FindControl<ListBox>("CategoryList").SelectedIndex);
                     Assert.NotNull(HeadlessUi.Capture(window,
                         $"settings-{(int)category + 1}-{category.ToString().ToLowerInvariant()}{suffix}"));
@@ -663,15 +663,15 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheEmptyAvatarLibraryAndTheFoldedPartsDraw()
+        public async Task TheEmptyAvatarLibraryAndTheFoldedPartsDraw()
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = data.NewHost(new AvaloniaUiDispatcher());
                 var settings = new SettingsViewModel(host);
                 settings.Show(SettingsCategory.Avatars);
-                var window = Open(settings, host);
+                var window = await Open(settings, host);
                 Assert.True(settings.Avatars.IsEmpty);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-empty"));
 
@@ -680,16 +680,16 @@ namespace VRMR.App.Tests
                              { "settings.avatars.details", "settings.avatars.import", "settings.avatars.unity" })
                     host.UiState.Set("fold." + key, true);
                 window.Close();
-                window = Open(settings, host);
+                window = await Open(settings, host);
                 // the import of a made-up model is over in a blink: its progress is drawn from the state the service would report
                 settings.Avatars.ImportMessage = "Reading Imported avatar.unitypackage…";
                 settings.Avatars.IsImporting = true;
-                HeadlessUi.Settle(80);
+                await HeadlessUi.SettleAsync(80);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-importing"));
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Imported avatar");
                 var adding = host.AvatarService.AddAsync(new[] { fbx });
-                Assert.True(HeadlessUi.WaitFor(() => adding.IsCompleted));
-                HeadlessUi.Settle(80);
+                Assert.True(await HeadlessUi.WaitForAsync(() => adding.IsCompleted));
+                await HeadlessUi.SettleAsync(80);
                 Assert.False(settings.Avatars.IsImporting);
                 Assert.False(settings.Avatars.IsEmpty);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-unfolded"));
@@ -698,24 +698,24 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheLightThemeDraws()
+        public async Task TheLightThemeDraws()
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = data.NewHost(new AvaloniaUiDispatcher());
                 TestAvatars.Save(host, "Test avatar");
                 var settings = new SettingsViewModel(host);
                 settings.Show(SettingsCategory.View);
-                var window = Open(settings, host);
+                var window = await Open(settings, host);
                 try
                 {
                     settings.View.ThemeIndex = 1; // through the view, as a click on the switch would
-                    HeadlessUi.Settle(80);
+                    await HeadlessUi.SettleAsync(80);
                     Assert.Equal(ThemeVariant.Light, Application.Current.ActualThemeVariant);
                     Assert.NotNull(HeadlessUi.Capture(window, "settings-view-light"));
                     settings.Show(SettingsCategory.Recording);
-                    HeadlessUi.Settle(80);
+                    await HeadlessUi.SettleAsync(80);
                     Assert.NotNull(HeadlessUi.Capture(window, "settings-recording-light"));
                 }
                 finally
@@ -728,23 +728,23 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void RealAvatarsAndTheirMeshesDraw()
+        public async Task RealAvatarsAndTheirMeshesDraw()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = PrivateData.NewHost(new AvaloniaUiDispatcher());
                 var settings = new SettingsViewModel(host);
                 settings.Show(SettingsCategory.Avatars);
-                var window = Open(settings, host);
+                var window = await Open(settings, host);
                 Assert.False(settings.Avatars.IsEmpty);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-real"));
 
-                OpenATake(host);
+                await OpenATake(host);
                 settings.Show(SettingsCategory.View);
-                Assert.True(HeadlessUi.WaitFor(() => settings.View.HasMeshes, 120000),
+                Assert.True(await HeadlessUi.WaitForAsync(() => settings.View.HasMeshes, 120000),
                     "no meshes were listed: " + settings.View.MeshInfo);
-                HeadlessUi.Settle(80);
+                await HeadlessUi.SettleAsync(80);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-view-real"));
                 window.Close();
             });

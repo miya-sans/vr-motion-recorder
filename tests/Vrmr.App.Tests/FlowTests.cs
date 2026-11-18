@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -25,7 +26,7 @@ namespace VRMR.App.Tests
     public class FlowTests
     {
         /// <summary>The window on a scratch data folder with one made-up take, opened and solved.</summary>
-        static Session OpenTake(double seconds = 4, double width = 1400)
+        static async Task<Session> OpenTake(double seconds = 4, double width = 1400)
         {
             var s = new Session { Data = new ScratchData() };
             SyntheticTake.Save(s.Data.TakesDir, seconds, "Flow take");
@@ -33,19 +34,19 @@ namespace VRMR.App.Tests
             s.Shell = new ShellViewModel(s.Host);
             s.Window = new MainWindow(s.Shell) { Width = width, Height = 860 };
             s.Window.Show();
-            Assert.True(HeadlessUi.WaitFor(() => s.Shell.Library.Items.Count == 1),
+            Assert.True(await HeadlessUi.WaitForAsync(() => s.Shell.Library.Items.Count == 1),
                 "the library did not list the take");
             s.Shell.Library.Selected = s.Shell.Library.Items[0];
-            WaitSolved(s);
+            await WaitSolved(s);
             return s;
         }
 
-        static void WaitSolved(Session s)
+        static async Task WaitSolved(Session s)
         {
             Assert.True(
-                HeadlessUi.WaitFor(() => s.Host.Session.Solve == SolveState.Done && s.Host.Session.ClipIsCurrent,
+                await HeadlessUi.WaitForAsync(() => s.Host.Session.Solve == SolveState.Done && s.Host.Session.ClipIsCurrent,
                     30000), "the take did not solve: " + s.Host.Session.SolveError);
-            HeadlessUi.Settle(50);
+            await HeadlessUi.SettleAsync(50);
         }
 
         static Point OnTimeline(Session s, double time, double y = 60)
@@ -58,11 +59,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void OpeningATakeShowsItAndLeavesLive()
+        public async Task OpeningATakeShowsItAndLeavesLive()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var takes = s.Shell.Takes;
                 Assert.True(takes.HasTake);
                 Assert.True(takes.CanPlay);
@@ -78,11 +79,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheGpuViewShowsWhatTheSceneHolds()
+        public async Task TheGpuViewShowsWhatTheSceneHolds()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var view = Assert.IsType<GpuView>(s.Window.Viewport);
                 var scene = view.Scene;
                 Assert.Single(view.Frame.Actors);
@@ -94,7 +95,7 @@ namespace VRMR.App.Tests
 
                 // the avatar's mesh arrives from a background load (here the built-in mannequin's) and the frame is refilled with it
                 Assert.True(
-                    HeadlessUi.WaitFor(() => view.Frame.Actors.Count == 1 && view.Frame.Actors[0].Model != null, 10000),
+                    await HeadlessUi.WaitForAsync(() => view.Frame.Actors.Count == 1 && view.Frame.Actors[0].Model != null, 10000),
                     "the mesh did not load");
                 Assert.True(view.Frame.Actors[0].Model.TriangleCount > 100);
                 Assert.True(view.ShowMesh);
@@ -120,11 +121,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheWheelOverAFocusedDropDownDoesNotChangeItsValue()
+        public async Task TheWheelOverAFocusedDropDownDoesNotChangeItsValue()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var takes = s.Shell.Takes;
                 var combos = VisualExtensions.GetVisualDescendants(s.Window).OfType<ComboBox>()
                     .Where(c => c.IsEffectivelyVisible).ToList();
@@ -147,18 +148,18 @@ namespace VRMR.App.Tests
                 var there = inPanel
                     .TranslatePoint(new Point(inPanel.Bounds.Width / 2, inPanel.Bounds.Height / 2), s.Window).Value;
                 s.Window.MouseWheel(there, new Vector(0, -2));
-                HeadlessUi.Settle(30);
+                await HeadlessUi.SettleAsync(30);
                 Assert.Equal(before, inPanel.SelectedIndex);
                 Assert.True(scroller.Offset.Y > 0, "the panel did not scroll");
             });
         }
 
         [Fact]
-        public void SpacePlaysAndThePlayheadFollowsTheDisplayFrames()
+        public async Task SpacePlaysAndThePlayheadFollowsTheDisplayFrames()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 s.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
                 Assert.True(s.Shell.Takes.IsPlaying);
                 Assert.True(s.Window.Viewport.Animating);
@@ -166,7 +167,7 @@ namespace VRMR.App.Tests
                 for (int i = 0; i < 30; i++)
                 {
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                    HeadlessUi.Settle(20);
+                    await HeadlessUi.SettleAsync(20);
                 }
 
                 Assert.True(s.Host.Clock.Playhead > start + 0.2,
@@ -178,18 +179,18 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void APausedWindowDrawsNothing()
+        public async Task APausedWindowDrawsNothing()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 HeadlessUi.Capture(s.Window, "flow-idle");
-                HeadlessUi.Settle(300);
+                await HeadlessUi.SettleAsync(300);
                 long view = s.Window.Viewport.FramesDrawn, timeline = s.Window.TimelineView.FramesDrawn;
                 for (int i = 0; i < 40; i++)
                 {
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                    HeadlessUi.Settle(25);
+                    await HeadlessUi.SettleAsync(25);
                 }
 
                 Assert.Equal(view, s.Window.Viewport.FramesDrawn);
@@ -198,55 +199,55 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void KeysStepSeekTrimAndUndo()
+        public async Task KeysStepSeekTrimAndUndo()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var clock = s.Host.Clock;
                 var take = s.Host.Session.Take;
 
-                void Press(Key k, RawInputModifiers m = RawInputModifiers.None)
+                async Task Press(Key k, RawInputModifiers m = RawInputModifiers.None)
                 {
                     s.Window.KeyPress(k, m, PhysicalKey.None, null);
-                    HeadlessUi.Settle(20);
+                    await HeadlessUi.SettleAsync(20);
                 }
 
-                Press(Key.Right);
-                Press(Key.Right);
-                Press(Key.Right);
+                await Press(Key.Right);
+                await Press(Key.Right);
+                await Press(Key.Right);
                 Assert.Equal(3 / 60.0, clock.Playhead, 4);
-                Press(Key.Left);
+                await Press(Key.Left);
                 Assert.Equal(2 / 60.0, clock.Playhead, 4);
-                Press(Key.End);
+                await Press(Key.End);
                 Assert.Equal(take.Duration, clock.Playhead, 3);
                 clock.Seek(1.0, take.Duration);
-                Press(Key.I);
+                await Press(Key.I);
                 Assert.Equal(1.0, s.Host.Session.Take.Edits.TrimIn, 3);
                 clock.Seek(3.0, take.Duration);
-                Press(Key.O);
+                await Press(Key.O);
                 Assert.Equal(3.0, s.Host.Session.Take.Edits.TrimOut, 3);
-                Press(Key.Home);
+                await Press(Key.Home);
                 Assert.Equal(1.0, clock.Playhead, 3);
-                Press(Key.Z, RawInputModifiers.Control);
+                await Press(Key.Z, RawInputModifiers.Control);
                 Assert.True(s.Host.Session.Take.Edits.TrimOut < 0);
-                Press(Key.Z, RawInputModifiers.Control);
+                await Press(Key.Z, RawInputModifiers.Control);
                 Assert.Equal(0, s.Host.Session.Take.Edits.TrimIn);
-                Press(Key.Y, RawInputModifiers.Control);
+                await Press(Key.Y, RawInputModifiers.Control);
                 Assert.Equal(1.0, s.Host.Session.Take.Edits.TrimIn, 3);
-                Press(Key.Z, RawInputModifiers.Control | RawInputModifiers.Shift);
+                await Press(Key.Z, RawInputModifiers.Control | RawInputModifiers.Shift);
                 Assert.Equal(3.0, s.Host.Session.Take.Edits.TrimOut, 3);
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.Equal(2.0, s.Host.Session.Clip.Duration, 1);
             });
         }
 
         [Fact]
-        public void DraggingATrimHandleIsOneUndoStepAndSolvesWhenReleased()
+        public async Task DraggingATrimHandleIsOneUndoStepAndSolvesWhenReleased()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var session = s.Host.Session;
                 int solves = 0;
                 session.ClipChanged += () => solves++;
@@ -255,13 +256,13 @@ namespace VRMR.App.Tests
                 for (int i = 1; i <= 10; i++)
                 {
                     s.Window.MouseMove(OnTimeline(s, i * 0.1));
-                    HeadlessUi.Settle(10);
+                    await HeadlessUi.SettleAsync(10);
                 }
 
                 Assert.Equal(1.0, session.Take.Edits.TrimIn, 1);
                 Assert.Equal(0, solves); // nothing solves during the drag
                 s.Window.MouseUp(OnTimeline(s, 1.0), MouseButton.Left);
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.Equal(1, solves);
                 Assert.Equal(1, session.History.UndoCount); // the whole drag is one step
                 HeadlessUi.Capture(s.Window, "flow-trimmed");
@@ -271,11 +272,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void DraggingInTheLanesSelectsAndDeleteCutsIt()
+        public async Task DraggingInTheLanesSelectsAndDeleteCutsIt()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var takes = s.Shell.Takes;
                 Assert.False(takes.HasSelection);
                 s.Window.MouseDown(OnTimeline(s, 1.0, 100), MouseButton.Left);
@@ -287,7 +288,7 @@ namespace VRMR.App.Tests
                 s.Window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, null);
                 Assert.Single(s.Host.Session.Take.Edits.Cuts);
                 Assert.False(takes.HasSelection);
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.Equal(3.0, s.Host.Session.Clip.Duration, 1);
                 // right-click on the cut brings it back
                 s.Window.MouseDown(OnTimeline(s, 1.5, 100), MouseButton.Right);
@@ -297,11 +298,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void ChangingACalibrationSettingGivesTheTakeItsOwnSettingsAndSolvesAgain()
+        public async Task ChangingACalibrationSettingGivesTheTakeItsOwnSettingsAndSolvesAgain()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var session = s.Host.Session;
                 var inspector = s.Shell.Takes.Inspector;
                 Assert.Null(session.Take.Edits.Calib);
@@ -312,7 +313,7 @@ namespace VRMR.App.Tests
                 Assert.Equal(CalLock.Both, session.Take.Edits.Calib.Lock);
                 Assert.Equal(CalLock.Head, s.Host.Settings.CalibrationDefaults.Lock); // the defaults are untouched
                 Assert.Equal("this take's own", inspector.CalibrationSummary);
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.NotSame(before, session.Clip);
                 s.Shell.Takes.UndoCommand.Execute(null);
                 Assert.Null(session.Take.Edits.Calib);
@@ -321,11 +322,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void OriginTurnsAndPlacementFieldsMoveTheTake()
+        public async Task OriginTurnsAndPlacementFieldsMoveTheTake()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var session = s.Host.Session;
                 var inspector = s.Shell.Takes.Inspector;
                 s.Shell.Takes.TurnRightCommand.Execute(null);
@@ -333,10 +334,10 @@ namespace VRMR.App.Tests
                 Assert.Equal(90, Math.Abs(inspector.TurnY), 0);
                 inspector.MoveX = 25;
                 Assert.Equal(0.25f, session.Take.Edits.Placement.pos.x, 3);
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.Equal(0.25f, session.Clip.Placement.pos.x, 3);
                 s.Shell.Takes.OriginHereCommand.Execute(null);
-                WaitSolved(s);
+                await WaitSolved(s);
                 var clip = session.Clip;
                 var hips = clip.Hips[
                     clip.FrameAt(session.Take.Edits.SourceToEdited(s.Host.Clock.Playhead, session.Take.Duration))];
@@ -349,11 +350,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheGizmoDragMovesTheTakeAsOneUndoStep()
+        public async Task TheGizmoDragMovesTheTakeAsOneUndoStep()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var takes = s.Shell.Takes;
                 var session = s.Host.Session;
                 takes.SetGizmo(true, false);
@@ -363,7 +364,7 @@ namespace VRMR.App.Tests
                 for (int i = 1; i <= 5; i++) tool.Dragged(new Vec3(i * 0.1f, 0, 0), Quat.Identity, 0);
                 Assert.Equal(0.5f, session.Take.Edits.Placement.pos.x, 3);
                 tool.DragEnded();
-                WaitSolved(s);
+                await WaitSolved(s);
                 Assert.Equal(1, session.History.UndoCount);
                 Assert.Equal(0.5f, session.Clip.Placement.pos.x, 3);
                 s.Window.KeyPress(Key.E, RawInputModifiers.None, PhysicalKey.E, "e");
@@ -374,18 +375,18 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void RenamingSavesAndTheLibraryShowsTheNewName()
+        public async Task RenamingSavesAndTheLibraryShowsTheNewName()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 var inspector = s.Shell.Takes.Inspector;
                 inspector.Name = "A better name";
                 Assert.True(inspector.IsDirty);
                 Assert.Equal("A better name •", s.Shell.Library.Items[0].Name);
                 s.Window.KeyPress(Key.S, RawInputModifiers.Control, PhysicalKey.S, null);
                 Assert.True(
-                    HeadlessUi.WaitFor(() =>
+                    await HeadlessUi.WaitForAsync(() =>
                         !s.Host.Session.Dirty && s.Shell.Library.Items.Count == 1 &&
                         s.Shell.Library.Items[0].Info.Name == "A better name"),
                     "the saved name did not reach the library");
@@ -394,11 +395,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void SearchFiltersTheLibraryAndSaysWhenNothingMatches()
+        public async Task SearchFiltersTheLibraryAndSaysWhenNothingMatches()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 s.Shell.Library.Search = "flow";
                 Assert.Single(s.Shell.Library.Items);
                 s.Shell.Library.Search = "nothing like this";
@@ -411,11 +412,11 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void PanelsFoldTheWorkspaceSwitchesAndTheHelpSheetOpens()
+        public async Task PanelsFoldTheWorkspaceSwitchesAndTheHelpSheetOpens()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
-                using var s = OpenTake();
+                using var s = await OpenTake();
                 s.Window.KeyPress(Key.D1, RawInputModifiers.Control, PhysicalKey.Digit1, null);
                 s.Window.KeyPress(Key.D2, RawInputModifiers.Control, PhysicalKey.Digit2, null);
                 Assert.False(s.Shell.LibraryOpen);
@@ -433,14 +434,14 @@ namespace VRMR.App.Tests
 
                 // switched on (as the flag would), the switch is back and the Takes workspace lets go of the view
                 s.Shell.SceneAvailable = true;
-                HeadlessUi.Settle(20);
+                await HeadlessUi.SettleAsync(20);
                 Assert.True(workspaceSwitch.IsVisible);
                 s.Shell.WorkspaceIndex = 1;
                 Assert.True(s.Shell.IsScene);
                 Assert.False(s.Window.Viewport.Animating);
                 s.Shell.SceneAvailable = false;
                 Assert.True(s.Shell.IsTakes);
-                HeadlessUi.Settle(20);
+                await HeadlessUi.SettleAsync(20);
                 Assert.False(workspaceSwitch.IsVisible);
                 s.Window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, null);
                 Assert.True(s.Shell.HelpOpen);

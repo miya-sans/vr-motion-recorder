@@ -182,10 +182,10 @@ namespace VRMR.App.Tests
         [Theory]
         [InlineData(1.0)]
         [InlineData(1.5)]
-        public void EveryStepDraws(double scale)
+        public async Task EveryStepDraws(double scale)
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var host = data.NewHost(new AvaloniaUiDispatcher());
                 var guide = new FirstRunViewModel(host);
@@ -193,29 +193,29 @@ namespace VRMR.App.Tests
                 var window = new Window { Width = 1400, Height = 860, Content = view };
                 window.Show();
                 if (scale != 1) window.SetRenderScaling(scale);
-                HeadlessUi.Settle(100);
+                await HeadlessUi.SettleAsync(100);
                 Assert.False(view.IsVisible); // closed until its view-model opens
 
                 guide.Open();
-                Assert.True(HeadlessUi.WaitFor(() =>
+                Assert.True(await HeadlessUi.WaitForAsync(() =>
                     view.IsVisible && host.Environment.Report != null && !guide.IsChecking));
                 string suffix = scale == 1 ? "" : "-150";
                 for (int step = 0; step < FirstRunViewModel.StepCount; step++)
                 {
                     Assert.Equal(step, guide.Step);
-                    HeadlessUi.Settle(80);
+                    await HeadlessUi.SettleAsync(80);
                     Assert.NotNull(HeadlessUi.Capture(window, $"firstrun-{step + 1}{suffix}"));
                     guide.NextCommand.Execute(null);
                 }
 
                 // the last step with an avatar in the library
                 TestAvatars.Save(host, "Test avatar");
-                HeadlessUi.Settle(80);
+                await HeadlessUi.SettleAsync(80);
                 Assert.True(guide.HasOwnAvatar);
                 Assert.NotNull(HeadlessUi.Capture(window, $"firstrun-3-with-avatar{suffix}"));
 
                 guide.FinishCommand.Execute(null);
-                HeadlessUi.Settle(50);
+                await HeadlessUi.SettleAsync(50);
                 Assert.False(view.IsVisible);
                 window.Close();
             });

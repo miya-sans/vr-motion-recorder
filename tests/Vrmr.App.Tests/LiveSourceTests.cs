@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Headless;
 using VRMR.App.Composition;
@@ -162,9 +163,9 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheWindowShowsTheLiveState()
+        public async Task TheWindowShowsTheLiveState()
         {
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 using var rig = new Rig(realUi: new AvaloniaUiDispatcher());
                 var window = new MainWindow(rig.Shell) { Width = 1400, Height = 860 };
@@ -177,17 +178,17 @@ namespace VRMR.App.Tests
                     rig.SendFloats("/avatar/parameters/FT/v2/JawOpen", 0.7f);
                     rig.SendFloats("/avatar/parameters/FT/v2/MouthSmileLeft", 0.4f);
                     rig.SendString("/avatar/change", "avtr_test-1");
-                    Assert.True(HeadlessUi.WaitFor(() =>
+                    Assert.True(await HeadlessUi.WaitForAsync(() =>
                             rig.Shell.Sources.Any(p => p.Id == SourceStatus.SteamVr && p.StateText == "7/8 tracked")
                             && rig.Shell.Sources.Any(p => p.Id == SourceStatus.VrChat && p.StateText == "receiving")
                             && rig.Shell.Sources.Any(p => p.Id == SourceStatus.Avatar), 5000),
                         "the pills did not follow the sources");
-                    Assert.True(HeadlessUi.WaitFor(() => rig.Shell.Takes.Devices.Devices.Count == 8, 3000),
+                    Assert.True(await HeadlessUi.WaitForAsync(() => rig.Shell.Takes.Devices.Devices.Count == 8, 3000),
                         "the Devices panel did not list the devices");
-                    Assert.True(HeadlessUi.WaitFor(() => window.Viewport.Animating, 3000),
+                    Assert.True(await HeadlessUi.WaitForAsync(() => window.Viewport.Animating, 3000),
                         "the live view did not start when the devices came up"); // looked for once a second
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                    HeadlessUi.Settle(50);
+                    await HeadlessUi.SettleAsync(50);
                     Assert.Contains(window.Viewport.Scene.Markers, m => m.Faded);
                     HeadlessUi.Capture(window, "live-devices");
 
@@ -195,7 +196,7 @@ namespace VRMR.App.Tests
                     for (int i = 0; i < 40; i++)
                     {
                         rig.Feed();
-                        HeadlessUi.Settle(10);
+                        await HeadlessUi.SettleAsync(10);
                     }
 
                     Assert.True(rig.Shell.IsRecording);
@@ -203,7 +204,7 @@ namespace VRMR.App.Tests
                     HeadlessUi.Capture(window, "live-recording");
                     rig.Shell.ToggleRecordCommand.Execute(null);
                     Assert.True(
-                        HeadlessUi.WaitFor(() => rig.Shell.Library.Items.Count == 1 && rig.Shell.Takes.HasTake, 8000),
+                        await HeadlessUi.WaitForAsync(() => rig.Shell.Library.Items.Count == 1 && rig.Shell.Takes.HasTake, 8000),
                         "the new take did not appear and open");
                     HeadlessUi.Capture(window, "live-recorded");
                 }

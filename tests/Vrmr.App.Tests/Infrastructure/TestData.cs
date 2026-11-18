@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using VRMR.App.Composition;
 using VRMR.App.Services;
 
@@ -94,6 +95,19 @@ namespace VRMR.App.Tests
                 if (condition()) return true;
                 if (sw.ElapsedMilliseconds > timeoutMs) return false;
                 Thread.Sleep(5);
+            }
+        }
+
+        /// <summary>Drains posted work while asynchronously waiting for a background result.</summary>
+        public async Task<bool> WaitForAsync(Func<bool> condition, int timeoutMs = 20000)
+        {
+            var sw = Stopwatch.StartNew();
+            while (true)
+            {
+                RunPosted();
+                if (condition()) return true;
+                if (sw.ElapsedMilliseconds > timeoutMs) return false;
+                await Task.Delay(5);
             }
         }
 

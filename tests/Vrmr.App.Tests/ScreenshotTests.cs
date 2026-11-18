@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Headless;
 using VRMR.App.Composition;
 using VRMR.App.Platform;
@@ -16,25 +17,25 @@ namespace VRMR.App.Tests
     [Collection("app")]
     public class ScreenshotTests
     {
-        static MainWindow Open(AppHost host, double width = 1400, double height = 860, double scale = 1)
+        static async Task<MainWindow> Open(AppHost host, double width = 1400, double height = 860, double scale = 1)
         {
             var window = new MainWindow(new ShellViewModel(host)) { Width = width, Height = height };
             window.Show();
             if (scale != 1) window.SetRenderScaling(scale);
-            HeadlessUi.Settle(150);
+            await HeadlessUi.SettleAsync(150);
             return window;
         }
 
         [Fact]
-        public void EmptyLibraryShowsWhatToDoNext()
+        public async Task EmptyLibraryShowsWhatToDoNext()
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 var host = data.NewHost(new AvaloniaUiDispatcher());
-                var window = Open(host);
+                var window = await Open(host);
                 var shell = (ShellViewModel)window.DataContext;
-                Assert.True(HeadlessUi.WaitFor(() => !shell.Library.IsLoading));
+                Assert.True(await HeadlessUi.WaitForAsync(() => !shell.Library.IsLoading));
                 Assert.True(shell.Library.IsEmpty);
                 Assert.True(shell.Takes.ShowEmpty);
                 Assert.NotNull(HeadlessUi.Capture(window, "01-empty"));
@@ -44,20 +45,20 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TakeOpensSolvesAndDraws()
+        public async Task TakeOpensSolvesAndDraws()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 var host = PrivateData.NewHost(new AvaloniaUiDispatcher());
-                var window = Open(host);
+                var window = await Open(host);
                 var shell = (ShellViewModel)window.DataContext;
-                Assert.True(HeadlessUi.WaitFor(() => shell.Library.Items.Count > 0));
+                Assert.True(await HeadlessUi.WaitForAsync(() => shell.Library.Items.Count > 0));
                 HeadlessUi.Capture(window, "02-library");
                 shell.Library.Selected = shell.Library.Items.Last();
-                Assert.True(HeadlessUi.WaitFor(() => host.Session.Solve == SolveState.Done, 60000),
+                Assert.True(await HeadlessUi.WaitForAsync(() => host.Session.Solve == SolveState.Done, 60000),
                     "the take did not solve: " + host.Session.SolveError);
-                HeadlessUi.Settle(200);
+                await HeadlessUi.SettleAsync(200);
                 Assert.NotNull(host.Session.Clip);
                 Assert.False(shell.Takes.IsLive);
                 Assert.NotNull(HeadlessUi.Capture(window, "03-take-open"));

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using VRMR.App.Composition;
 using VRMR.App.Services;
 using Xunit;
@@ -216,7 +217,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void AddingAUnityModelRunsInTheBackgroundAndReportsTheResult()
+        public async Task AddingAUnityModelRunsInTheBackgroundAndReportsTheResult()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -231,9 +232,9 @@ namespace VRMR.App.Tests
                 Assert.True(avatars.Importing);
                 Assert.NotNull(host.Status.Current); // the status bar shows the work
                 Assert.True(changes > 0);
-                Assert.True(ui.WaitFor(() => adding.IsCompleted), "the import did not finish");
+                Assert.True(await ui.WaitForAsync(() => adding.IsCompleted), "the import did not finish");
 
-                var entry = adding.Result;
+                var entry = await adding;
                 Assert.NotNull(entry);
                 Assert.False(avatars.Importing);
                 Assert.Null(host.Status.Current);
@@ -248,7 +249,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheSameModelAddedTwiceGetsAnEntryOfItsOwn()
+        public async Task TheSameModelAddedTwiceGetsAnEntryOfItsOwn()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -257,19 +258,19 @@ namespace VRMR.App.Tests
                 var avatars = host.AvatarService;
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Twin");
                 var first = avatars.AddAsync(new[] { fbx });
-                Assert.True(ui.WaitFor(() => first.IsCompleted));
+                Assert.True(await ui.WaitForAsync(() => first.IsCompleted));
                 var second = avatars.AddAsync(new[] { fbx });
-                Assert.True(ui.WaitFor(() => second.IsCompleted));
-                Assert.NotNull(first.Result);
-                Assert.NotNull(second.Result);
-                Assert.NotEqual(first.Result.Id, second.Result.Id);
-                Assert.Equal("Twin (2)", second.Result.Name);
+                Assert.True(await ui.WaitForAsync(() => second.IsCompleted));
+                Assert.NotNull(await first);
+                Assert.NotNull(await second);
+                Assert.NotEqual((await first).Id, (await second).Id);
+                Assert.Equal("Twin (2)", (await second).Name);
                 Assert.Equal(3, avatars.Entries.Count);
             }
         }
 
         [Fact]
-        public void FilesWithoutAnAvatarSayWhatToPickInstead()
+        public async Task FilesWithoutAnAvatarSayWhatToPickInstead()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -278,8 +279,8 @@ namespace VRMR.App.Tests
                 string notes = Path.Combine(data.Root, "notes.txt");
                 File.WriteAllText(notes, "not an avatar");
                 var adding = host.AvatarService.AddAsync(new[] { notes });
-                Assert.True(ui.WaitFor(() => adding.IsCompleted));
-                Assert.Null(adding.Result);
+                Assert.True(await ui.WaitForAsync(() => adding.IsCompleted));
+                Assert.Null(await adding);
                 Assert.False(host.AvatarService.Importing);
                 Assert.False(host.AvatarService.HasOwnEntries);
                 Assert.Equal(StatusKind.Error, host.Status.Kind);
@@ -290,7 +291,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void ASecondAddWaitsForTheFirst()
+        public async Task ASecondAddWaitsForTheFirst()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -300,16 +301,16 @@ namespace VRMR.App.Tests
                 var first = host.AvatarService.AddAsync(new[] { fbx });
                 var second = host.AvatarService.AddAsync(new[] { fbx });
                 Assert.True(second.IsCompleted);
-                Assert.Null(second.Result);
+                Assert.Null(await second);
                 Assert.Equal(StatusKind.Warning, host.Status.Kind);
-                Assert.True(ui.WaitFor(() => first.IsCompleted));
-                Assert.NotNull(first.Result);
+                Assert.True(await ui.WaitForAsync(() => first.IsCompleted));
+                Assert.NotNull(await first);
                 Assert.Equal(2, host.AvatarService.Entries.Count);
             }
         }
 
         [Fact]
-        public void AUnityProjectMustLookLikeOne()
+        public async Task AUnityProjectMustLookLikeOne()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -326,10 +327,10 @@ namespace VRMR.App.Tests
                 Assert.Null(avatars.AddUnityProject(project));
                 Assert.Equal(new[] { project }, avatars.UnityProjects.ToArray());
                 // adding it again does not list it twice
-                Assert.True(ui.WaitFor(() => !avatars.Scanning));
+                Assert.True(await ui.WaitForAsync(() => !avatars.Scanning));
                 Assert.Null(avatars.AddUnityProject(project + Path.DirectorySeparatorChar));
                 Assert.Single(avatars.UnityProjects);
-                Assert.True(ui.WaitFor(() => !avatars.Scanning));
+                Assert.True(await ui.WaitForAsync(() => !avatars.Scanning));
                 ui.Advance(0.5); // the watch that follows a scan stops with it
                 Assert.Contains("1 project", avatars.ScanInfo);
 
@@ -389,7 +390,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheMeshListSaysWhyItIsEmpty()
+        public async Task TheMeshListSaysWhyItIsEmpty()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -398,28 +399,28 @@ namespace VRMR.App.Tests
                 var avatars = host.AvatarService;
                 var none = avatars.LoadMeshesAsync(null);
                 Assert.True(none.IsCompleted);
-                Assert.Contains("Open a take", none.Result.Note);
-                Assert.Contains("mannequin", avatars.LoadMeshesAsync(host.Avatars.BuiltIn.Profile()).Result.Note);
+                Assert.Contains("Open a take", (await none).Note);
+                Assert.Contains("mannequin", (await avatars.LoadMeshesAsync(host.Avatars.BuiltIn.Profile())).Note);
 
                 // no model file at all
                 var bare = avatars.LoadMeshesAsync(TestAvatars.Save(host, "Bare").Profile());
-                Assert.True(ui.WaitFor(() => bare.IsCompleted));
-                Assert.Empty(bare.Result.Parts);
-                Assert.Contains("No model file", bare.Result.Note);
+                Assert.True(await ui.WaitForAsync(() => bare.IsCompleted));
+                Assert.Empty((await bare).Parts);
+                Assert.Contains("No model file", (await bare).Note);
 
                 // a model file that is not a model
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "Unreadable");
                 var adding = avatars.AddAsync(new[] { fbx });
-                Assert.True(ui.WaitFor(() => adding.IsCompleted));
-                var broken = avatars.LoadMeshesAsync(adding.Result.Profile());
-                Assert.True(ui.WaitFor(() => broken.IsCompleted));
-                Assert.Empty(broken.Result.Parts);
-                Assert.Contains("could not be read", broken.Result.Note);
+                Assert.True(await ui.WaitForAsync(() => adding.IsCompleted));
+                var broken = avatars.LoadMeshesAsync((await adding).Profile());
+                Assert.True(await ui.WaitForAsync(() => broken.IsCompleted));
+                Assert.Empty((await broken).Parts);
+                Assert.Contains("could not be read", (await broken).Note);
             }
         }
 
         [Fact]
-        public void TheFaceFbxCopyNeedsAnAddOnInAUnityProject()
+        public async Task TheFaceFbxCopyNeedsAnAddOnInAUnityProject()
         {
             var (data, ui, host) = Start();
             using (data)
@@ -427,23 +428,23 @@ namespace VRMR.App.Tests
             {
                 var avatars = host.AvatarService;
                 var nothing = avatars.PlanFaceFbxAsync(null);
-                Assert.Contains("no avatar on screen", nothing.Result.Problem);
+                Assert.Contains("no avatar on screen", (await nothing).Problem);
 
                 string fbx = TestAvatars.WriteUnityModel(Path.Combine(data.Root, "source"), "No add-on");
                 var adding = avatars.AddAsync(new[] { fbx });
-                Assert.True(ui.WaitFor(() => adding.IsCompleted));
-                var plan = avatars.PlanFaceFbxAsync(adding.Result.Profile());
-                Assert.True(ui.WaitFor(() => plan.IsCompleted));
-                Assert.Contains("No face-tracking add-on", plan.Result.Problem);
+                Assert.True(await ui.WaitForAsync(() => adding.IsCompleted));
+                var plan = avatars.PlanFaceFbxAsync((await adding).Profile());
+                Assert.True(await ui.WaitForAsync(() => plan.IsCompleted));
+                Assert.Contains("No face-tracking add-on", (await plan).Problem);
                 // a plan that cannot run writes nothing
                 string output = Path.Combine(data.Root, "copy.fbx");
-                Assert.False(avatars.ExportFaceFbxAsync(plan.Result, output).Result);
+                Assert.False(await avatars.ExportFaceFbxAsync(await plan, output));
                 Assert.False(File.Exists(output));
             }
         }
 
         [Fact]
-        public void RealAvatarsListTheirMeshes()
+        public async Task RealAvatarsListTheirMeshes()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
             var ui = new ManualDispatcher();
@@ -452,8 +453,8 @@ namespace VRMR.App.Tests
             Assert.True(avatars.HasOwnEntries, "the private data has no avatar library");
             var entry = avatars.Entries.First(e => !e.BuiltIn && AvatarService.HasFbx(e));
             var loading = avatars.LoadMeshesAsync(entry.Profile());
-            Assert.True(ui.WaitFor(() => loading.IsCompleted, 120000), "the model did not load");
-            var list = loading.Result;
+            Assert.True(await ui.WaitForAsync(() => loading.IsCompleted, 120000), "the model did not load");
+            var list = await loading;
             Assert.NotEmpty(list.Parts);
             Assert.True(list.Triangles > 0);
             Assert.Equal(list.Triangles, list.Parts.Sum(p => p.Triangles));

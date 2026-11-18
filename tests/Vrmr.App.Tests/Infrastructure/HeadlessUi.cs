@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -31,40 +32,41 @@ namespace VRMR.App.Tests
         static readonly Lazy<HeadlessUnitTestSession> Session = new(() =>
             HeadlessUnitTestSession.StartNew(typeof(TestAppBuilder)));
 
-        /// <summary>Runs an action on the UI thread and waits for it.</summary>
-        public static void Run(Action action)
+        /// <summary>Runs an action on the UI thread without blocking the test runner.</summary>
+        public static Task RunAsync(Action action)
         {
-            Session.Value.Dispatch(action, CancellationToken.None).GetAwaiter().GetResult();
+            return Session.Value.Dispatch(action, CancellationToken.None);
+        }
+
+        /// <summary>Runs asynchronous work on the UI thread, retaining UI access after awaits.</summary>
+        public static Task RunAsync(Func<Task> action)
+        {
+            return Session.Value.Dispatch(async () =>
+            {
+                await action();
+                return true;
+            }, CancellationToken.None);
         }
 
         /// <summary>On the UI thread: lets posted work, timers and layout run until the condition holds. Returns false on timeout.</summary>
-        public static bool WaitFor(Func<bool> condition, int timeoutMs = 20000)
+        public static async Task<bool> WaitForAsync(Func<bool> condition, int timeoutMs = 20000)
         {
             var sw = Stopwatch.StartNew();
             while (true)
             {
-                Pump(5);
+                Dispatcher.UIThread.VerifyAccess();
                 if (condition()) return true;
                 if (sw.ElapsedMilliseconds > timeoutMs) return false;
+                await Task.Delay(5);
             }
         }
 
-        /// <summary>Runs the dispatcher's own loop for a moment, so timers fire as they do in the running app.</summary>
-        static void Pump(int ms)
-        {
-            var frame = new DispatcherFrame();
-            var timer = new Timer(_ => Dispatcher.UIThread.Post(() => frame.Continue = false, DispatcherPriority.Send),
-                null, ms, Timeout.Infinite);
-            Dispatcher.UIThread.PushFrame(frame);
-            timer.Dispose();
-        }
-
         /// <summary>On the UI thread: lets everything that is due run for a while (debounce timers, background results).</summary>
-        public static void Settle(int ms = 60)
+        public static async Task SettleAsync(int ms = 60)
         {
-            var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < ms) Pump(5);
-            Dispatcher.UIThread.RunJobs();
+            Dispatcher.UIThread.VerifyAccess();
+            await Task.Delay(ms);
+            Dispatcher.UIThread.VerifyAccess();
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using VRMR.App.Composition;
@@ -319,10 +320,10 @@ namespace VRMR.App.Tests
         // ------------------------------------------------------------------------------------------ what an export refuses
 
         [Fact]
-        public void WithoutATakeNothingIsExported()
+        public async Task WithoutATakeNothingIsExported()
         {
             using var rig = new Rig();
-            var result = rig.Export.ExportAsync().Result;
+            var result = await rig.Export.ExportAsync();
             Assert.False(result.Exported);
             Assert.Equal(StatusKind.Warning, result.Kind);
             Assert.Contains("take", result.Message);
@@ -330,14 +331,14 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void WithoutAFormatTheExportAsksForOne()
+        public async Task WithoutAFormatTheExportAsksForOne()
         {
             using var rig = new Rig();
             rig.Host.Session.Show(EmptyTake());
             rig.AllOff();
             // options alone are not a format
             rig.Export.SetOn(rig.Option("fbx.camera"), true);
-            var result = rig.Export.ExportAsync().Result;
+            var result = await rig.Export.ExportAsync();
             Assert.False(result.Exported);
             Assert.Equal(StatusKind.Warning, result.Kind);
             Assert.Equal("Choose at least one format.", result.Message);
@@ -435,10 +436,10 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheTabDraws()
+        public async Task TheTabDraws()
         {
             using var data = new ScratchData();
-            HeadlessUi.Run(() =>
+            await HeadlessUi.RunAsync(async () =>
             {
                 var host = data.NewHost(new AvaloniaUiDispatcher());
                 Section.StateStore = host.UiState;
@@ -447,7 +448,7 @@ namespace VRMR.App.Tests
                 var view = new ExportView { DataContext = vm };
                 var window = new Window { Width = 320, Height = 760, Content = view };
                 window.Show();
-                HeadlessUi.Settle(150);
+                await HeadlessUi.SettleAsync(150);
 
                 Assert.NotNull(vm.PickFolder);
                 var boxes = Descendants<CheckBox>(view).Where(c => c.IsEffectivelyVisible)
@@ -464,7 +465,7 @@ namespace VRMR.App.Tests
                 // nothing chosen: the summary warns, and Export says what to do right under the button
                 foreach (var format in host.Export.Formats) host.Export.SetOn(format, false);
                 vm.ExportCommand.Execute(null);
-                HeadlessUi.Settle();
+                await HeadlessUi.SettleAsync();
                 Assert.Equal("none chosen", view.FindControl<Section>("FormatsSection").Summary);
                 Assert.True(view.FindControl<Control>("ResultPanel").IsVisible);
                 Assert.Equal("Choose at least one format.", view.FindControl<TextBlock>("ResultMessage").Text);
@@ -484,13 +485,13 @@ namespace VRMR.App.Tests
         // ------------------------------------------------------------------------------------------ real takes
 
         /// <summary>Opens the smallest take copy (changed by <paramref name="prepare" /> in memory only) and waits for its solve.</summary>
-        static Recording OpenSmallestTake(AppHost host, ManualDispatcher ui, Action<Recording> prepare = null)
+        static async Task<Recording> OpenSmallestTake(AppHost host, ManualDispatcher ui, Action<Recording> prepare = null)
         {
             var take = RecordingIO.Load(PrivateData.Takes()[0]);
             prepare?.Invoke(take);
             host.Session.Show(take);
             Assert.True(
-                ui.WaitFor(() => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed,
+                await ui.WaitForAsync(() => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed,
                     120000), "the solve did not end");
             Assert.True(host.Session.ClipIsCurrent, "the take did not solve: " + host.Session.SolveError);
             return take;
@@ -524,7 +525,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void ATakeExportsIntoItsOwnFolder()
+        public async Task ATakeExportsIntoItsOwnFolder()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
             var ui = new ManualDispatcher();
@@ -533,7 +534,7 @@ namespace VRMR.App.Tests
             string folder = NewExportFolder();
             try
             {
-                var take = OpenSmallestTake(host, ui);
+                var take = await OpenSmallestTake(host, ui);
                 var export = host.Export;
                 Assert.True(export.Folders.SetExportDir(folder, out _));
                 foreach (var format in export.Formats) export.SetOn(format, format.Group == ExportGroup.Main);
@@ -552,12 +553,12 @@ namespace VRMR.App.Tests
                 Assert.Contains("Solving the latest edit, then exporting…", stages);
 
                 // one export at a time
-                var second = export.ExportAsync().Result;
+                var second = await export.ExportAsync();
                 Assert.False(second.Exported);
                 Assert.Contains("already running", second.Message);
 
-                Assert.True(ui.WaitFor(() => running.IsCompleted, 300000), "the export did not end");
-                var result = running.Result;
+                Assert.True(await ui.WaitForAsync(() => running.IsCompleted, 300000), "the export did not end");
+                var result = await running;
                 AssertWrittenInto(folder, result);
                 Assert.True(host.Session.ClipIsCurrent);
                 Assert.Equal(1, result.Parts);
@@ -584,7 +585,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void ATakeWithAnAvatarChangeExportsOnePartPerAvatar()
+        public async Task ATakeWithAnAvatarChangeExportsOnePartPerAvatar()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
             var ui = new ManualDispatcher();
@@ -594,7 +595,7 @@ namespace VRMR.App.Tests
             try
             {
                 // the avatar changes to one nobody knows, halfway through what the take keeps after its trims
-                var take = OpenSmallestTake(host, ui, t =>
+                var take = await OpenSmallestTake(host, ui, t =>
                 {
                     double end = t.Edits.TrimOut < 0 ? t.Duration : t.Edits.TrimOut;
                     t.Events.Add(new RecEvent
@@ -612,8 +613,8 @@ namespace VRMR.App.Tests
                 var edits = take.Edits;
 
                 var running = export.ExportAsync();
-                Assert.True(ui.WaitFor(() => running.IsCompleted, 300000), "the export did not end");
-                var result = running.Result;
+                Assert.True(await ui.WaitForAsync(() => running.IsCompleted, 300000), "the export did not end");
+                var result = await running;
                 AssertWrittenInto(folder, result);
                 Assert.True(result.Parts >= 2, "parts: " + result.Parts);
                 Assert.Contains("one per avatar", result.Message);
@@ -642,7 +643,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void TheTabShowsWhereTheFilesWent()
+        public async Task TheTabShowsWhereTheFilesWent()
         {
             Assert.SkipUnless(PrivateData.Available, PrivateData.SkipReason);
             string folder = NewExportFolder();
@@ -650,7 +651,7 @@ namespace VRMR.App.Tests
             KeptSettings kept = null;
             try
             {
-                HeadlessUi.Run(() =>
+                await HeadlessUi.RunAsync(async () =>
                 {
                     host = PrivateData.NewHost(new AvaloniaUiDispatcher());
                     kept = new KeptSettings(host.Options.Paths);
@@ -666,12 +667,12 @@ namespace VRMR.App.Tests
 
                     vm.ExportCommand.Execute(null);
                     Assert.True(vm.IsExporting);
-                    HeadlessUi.Settle(30);
+                    await HeadlessUi.SettleAsync(30);
                     Assert.True(view.FindControl<Control>("ProgressPanel").IsVisible);
                     Assert.False(view.FindControl<Button>("ExportButton").IsEffectivelyEnabled);
-                    Assert.True(HeadlessUi.WaitFor(() => !vm.IsExporting && vm.HasResult, 300000),
+                    Assert.True(await HeadlessUi.WaitForAsync(() => !vm.IsExporting && vm.HasResult, 300000),
                         "the export did not end");
-                    HeadlessUi.Settle();
+                    await HeadlessUi.SettleAsync();
 
                     Assert.True(vm.ResultIsSuccess, vm.ResultText);
                     Assert.True(vm.CanOpenResult);
@@ -685,7 +686,7 @@ namespace VRMR.App.Tests
                     window.Close();
                 });
             }
-            finally { HeadlessUi.Run(() => CleanUp(host, kept, folder)); }
+            finally { await HeadlessUi.RunAsync(() => CleanUp(host, kept, folder)); }
         }
 
         /// <summary>The app's services on an empty data folder, with a UI thread the test drives.</summary>
