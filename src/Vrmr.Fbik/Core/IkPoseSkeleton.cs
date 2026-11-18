@@ -329,7 +329,7 @@ namespace VRMR.Fbik
 
         public static Vector3 operator *(IkCalibratedCoords basisTransform, Vector3 vec)
         {
-            return basisTransform.position + (basisTransform.rotation * vec);
+            return basisTransform.position + basisTransform.rotation * vec;
         }
     }
 }

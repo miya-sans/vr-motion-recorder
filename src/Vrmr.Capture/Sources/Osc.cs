@@ -213,7 +213,7 @@ namespace VRMR
 
         static int Align(int i, int off)
         {
-            return off + (((i - off) + 3) & ~3);
+            return off + ((i - off + 3) & ~3);
         }
 
         static unsafe float BitsToFloat(int bits)

@@ -424,7 +424,7 @@ namespace VRMR.App.Tests
                 s.Shell.LibraryOpen = s.Shell.InspectorOpen = true;
 
                 // the Scene workspace is switched off: no switch in the top bar, and nothing can select it
-                var workspaceSwitch = ControlExtensions.FindControl<Control>(s.Window, "WorkspaceSwitch");
+                var workspaceSwitch = s.Window.FindControl<Control>("WorkspaceSwitch");
                 Assert.False(AppFeatures.SceneWorkspace);
                 Assert.False(workspaceSwitch.IsVisible);
                 s.Shell.WorkspaceIndex = 1;

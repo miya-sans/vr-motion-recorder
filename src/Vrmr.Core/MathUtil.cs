@@ -397,7 +397,7 @@ namespace VRMR
 
         static float Clamp(float v, float a, float b)
         {
-            return v < a ? a : (v > b ? b : v);
+            return v < a ? a : v > b ? b : v;
         }
 
         public override string ToString()
@@ -413,22 +413,22 @@ namespace VRMR
 
         public static float Clamp(float v, float a, float b)
         {
-            return v < a ? a : (v > b ? b : v);
+            return v < a ? a : v > b ? b : v;
         }
 
         public static double Clamp(double v, double a, double b)
         {
-            return v < a ? a : (v > b ? b : v);
+            return v < a ? a : v > b ? b : v;
         }
 
         public static int Clamp(int v, int a, int b)
         {
-            return v < a ? a : (v > b ? b : v);
+            return v < a ? a : v > b ? b : v;
         }
 
         public static float Clamp01(float v)
         {
-            return v < 0 ? 0 : (v > 1 ? 1 : v);
+            return v < 0 ? 0 : v > 1 ? 1 : v;
         }
 
         public static float Lerp(float a, float b, float t)

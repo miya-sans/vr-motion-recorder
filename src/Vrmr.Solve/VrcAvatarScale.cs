@@ -45,7 +45,7 @@ namespace VRMR
             return Stretches.Count <= 1 && !Changes
                 ? "VRChat avatar size: unchanged"
                 : "VRChat avatar size: " + string.Join("; ",
-                    Stretches.Select(s => s.ToString() + (s.Uncertain ? " uncertain" : "")));
+                    Stretches.Select(s => s + (s.Uncertain ? " uncertain" : "")));
         }
 
         /// <summary>

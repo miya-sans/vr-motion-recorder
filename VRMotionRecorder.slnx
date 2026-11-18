@@ -1,23 +1,23 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Vrmr.Core/Vrmr.Core.csproj" />
-    <Project Path="src/Vrmr.Fbik/Vrmr.Fbik.csproj" />
-    <Project Path="src/Vrmr.Model/Vrmr.Model.csproj" />
-    <Project Path="src/Vrmr.Avatars/Vrmr.Avatars.csproj" />
-    <Project Path="src/Vrmr.Solve/Vrmr.Solve.csproj" />
-    <Project Path="src/Vrmr.Capture/Vrmr.Capture.csproj" />
-    <Project Path="src/Vrmr.Scene/Vrmr.Scene.csproj" />
-    <Project Path="src/Vrmr.Export/Vrmr.Export.csproj" />
-    <Project Path="src/Vrmr.Cli/Vrmr.Cli.csproj" />
-    <Project Path="src/Vrmr.App/Vrmr.App.csproj" />
-    <Project Path="src/Vrmr.Render/Vrmr.Render.csproj" />
+    <Project Path="src/Vrmr.Core/Vrmr.Core.csproj"/>
+    <Project Path="src/Vrmr.Fbik/Vrmr.Fbik.csproj"/>
+    <Project Path="src/Vrmr.Model/Vrmr.Model.csproj"/>
+    <Project Path="src/Vrmr.Avatars/Vrmr.Avatars.csproj"/>
+    <Project Path="src/Vrmr.Solve/Vrmr.Solve.csproj"/>
+    <Project Path="src/Vrmr.Capture/Vrmr.Capture.csproj"/>
+    <Project Path="src/Vrmr.Scene/Vrmr.Scene.csproj"/>
+    <Project Path="src/Vrmr.Export/Vrmr.Export.csproj"/>
+    <Project Path="src/Vrmr.Cli/Vrmr.Cli.csproj"/>
+    <Project Path="src/Vrmr.App/Vrmr.App.csproj"/>
+    <Project Path="src/Vrmr.Render/Vrmr.Render.csproj"/>
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Vrmr.Tests/Vrmr.Tests.csproj" />
-    <Project Path="tests/Vrmr.App.Tests/Vrmr.App.Tests.csproj" />
-    <Project Path="tests/Vrmr.Render.Tests/Vrmr.Render.Tests.csproj" />
+    <Project Path="tests/Vrmr.Tests/Vrmr.Tests.csproj"/>
+    <Project Path="tests/Vrmr.App.Tests/Vrmr.App.Tests.csproj"/>
+    <Project Path="tests/Vrmr.Render.Tests/Vrmr.Render.Tests.csproj"/>
   </Folder>
   <Folder Name="/tools/">
-    <Project Path="tools/Vrmr.RenderDemo/Vrmr.RenderDemo.csproj" />
+    <Project Path="tools/Vrmr.RenderDemo/Vrmr.RenderDemo.csproj"/>
   </Folder>
 </Solution>

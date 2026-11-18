@@ -264,7 +264,7 @@ namespace VRMR
         /// <summary>The head's forward direction (the avatar's rest forward, +Z, carried by the head's rotation from rest).</summary>
         public Vec3 HeadForward()
         {
-            return (World[HumanBones.Head] * Rig.RestWorld[HumanBones.Head].Conjugate) * Vec3.Forward;
+            return World[HumanBones.Head] * Rig.RestWorld[HumanBones.Head].Conjugate * Vec3.Forward;
         }
 
         /// <summary>Turns the neck and head so the head looks at a point (neckShare of the turn on the neck).</summary>

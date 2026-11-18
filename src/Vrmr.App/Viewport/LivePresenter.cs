@@ -49,10 +49,8 @@ namespace VRMR.App.Viewport
                         Pose = new Pose(d.Pos, d.Rot), Faded = !d.Valid, Size = 1,
                         Tint = d.Class == 1
                             ? MarkerTint.Head
-                            :
-                            d.Class == 2
-                                ?
-                                d.Role == 1 ? MarkerTint.Left : d.Role == 2 ? MarkerTint.Right : MarkerTint.Accent
+                            : d.Class == 2
+                                ? d.Role == 1 ? MarkerTint.Left : d.Role == 2 ? MarkerTint.Right : MarkerTint.Accent
                                 : d.Class == 4
                                     ? MarkerTint.Station
                                     : MarkerTint.Tracker,

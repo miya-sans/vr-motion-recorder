@@ -79,6 +79,18 @@ namespace VRMR.Fbik
         Vector3 cachedPlayerUp = Vector3.up;
         Quaternion footAlignLeft = Quaternion.identity;
         Quaternion footAlignRight = Quaternion.identity;
+
+        float leftLegLen,
+            rightLegLen,
+            leftThighLen,
+            leftShinLen,
+            rightThighLen,
+            rightShinLen,
+            footLength,
+            ankleHeight,
+            upperLegToFootVertical,
+            footRestHeight;
+
         NativeArray<IkFootNativeState> nativeFeet;
         NativeArray<IkFootSimInput> nativeInput;
         NativeArray<IkFootSimOutput> nativeOutput;
@@ -93,17 +105,6 @@ namespace VRMR.Fbik
 
         float rayCastRange;
         Vector3 smoothedVelocity;
-
-        float leftLegLen,
-            rightLegLen,
-            leftThighLen,
-            leftShinLen,
-            rightThighLen,
-            rightShinLen,
-            footLength,
-            ankleHeight,
-            upperLegToFootVertical,
-            footRestHeight;
 
         float strideScale,
             stepHeightCalc,

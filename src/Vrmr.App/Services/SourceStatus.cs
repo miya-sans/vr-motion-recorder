@@ -92,10 +92,8 @@ namespace VRMR.App.Services
                              (area != null ? "\nPlay area: " + area : "\nPlay area: not set up"),
                     Fix = devs.Count == 0
                         ? "Switch on your headset, controllers and trackers."
-                        :
-                        tracked < devs.Count
-                            ?
-                            "Some devices are not tracked: check that the base stations see them. The Devices panel shows which."
+                        : tracked < devs.Count
+                            ? "Some devices are not tracked: check that the base stations see them. The Devices panel shows which."
                             : ""
                 });
             }
@@ -167,14 +165,12 @@ namespace VRMR.App.Services
                         shown + " → " + m.Entry.Name + (sure ? "" : " ?"),
                     Level = sure ? SourceLevel.Ok : SourceLevel.Warning,
                     Detail = "Wearing: " + (worn.Length > 0 ? worn : "not reported yet") + (standIn
-                        ?
-                        "\nNone of your base models matches it: takes are solved onto the built-in mannequin."
+                        ? "\nNone of your base models matches it: takes are solved onto the built-in mannequin."
                         : m?.Entry != null
                             ? $"\nBase model: {m.Entry.Label} ({m.How})"
                             : "\nNo base model matches this avatar."),
                     Fix = m?.Entry == null || standIn
-                        ?
-                        "Add your avatar's base model under Settings → Avatars, or pick one of yours in the Devices panel (Live view)."
+                        ? "Add your avatar's base model under Settings → Avatars, or pick one of yours in the Devices panel (Live view)."
                         : sure
                             ? ""
                             : "The base model is a guess: pick the right one in the Devices panel (Live view)."
