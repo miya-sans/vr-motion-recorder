@@ -14,22 +14,22 @@ namespace VRMR
     ///     settings presets in calibrations\). Each take embeds a copy of the snapshot it uses, so takes stay
     ///     self-contained when snapshots are deleted.
     /// </summary>
-    public static class CalibrationLibrary
+    public sealed class CalibrationLibrary
     {
-        /// <summary>Tests only: use another folder for the library.</summary>
-        public static string DirOverride;
+        List<CalibrationSnapshot> _list;
+        DateTime _listTime;
+        /// <summary>A snapshot library whose files and cache belong to these paths.</summary>
+        public CalibrationLibrary(AppPaths paths) { Dir = paths.CalibrationSnapshotsDir; }
 
-        static List<CalibrationSnapshot> _list;
-        static DateTime _listTime;
-        public static string Dir => DirOverride ?? Path.Combine(CalibrationPresets.Dir, "snapshots");
-        public static event Action Changed;
+        public string Dir { get; }
+        public event Action Changed;
 
         public static string NewId(DateTime utc)
         {
             return CalibrationSnapshot.NewId(utc);
         }
 
-        public static string Save(CalibrationSnapshot s)
+        public string Save(CalibrationSnapshot s)
         {
             Directory.CreateDirectory(Dir);
             if (string.IsNullOrEmpty(s.Id)) s.Id = NewId(s.CreatedUtc);
@@ -49,7 +49,7 @@ namespace VRMR
         }
 
         /// <summary>All snapshots, newest first (cached; re-read when the folder changes).</summary>
-        public static List<CalibrationSnapshot> List()
+        public List<CalibrationSnapshot> List()
         {
             try
             {
@@ -80,13 +80,13 @@ namespace VRMR
             catch { return new List<CalibrationSnapshot>(); }
         }
 
-        public static CalibrationSnapshot Get(string id)
+        public CalibrationSnapshot Get(string id)
         {
             return List().FirstOrDefault(s => s.Id == id);
         }
 
         /// <summary>Moves a snapshot file to the Recycle Bin. Takes that use it keep their embedded copy.</summary>
-        public static void Delete(string id)
+        public void Delete(string id)
         {
             string f = Path.Combine(Dir, Safe(id) + ".json");
             if (File.Exists(f)) FileSystem.DeleteFile(f, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
@@ -100,7 +100,7 @@ namespace VRMR
         ///     then calibrate) whose body trackers cover the take's, preferring the same SteamVR session (same playspace
         ///     and tracker straps).
         /// </summary>
-        public static CalibrationSnapshot BestFor(Recording rec, IEnumerable<CalibrationSnapshot> candidates = null,
+        public CalibrationSnapshot BestFor(Recording rec, IEnumerable<CalibrationSnapshot> candidates = null,
             bool sameSessionOnly = false, DateTime? before = null)
         {
             string session = rec.Extra.GetStr("steamvrSession", "");

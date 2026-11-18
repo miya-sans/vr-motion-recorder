@@ -22,20 +22,21 @@ offers, and the rules that keep it fast.
 
 ## Start-up: texture decoder
 
-`SkinnedAvatar` (in `Vrmr.Avatars`) loads the avatar mesh and asks a host-provided decoder for its textures. Call
-this once before the first avatar loads:
+`SkinnedAvatar` (in `Vrmr.Avatars`) loads the avatar mesh and asks a host-provided decoder for its textures. Each
+host owns an `AvatarMeshLoader` with an immutable decoder and its own mesh cache:
 
 ```csharp
-VRMR.Render.SkiaTextureDecoder.Install();   // sets SkinnedAvatar.TextureDecoder
+var meshes = new AvatarMeshLoader(VRMR.Render.SkiaTextureDecoder.Decode);
 ```
 
-Without a decoder the mesh still loads and is drawn untextured.
+Share that loader between the host's avatar service and view. Without a decoder the mesh still loads and is drawn
+untextured; constructing another loader does not change the first loader's decoder or cache.
 
 ## Showing a frame
 
 ```csharp
 // once per avatar (worker thread is fine): the mesh packed for the GPU
-MeshModel model = MeshModel.Create(SkinnedAvatar.ForProfile(profile));
+MeshModel model = MeshModel.Create(meshes.ForProfile(profile));
 
 // whenever the pose changes (UI thread)
 ViewFrame f = view.RentFrame();                    // recycled, already cleared

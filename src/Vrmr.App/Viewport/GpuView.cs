@@ -44,6 +44,9 @@ namespace VRMR.App.Viewport
         /// <summary>The names of the avatar's meshes the user hid (Settings → View); asked for every scene change.</summary>
         public Func<IReadOnlyList<string>> HiddenMeshes { get; set; }
 
+        /// <summary>The host-owned mesh cache used by the preview.</summary>
+        public AvatarMeshLoader Meshes { get; set; } = new(SkiaTextureDecoder.Decode);
+
         public ViewScene Scene { get; } = new();
         public ViewOptions Options { get; } = new();
         public long FramesDrawn => Stats.FramesDrawn;
@@ -191,7 +194,7 @@ namespace VRMR.App.Viewport
                         var mannequin = MannequinMesh.For(profile);
                         model = mannequin != null
                             ? MeshModel.Create(mannequin)
-                            : MeshModel.Create(SkinnedAvatar.ForProfile(profile));
+                            : MeshModel.Create(Meshes.ForProfile(profile));
                     }
                     catch (Exception ex) { AppLog.Warn("Avatar mesh for the 3D view: " + ex.Message); }
 

@@ -5,15 +5,9 @@ using SkiaSharp;
 
 namespace VRMR.Render
 {
-    /// <summary>Decodes avatar textures with SkiaSharp (PNG, JPEG, WebP, BMP, GIF). The host installs it once at start-up.</summary>
+    /// <summary>Decodes avatar textures with SkiaSharp (PNG, JPEG, WebP, BMP, GIF). Passed to the owning mesh loader.</summary>
     public static class SkiaTextureDecoder
     {
-        /// <summary>Makes this the decoder <see cref="SkinnedAvatar" /> loads its textures with.</summary>
-        public static void Install()
-        {
-            SkinnedAvatar.TextureDecoder = Decode;
-        }
-
         /// <summary>Decodes an image file to 32-bit ARGB with straight alpha, scaled down so that neither side exceeds maxSize.</summary>
         public static TexturePixels Decode(string path, int maxSize)
         {

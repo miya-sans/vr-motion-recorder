@@ -155,8 +155,6 @@ namespace VRMR.Cli
             string filter = a.Length > 2 ? a[2] : "";
             AppLog.Init(Path.Combine(outDir, "log"));
             BodySolverSetup.Register();
-            CalibrationLibrary.DirOverride = Path.Combine(outDir, "callib");
-            Directory.CreateDirectory(CalibrationLibrary.DirOverride);
             var S = new Settings { RecordingsDir = dir, AvatarLibraryDir = Path.Combine(dir, "Avatars") };
             S.UnityProjects.Clear();
             S.AvatarModelMap.Clear();

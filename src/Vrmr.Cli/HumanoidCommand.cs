@@ -50,8 +50,6 @@ namespace VRMR.Cli
             Directory.CreateDirectory(outDir);
             AppLog.Init(Path.Combine(outDir, "log"));
             BodySolverSetup.Register();
-            CalibrationLibrary.DirOverride = Path.Combine(outDir, "callib");
-            Directory.CreateDirectory(CalibrationLibrary.DirOverride);
             var settings = new Settings { RecordingsDir = dir, AvatarLibraryDir = Path.Combine(dir, "Avatars") };
             settings.UnityProjects.Clear();
             settings.AvatarModelMap.Clear();

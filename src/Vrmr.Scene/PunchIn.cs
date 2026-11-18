@@ -21,9 +21,6 @@ namespace VRMR
     /// <summary>What a punch-in records and how (remembered between sessions in %APPDATA%\VRMotionRecorder\punchin.json).</summary>
     public sealed class PunchInSettings
     {
-        /// <summary>Tests: keep the file somewhere else.</summary>
-        public static string DirOverride;
-
         public InputAlign Align = InputAlign.Head;
         public double Blend = 0.2;
         public bool CountIn = true;
@@ -45,8 +42,6 @@ namespace VRMR
 
         /// <summary>Measure the latency from trigger taps on the count-in beeps (when there are any).</summary>
         public bool TapSync = true;
-
-        public static string FilePath => Path.Combine(DirOverride ?? Settings.AppDataDir, "punchin.json");
 
         public Dictionary<string, object> ToJson()
         {
@@ -78,23 +73,24 @@ namespace VRMR
             return s;
         }
 
-        public static PunchInSettings Load()
+        public static PunchInSettings Load(AppPaths paths)
         {
+            string filePath = paths.PunchInFile;
             try
             {
-                if (File.Exists(FilePath)) return FromJson(Json.ParseObject(File.ReadAllText(FilePath)));
+                if (File.Exists(filePath)) return FromJson(Json.ParseObject(File.ReadAllText(filePath)));
             }
             catch (Exception ex) { AppLog.Warn("Punch-in settings: " + ex.Message); }
 
             return new PunchInSettings();
         }
 
-        public void Save()
+        public void Save(AppPaths paths)
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                File.WriteAllText(FilePath, Json.Serialize(ToJson(), true));
+                Directory.CreateDirectory(Path.GetDirectoryName(paths.PunchInFile));
+                File.WriteAllText(paths.PunchInFile, Json.Serialize(ToJson(), true));
             }
             catch (Exception ex) { AppLog.Warn("Punch-in settings: " + ex.Message); }
         }

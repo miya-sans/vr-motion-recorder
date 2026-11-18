@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -29,12 +28,6 @@ namespace VRMR
         /// <summary>Longest side of a loaded texture; larger images are scaled down by the decoder.</summary>
         public const int MaxTextureSize = 1024;
 
-        /// <summary>
-        ///     Decodes the avatar's textures. The host sets it once at start-up (the renderer brings one; the previous UI has
-        ///     its own), so this library needs no imaging package. Without one, meshes load untextured.
-        /// </summary>
-        public static TextureDecoder TextureDecoder;
-
         // Common shape names on avatars without face-tracking shapes (VRChat visemes / Japanese avatar conventions)
         static readonly Dictionary<string, string[]> PreviewAliases = new()
         {
@@ -52,7 +45,6 @@ namespace VRMR
             ["MouthSmileLeft"] = "mouthSmileLeft", ["MouthSmileRight"] = "mouthSmileRight"
         };
 
-        static readonly ConcurrentDictionary<string, Lazy<SkinnedAvatar>> Cache = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Recording face shape (Unified Expressions) -> mesh shape name, for the shapes this mesh has.</summary>
         public readonly Dictionary<string, string> FaceShapes = new();
@@ -95,33 +87,6 @@ namespace VRMR
             return s.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) && File.Exists(s) ? s : null;
         }
 
-        /// <summary>Forgets the loaded meshes of a model file, so the next use reads it again (its face shapes changed).</summary>
-        public static void Forget(string fbx)
-        {
-            foreach (string key in Cache.Keys)
-                if (key.StartsWith(fbx + "|", StringComparison.OrdinalIgnoreCase))
-                    Cache.TryRemove(key, out _);
-        }
-
-        /// <summary>Loads (once per FBX + skeleton) on the calling thread; null when there is no FBX or loading failed.</summary>
-        public static SkinnedAvatar ForProfile(AvatarProfile p)
-        {
-            string fbx = FbxFor(p);
-            if (fbx == null) return null;
-            string key = fbx + "|" + p.Nodes.Count;
-            var lazy = Cache.GetOrAdd(key, _ => new Lazy<SkinnedAvatar>(() =>
-            {
-                try { return Load(fbx, p); }
-                catch (Exception ex)
-                {
-                    AppLog.Warn("Avatar mesh preview: " + Path.GetFileName(fbx) + ": " + ex.Message);
-                    return null;
-                }
-            }));
-            var m = lazy.Value;
-            return m;
-        }
-
         Vec3d Canon(Vec3d p)
         {
             return new Vec3d(_axis[0] * p.x + _axis[1] * p.y + _axis[2] * p.z,
@@ -152,7 +117,7 @@ namespace VRMR
             return Quat.FromMatrix(x.x, y.x, z.x, x.y, y.y, z.y, x.z, y.z, z.z).Normalized;
         }
 
-        public static SkinnedAvatar Load(string fbxPath, AvatarProfile prof)
+        public static SkinnedAvatar Load(string fbxPath, AvatarProfile prof, TextureDecoder decoder = null)
         {
             var sw = Stopwatch.StartNew();
             var top = FbxReader.Read(fbxPath);
@@ -281,14 +246,14 @@ namespace VRMR
                               tex?.Child("FileName")?.Props[0] as string ?? "";
                 string found = FindTexture(searchRoot, Path.GetFileName(file.Replace('\\', '/').Split('/').Last()),
                     t.Name);
-                if (found != null && TextureDecoder == null)
+                if (found != null && decoder == null)
                 {
                     t.File = found;
                     noDecoder = true;
                 }
                 else if (found != null)
                 {
-                    try { LoadTexture(t, found); }
+                    try { LoadTexture(t, found, decoder); }
                     catch (Exception ex) { m.Notes.Add("texture " + found + ": " + ex.Message); }
                 }
                 else m.Notes.Add($"no texture found for material {t.Name}");
@@ -635,7 +600,7 @@ namespace VRMR
             }
 
             m.Parts.AddRange(rawParts.Select(r => r.Item1));
-            if (noDecoder) m.Notes.Add("textures not loaded: the host set no SkinnedAvatar.TextureDecoder");
+            if (noDecoder) m.Notes.Add("textures not loaded: the loader has no texture decoder");
             m.Notes.Insert(0,
                 $"{Path.GetFileName(fbxPath)}: {m.Parts.Count} meshes, {m.TriangleCount} triangles, {m.Textures.Count(t => t.Px != null)}/{m.Textures.Count} textures, face shapes {m.FaceShapes.Count}, {sw.ElapsedMilliseconds} ms");
             foreach (string n in m.Notes) AppLog.Info("Avatar mesh: " + n);
@@ -666,10 +631,10 @@ namespace VRMR
             catch { return null; }
         }
 
-        static void LoadTexture(Texture t, string path)
+        static void LoadTexture(Texture t, string path, TextureDecoder decoder)
         {
             t.File = path;
-            var img = TextureDecoder(path, MaxTextureSize);
+            var img = decoder(path, MaxTextureSize);
             t.Px = img.Argb;
             t.W = img.Width;
             t.H = img.Height;

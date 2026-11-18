@@ -23,7 +23,7 @@ namespace VRMR.App.Composition
             Ui = ui;
             var paths = options.Paths;
             Program.UsePaths(options);
-            Settings = Settings.Load();
+            Settings = Settings.Load(paths);
             if (paths.DataRoot != null)
             {
                 // portable mode: the takes and the avatar library always sit under the data folder
@@ -36,7 +36,7 @@ namespace VRMR.App.Composition
             catch (Exception ex) { AppLog.Warn("Recordings folder: " + ex.Message); }
 
             BodySolverSetup.Register();
-            SkiaTextureDecoder.Install(); // the avatar's textures for the 3D view
+            Meshes = new AvatarMeshLoader(SkiaTextureDecoder.Decode);
 
             Avatars = new AvatarLibrary(Settings);
             // takes without a skeleton of their own: the base model their avatar matches in the library
@@ -69,7 +69,7 @@ namespace VRMR.App.Composition
             Trackers = new TrackerService(Session);
             TakeAvatars = new TakeAvatarService(Session, Avatars, Live, Status);
             Export = new ExportService(SettingsStore, UiState, Session, Avatars, Status, ui);
-            AvatarService = new AvatarService(Avatars, SettingsStore, Live, Status, ui);
+            AvatarService = new AvatarService(Avatars, SettingsStore, Live, Status, ui, Meshes);
             Environment = new EnvironmentService(paths, SettingsStore, ui);
             if (!CaptureOn) hotkey?.Dispose();
         }
@@ -81,6 +81,7 @@ namespace VRMR.App.Composition
         public Settings Settings { get; }
         public Recorder Recorder { get; }
         public AvatarLibrary Avatars { get; }
+        public AvatarMeshLoader Meshes { get; }
 
         // services shared by both workspaces
         public SettingsStore SettingsStore { get; }

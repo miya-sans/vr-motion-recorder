@@ -65,6 +65,7 @@ namespace VRMR.App.Services
         readonly LiveService _live;
         readonly TakeSession _session;
         readonly SettingsStore _settings;
+        readonly CalibrationLibrary _snapshots;
         readonly StatusService _status;
         readonly IUiDispatcher _ui;
         IDisposable _countdown;
@@ -77,6 +78,7 @@ namespace VRMR.App.Services
         public CalibrationService(TakeSession session, SettingsStore settings, LiveService live, StatusService status,
             PlaybackClock clock, IUiDispatcher ui)
         {
+            _snapshots = live.Recorder.Calibrations;
             _session = session;
             _settings = settings;
             _live = live;
@@ -84,7 +86,7 @@ namespace VRMR.App.Services
             _clock = clock;
             _ui = ui;
             _session.TakeChanged += RefreshLibrary;
-            CalibrationLibrary.Changed += () => _ui.Post(RefreshLibrary);
+            _snapshots.Changed += () => _ui.Post(RefreshLibrary);
             var watcher = _live.Recorder.Calib;
             if (watcher != null) watcher.Captured += s => _ui.Post(RefreshLibrary);
             RefreshLibrary();
@@ -241,7 +243,7 @@ namespace VRMR.App.Services
             Task.Run(() =>
             {
                 List<CalibrationSnapshot> list;
-                try { list = CalibrationLibrary.List(); }
+                try { list = _snapshots.List(); }
                 catch (Exception ex)
                 {
                     AppLog.Warn("Calibration library: " + ex.Message);
@@ -360,7 +362,7 @@ namespace VRMR.App.Services
                     case CalibrationChoiceKind.VrcCalibrations:
                         // keep a linked calibration from before the take (in effect when recording started); else the library's latest one before it
                         if (e.Snapshot == null || PoseBuilder.SnapshotTakeTime(r, e.Snapshot) >= 0)
-                            e.Snapshot = CalibrationLibrary.BestFor(r, _library, before: r.CreatedUtc.AddSeconds(0.5))
+                            e.Snapshot = _snapshots.BestFor(r, _library, before: r.CreatedUtc.AddSeconds(0.5))
                                 ?.Clone();
                         e.CalibrationTime = EditList.UseVrcTimeline;
                         break;
@@ -490,7 +492,7 @@ namespace VRMR.App.Services
                     return;
                 }
 
-                CalibrationLibrary.Save(sn);
+                _snapshots.Save(sn);
                 _status.Info($"Saved \"{sn.Label}\" to the calibration library");
                 RefreshLibrary();
             }
@@ -503,7 +505,7 @@ namespace VRMR.App.Services
             if (snapshot == null) return;
             try
             {
-                CalibrationLibrary.Delete(snapshot.Id);
+                _snapshots.Delete(snapshot.Id);
                 _status.Info($"Moved \"{snapshot.Label}\" to the Recycle Bin");
             }
             catch (Exception ex) { _status.Error("Could not delete the calibration: " + ex.Message); }

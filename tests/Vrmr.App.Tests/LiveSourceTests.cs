@@ -414,7 +414,7 @@ namespace VRMR.App.Tests
             rig.AttachSteamVr();
             rig.Feed();
             Assert.Null(calibration.CaptureProblem());
-            int before = CalibrationLibrary.List().Count;
+            int before = rig.Host.Recorder.Calibrations.List().Count;
             calibration.CaptureNow();
             Assert.Equal(5, calibration.CaptureCountdown);
             for (int i = 4; i >= 1; i--)
@@ -428,10 +428,10 @@ namespace VRMR.App.Tests
             rig.Ui.Advance(1);
             Assert.Equal(0, calibration.CaptureCountdown);
             Assert.Contains("Saved the calibration", rig.Host.Status.Message);
-            var saved = CalibrationLibrary.List();
+            var saved = rig.Host.Recorder.Calibrations.List();
             Assert.Equal(before + 1, saved.Count);
             Assert.StartsWith(Path.GetFullPath(rig.Data.Root),
-                Path.GetFullPath(CalibrationLibrary.Dir)); // in the scratch folder, not the user's
+                Path.GetFullPath(rig.Host.Recorder.Calibrations.Dir)); // in the scratch folder, not the user's
         }
 
         // ------------------------------------------------------------------------------------------ face replay

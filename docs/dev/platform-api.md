@@ -260,7 +260,7 @@ public sealed class MannequinMesh                   // Vrmr.Avatars: built in co
 }
 ```
 
-The mannequin has no FBX, so `SkinnedAvatar.ForProfile` returns null for it; a view that wants a mesh checks
+The mannequin has no FBX, so `AvatarMeshLoader.ForProfile` returns null for it; a view that wants a mesh checks
 `Mannequin.Is(profile)` first and draws `MannequinMesh.For(profile)` (about 5,000 vertices, 10,000 triangles).
 Skinning is one node per vertex: `world = nodePos + nodeRot * restRot⁻¹ * (position − restPos) * scale`, with the
 profile's `RestWorldPos/Rot` and the node transforms of `BakedClip.EvaluateNodes`. `Skin` does exactly that on the

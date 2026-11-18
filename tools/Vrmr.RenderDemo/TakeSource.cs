@@ -54,9 +54,7 @@ namespace VRMR.RenderDemo
             Directory.CreateDirectory(workDir);
             AppLog.Init(Path.Combine(workDir, "log"));
             BodySolverSetup.Register();
-            CalibrationLibrary.DirOverride = Path.Combine(workDir, "callib");
-            Directory.CreateDirectory(CalibrationLibrary.DirOverride);
-            SkiaTextureDecoder.Install();
+            var meshes = new AvatarMeshLoader(SkiaTextureDecoder.Decode);
 
             var settings = new Settings
                 { RecordingsDir = dataDir, AvatarLibraryDir = Path.Combine(dataDir, "Avatars") };
@@ -84,7 +82,7 @@ namespace VRMR.RenderDemo
             log?.Invoke($"solved {clip.Frames} frames in {watch.ElapsedMilliseconds} ms");
 
             watch.Restart();
-            var avatar = SkinnedAvatar.ForProfile(clip.Profile);
+            var avatar = meshes.ForProfile(clip.Profile);
             var model = MeshModel.Create(avatar);
             log?.Invoke(model == null
                 ? "no avatar mesh: skeleton only"

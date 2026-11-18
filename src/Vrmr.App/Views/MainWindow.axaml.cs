@@ -66,6 +66,7 @@ namespace VRMR.App.Views
             {
                 if (_shell.TimelineOpen) _shell.TimelineHeight = CentreGrid.RowDefinitions[3].ActualHeight;
             };
+            View.Meshes = shell.Host.Meshes;
             View.HiddenMeshes = () => shell.Host.AvatarService.HiddenMeshes;
             shell.Host.SettingsStore.Changed += what =>
             {

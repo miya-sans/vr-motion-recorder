@@ -28,6 +28,7 @@ namespace VRMR
         const int SampleMs = 33;
         readonly Func<float> _avatarEye;
         readonly Func<string> _avatarId, _avatarName;
+        readonly CalibrationLibrary _library;
         readonly object _lock = new();
 
         readonly Func<OpenVRSource> _ovr;
@@ -47,8 +48,9 @@ namespace VRMR
         double _worldT = -1;
 
         public CalibrationWatcher(Func<OpenVRSource> ovr, Func<string> avatarId, Func<string> avatarName,
-            Func<float> avatarEye)
+            Func<float> avatarEye, CalibrationLibrary library)
         {
+            _library = library;
             _ovr = ovr;
             _avatarId = avatarId;
             _avatarName = avatarName;
@@ -402,7 +404,7 @@ namespace VRMR
         {
             try
             {
-                CalibrationLibrary.Save(s);
+                _library.Save(s);
                 Last = s;
                 Status = "saved " + s.Label;
                 AppLog.Info("Calibration snapshot saved: " + s.Label + " - " + s.Detail);

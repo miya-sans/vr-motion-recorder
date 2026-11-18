@@ -59,8 +59,12 @@ namespace VRMR
 
         public Recorder(Settings s)
         {
+            Calibrations = new CalibrationLibrary(s.Paths);
             _settings = s;
         }
+
+        /// <summary>The snapshot library owned by this recorder.</summary>
+        public CalibrationLibrary Calibrations { get; }
 
         // ---- recording ----
         public Recording Current { get; private set; }
@@ -146,7 +150,8 @@ namespace VRMR
 
             if (_settings.WatchCalibrations)
             {
-                Calib = new CalibrationWatcher(() => OpenVR, () => AvatarId, () => AvatarName, () => AvatarEyeHeight);
+                Calib = new CalibrationWatcher(() => OpenVR, () => AvatarId, () => AvatarName,
+                    () => AvatarEyeHeight, Calibrations);
                 Calib.Captured += s => AddEvent("calibration", s.Id);
             }
 
@@ -687,7 +692,7 @@ namespace VRMR
             {
                 try
                 {
-                    var atStart = CalibrationLibrary.BestFor(rec, before: rec.CreatedUtc.AddSeconds(0.5));
+                    var atStart = Calibrations.BestFor(rec, before: rec.CreatedUtc.AddSeconds(0.5));
                     var inTake = TakeCalibrations.FindAllInTake(rec, out _);
                     if (atStart != null || inTake.Count > 0)
                     {
@@ -703,7 +708,7 @@ namespace VRMR
                     }
                     else
                     {
-                        var snap = CalibrationLibrary.BestFor(rec);
+                        var snap = Calibrations.BestFor(rec);
                         if (snap != null)
                         {
                             rec.Edits.Snapshot = snap.Clone();

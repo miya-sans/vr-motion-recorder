@@ -58,14 +58,16 @@ namespace VRMR.App.Services
     {
         readonly AvatarLibrary _avatars;
         readonly LiveService _live;
+        readonly AvatarMeshLoader _meshes;
         readonly SettingsStore _settings;
         readonly StatusService _status;
         readonly IUiDispatcher _ui;
         IDisposable _scanWatch;
 
         public AvatarService(AvatarLibrary avatars, SettingsStore settings, LiveService live, StatusService status,
-            IUiDispatcher ui)
+            IUiDispatcher ui, AvatarMeshLoader meshes)
         {
+            _meshes = meshes;
             _avatars = avatars;
             _settings = settings;
             _live = live;
@@ -393,7 +395,7 @@ namespace VRMR.App.Services
 
                 FaceAnimatorFiles.Forget(entryDir);
                 string fbx = SkinnedAvatar.FbxFor(entry.Profile());
-                if (fbx != null) SkinnedAvatar.Forget(fbx);
+                if (fbx != null) _meshes.Forget(fbx);
                 string missing = files.Log.FirstOrDefault(l => l.Contains("missing"));
                 text = missing != null
                     ? $"{entry.Label}: {missing}"
@@ -549,7 +551,7 @@ namespace VRMR.App.Services
                     if (fbx == null)
                         return new AvatarMeshList
                             { Note = "No model file was found for this avatar. Add it under Avatars to see its mesh." };
-                    var model = SkinnedAvatar.ForProfile(profile);
+                    var model = _meshes.ForProfile(profile);
                     if (model == null)
                         return new AvatarMeshList
                         {
@@ -635,7 +637,7 @@ namespace VRMR.App.Services
             {
                 string report = BlendShareAsset.MergeIntoFbx(plan.Fbx,
                     plan.Assets.Select(BlendShareAsset.Load).ToList(), outFbx);
-                int copied = CopyTextures(SkinnedAvatar.ForProfile(plan.Profile), plan.Fbx,
+                int copied = CopyTextures(_meshes.ForProfile(plan.Profile), plan.Fbx,
                     Path.GetDirectoryName(outFbx));
                 return report.Replace(Environment.NewLine, "; ").Replace("\n", "; ") +
                        (copied > 0 ? $"; {copied} textures copied" : "");
