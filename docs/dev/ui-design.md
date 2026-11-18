@@ -67,7 +67,7 @@ Reusable controls live in `Controls/` and are used everywhere instead of ad-hoc 
 
 Everything the previous UI could do stays possible. Keep the keyboard map: Space play/pause, ←/→ step a frame, Home/End, I/O trim, Del cut, Ctrl+S save, Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y undo and redo; in scenes K cut, T transition, M mute, Shift+D duplicate, F frame all, Shift+M marker; in the pose tool I / Shift+I / Alt+I keys, M mirror, Ctrl+C / Ctrl+V pose, `,` `.` previous and next key, W move, E turn, H device on/off. The mouse wheel scrolls panels and never changes a value.
 
-`docs/dev/ui-parity.md` lists every feature of the previous UI with where it lives now and whether it is done. A feature is only "done" when it has been exercised on a real take.
+The [roadmap](TODO.md#scene-editing) tracks missing desktop features. The [development checklist](TODO.md) records validation and outstanding window and hardware checks. Verify a migrated feature on a real take before describing it as fully checked.
 
 ## Writing
 

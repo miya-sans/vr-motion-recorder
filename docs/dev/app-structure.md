@@ -1,6 +1,6 @@
 # The desktop app: `Vrmr.App`
 
-`src/Vrmr.App` is the Avalonia app (assembly `VRMotionRecorder`, namespace `VRMR.App`). This page says how it is put together, the rules its code follows, and where the Scene workspace plugs in. The look and behaviour it implements are in [`docs/dev/ui-design.md`](ui-design.md); what became of each feature of the previous UI is in [`ui-parity.md`](ui-parity.md).
+`src/Vrmr.App` is the Avalonia app (assembly `VRMotionRecorder`, namespace `VRMR.App`). This page says how it is put together, the rules its code follows, and where the Scene workspace plugs in. The look and behaviour it implements are in [`docs/dev/ui-design.md`](ui-design.md); missing desktop features are tracked in the [roadmap](TODO.md#scene-editing), with validation records and remaining checks in the [development checklist](TODO.md#previous-validation).
 
 ## Layers
 

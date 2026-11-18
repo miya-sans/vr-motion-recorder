@@ -4,7 +4,7 @@ Thanks for helping. This page gets you from a clone to a running build, and list
 
 ## Before you start
 
-Check [docs/dev/](docs/dev/) first. Read the [current status](docs/dev/STATUS.md) for next actions and the [roadmap](docs/dev/TODO.md) for long-term plans. Consult the guides relevant to your task. For desktop UI changes, follow the [UI design guide](docs/dev/ui-design.md).
+Check [docs/dev/](docs/dev/) first. Read [STATUS.md](docs/dev/STATUS.md) for the current action and [TODO.md](docs/dev/TODO.md) for pending work. Consult the guides relevant to your task. 
 
 ## Build and run
 
@@ -42,6 +42,4 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) with a short im
 
 ## Reporting a problem
 
-Use the issue templates. For anything about tracking or the solve, the most useful attachment is a short take that
-shows the problem, but only share one if you are comfortable with it: a take contains your motion, your avatar's id
-and name, and the world name.
+Use the issue templates. For anything about tracking or the solve, the most useful attachment is a short take that shows the problem, but only share one if you are comfortable with it: a take contains your motion, your avatar's id and name, and the world name.
