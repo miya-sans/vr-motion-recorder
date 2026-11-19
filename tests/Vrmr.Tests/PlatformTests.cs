@@ -250,7 +250,7 @@ namespace VRMR.Tests
         }
 
         [Fact]
-        public void UnityProjectsComeFromTheHubListWithTheBridgeNoted()
+        public void HubProjectsAreOnlyReadOnExplicitDiscovery()
         {
             using (var f = new FakeMachine())
             {
@@ -284,15 +284,20 @@ namespace VRMR.Tests
                     Entry(copied, "Copied", 300) + ", " + Entry(byUrl, "ByUrl", 200) + ", " + Entry(gone, "Gone", 50) +
                     " } }");
 
-                var found = UnityProjects.Find(f.Machine, new[] { mine });
-                Assert.Equal(new[] { "Mine", "Copied", "ByUrl", "Plain", "Gone" }, found.Select(p => p.Name).ToArray());
-                Assert.False(found[0].FromHub);
-                Assert.Equal("2022.3.6f1", found[0].EditorVersion);
+                var linked = UnityProjects.Find(f.Machine, new[] { mine });
+                Assert.Equal(mine, Assert.Single(linked).Path);
+                Assert.False(linked[0].FromHub);
+                Assert.Equal("2022.3.6f1", linked[0].EditorVersion);
+                var discovery = UnityProjectSources.Discover(f.Machine, UnityProjectSource.UnityHub);
+                Assert.Empty(discovery.Errors);
+                var found = discovery.Projects;
+                Assert.Equal(new[] { "ByUrl", "Copied", "Gone", "Plain" }, found.Select(p => p.Name).ToArray());
+                Assert.All(found, p => Assert.True(p.FromHub));
+                Assert.True(found[0].HasBridge);
                 Assert.True(found[1].HasBridge);
-                Assert.True(found[2].HasBridge);
-                Assert.Equal("6000.0.1f1", found[2].EditorVersion);
+                Assert.Equal("6000.0.1f1", found[0].EditorVersion);
+                Assert.False(found[2].Exists);
                 Assert.False(found[3].HasBridge);
-                Assert.False(found[4].Exists);
             }
         }
 

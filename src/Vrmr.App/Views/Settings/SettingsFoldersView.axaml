@@ -2,10 +2,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:VRMR.App.Controls"
              xmlns:vm="using:VRMR.App.ViewModels"
+             xmlns:core="using:VRMR"
              xmlns:s="using:VRMR.App.Views.Settings"
              x:Class="VRMR.App.Views.Settings.SettingsFoldersView"
              x:DataType="vm:SettingsFoldersViewModel">
-  <!-- Folders: takes and avatars, the Blender that opens exports, the Unity projects avatars are matched from. -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.project-bridge">
+      <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}" />
+    </Style>
+    <Style Selector="TextBlock.project-bridge.installed">
+      <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+    <Style Selector="TextBlock.project-bridge.missing">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+  </UserControl.Styles>
   <StackPanel>
     <Border Classes="card" IsVisible="{Binding IsPortable}" Margin="{DynamicResource SettingsBlockGap}">
       <TextBlock Classes="fact"
@@ -70,30 +81,42 @@
         <TextBlock Classes="note"
                    Text="Optional. Link the Unity project your avatar lives in: the app then knows the avatar you wear by its VRChat id and reads its humanoid rig from the model's .meta. Unity does not need to be running." />
         <s:StatusRow DataContext="{Binding Unity}" Margin="{DynamicResource GapRow}" />
+        <WrapPanel Margin="{DynamicResource GapRow}">
+          <TextBlock Text="Add project from" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <Button Content="Folder" Command="{Binding AddProjectCommand}" Margin="0,0,8,4"
+                  ToolTip.Tip="Pick a Unity project folder containing Assets and ProjectSettings" />
+          <Button Content="Unity Hub" Command="{Binding AddFromManagerCommand}"
+                  CommandParameter="{x:Static core:UnityProjectSource.UnityHub}" Margin="0,0,8,4" />
+          <Button Content="ALCOM" Command="{Binding AddFromManagerCommand}"
+                  CommandParameter="{x:Static core:UnityProjectSource.Alcom}" Margin="0,0,8,4" />
+          <Button Content="VRChat Creator Companion" Command="{Binding AddFromManagerCommand}"
+                  CommandParameter="{x:Static core:UnityProjectSource.CreatorCompanion}" Margin="0,0,0,4" />
+        </WrapPanel>
         <ListBox x:Name="ProjectList" Classes="plain" ItemsSource="{Binding Projects}"
                  SelectedItem="{Binding SelectedProject}" IsVisible="{Binding HasProjects}"
-                 MaxHeight="{DynamicResource SettingsShortListMaxHeight}" Margin="{DynamicResource GapRow}">
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 Margin="{DynamicResource GapRow}">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:UnityProjectRowViewModel">
-              <StackPanel Margin="{DynamicResource SettingsListItemPad}">
-                <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Info}" Classes="caption" Classes.warning="{Binding Missing}"
-                           TextWrapping="Wrap" Margin="{DynamicResource GapTopSmall}"
-                           IsVisible="{Binding Info, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              </StackPanel>
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource SettingsListItemPad}">
+                <TextBlock Text="{Binding Indicator}" Classes="project-bridge"
+                           Classes.installed="{Binding HasBridge}" Classes.missing="{Binding Missing}"
+                           ToolTip.Tip="{Binding BridgeStatus}"
+                           AutomationProperties.Name="{Binding BridgeStatus}" />
+                <StackPanel Grid.Column="1" Margin="{DynamicResource GapLeft}">
+                  <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Details}" Classes="secondary" Classes.warning="{Binding Missing}"
+                             TextWrapping="Wrap" Margin="{DynamicResource GapTopSmall}" />
+                </StackPanel>
+                <Button Grid.Column="2" Content="Remove" Margin="{DynamicResource GapLeftSmall}" VerticalAlignment="Center"
+                        Command="{Binding $parent[ListBox].((vm:SettingsFoldersViewModel)DataContext).RemoveProjectCommand}"
+                        CommandParameter="{Binding}"
+                        ToolTip.Tip="Forget this project. Project files and existing avatar links stay unchanged."
+                        AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}" />
+              </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource GapRow}">
-          <Button Content="Add project…" Command="{Binding AddProjectCommand}"
-                  ToolTip.Tip="Link a Unity project: pick the folder that contains Assets and ProjectSettings" />
-          <Button Content="Remove" Command="{Binding RemoveProjectCommand}" IsEnabled="{Binding HasProjects}"
-                  ToolTip.Tip="Forget the selected project. Nothing in the project is changed, and avatars already linked to its models stay linked." />
-          <Button Content="Scan again" Command="{Binding RescanCommand}" IsEnabled="{Binding HasProjects}"
-                  ToolTip.Tip="Look through the linked projects for avatars again (after uploading a new avatar, say)" />
-        </StackPanel>
-        <TextBlock Text="{Binding ScanInfo}" Classes="note"
-                   IsVisible="{Binding ScanInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       </StackPanel>
     </c:Section>
   </StackPanel>

@@ -305,19 +305,18 @@ namespace VRMR
             report.UnityProjects = all;
             var there = all.Where(p => p.Exists).ToList();
             int withBridge = there.Count(p => p.HasBridge);
-            if (there.Count == 0)
-                report.Add(new ProbeItem(Unity, "Unity projects", ProbeState.Missing, "No Unity project was found.",
-                    "Add your avatar's Unity project in Settings to export animations straight into it.",
+            if (all.Count == 0)
+                report.Add(new ProbeItem(Unity, "Unity projects", ProbeState.Missing, "No projects added.",
+                    "Add projects in Settings → Folders → Unity projects.",
                     optional: true));
             else if (withBridge == 0)
                 report.Add(new ProbeItem(Unity, "Unity projects", ProbeState.Attention,
-                    Count(there.Count, "Unity project") + (there.Count == 1 ? " was" : " were") +
-                    " found; none has the VR Motion Recorder bridge.",
-                    "Add the bridge package to the project you export to (see the README).", there[0].Path, true));
+                    $"0 of {Count(all.Count, "linked project")} have the bridge.",
+                    "Add the bridge package to the project you export to (see the README).", all[0].Path, true));
             else
                 report.Add(new ProbeItem(Unity, "Unity projects", ProbeState.Ok,
-                    $"{withBridge} of {Count(there.Count, "Unity project")} " + (withBridge == 1 ? "has" : "have") +
-                    " the VR Motion Recorder bridge.",
+                    $"{withBridge} of {Count(all.Count, "linked project")} " + (withBridge == 1 ? "has" : "have") +
+                    " the bridge.",
                     path: there.First(p => p.HasBridge).Path, optional: true));
         }
 

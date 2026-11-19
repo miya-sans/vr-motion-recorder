@@ -114,20 +114,6 @@ namespace VRMR.App.Services
         /// <summary>True while the projects are being scanned.</summary>
         public bool Scanning => _avatars.Scanning;
 
-        /// <summary>What the scan is doing, or what the last one found.</summary>
-        public string ScanInfo
-        {
-            get
-            {
-                string info = _avatars.LastScanInfo ?? "";
-                if (Scanning) return info.Length > 0 ? "Scanning… " + info : "Scanning…";
-                int linked = _settings.Value.AvatarModelMap.Count;
-                return info + (linked > 0
-                    ? (info.Length > 0 ? " · " : "") + (linked == 1 ? "1 avatar linked" : linked + " avatars linked")
-                    : "");
-            }
-        }
-
         // ------------------------------------------------------------------------------------------ the avatar worn now
 
         /// <summary>The id of the avatar worn in VRChat ("" when VRChat has not reported one).</summary>
@@ -140,6 +126,12 @@ namespace VRMR.App.Services
 
         /// <summary>The names of the meshes hidden in the 3D view.</summary>
         public IReadOnlyList<string> HiddenMeshes => _settings.Value.PreviewHiddenMeshes;
+
+        /// <summary>Progress and linked-avatar counts for this project only.</summary>
+        public string ProjectScanInfo(string project)
+        {
+            return _avatars.ProjectScanInfo(project);
+        }
 
         /// <summary>Raised on the UI thread when the entries, the default, a link, the import state or the scan state changed.</summary>
         public event Action Changed;
@@ -449,14 +441,42 @@ namespace VRMR.App.Services
         /// <summary>Links a Unity project and scans it. Returns why the folder was not accepted, or null.</summary>
         public string AddUnityProject(string dir)
         {
-            if (string.IsNullOrWhiteSpace(dir)) return "Pick a Unity project folder.";
-            dir = dir.Trim().TrimEnd('\\', '/');
-            if (!UnityProjectScanner.IsUnityProject(dir))
-                return "That folder is not a Unity project. Pick the folder that contains Assets and ProjectSettings.";
-            if (!_settings.Value.UnityProjects.Contains(dir, StringComparer.OrdinalIgnoreCase))
-                _settings.Update(nameof(Settings.UnityProjects), s => s.UnityProjects.Add(dir));
-            Rescan();
-            return null;
+            return AddUnityProjects(new[] { dir }).FirstOrDefault();
+        }
+
+        /// <summary>Links a selection before starting its avatar scan. Returns rejected-folder messages.</summary>
+        public List<string> AddUnityProjects(IEnumerable<string> paths)
+        {
+            var problems = new List<string>();
+            var added = new List<string>();
+            var known = new HashSet<string>(_settings.Value.UnityProjects.Select(VRMR.UnityProjects.NormalizePath),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (string path in paths)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    problems.Add("Pick a Unity project folder.");
+                    continue;
+                }
+
+                string dir = VRMR.UnityProjects.NormalizePath(path);
+                if (!UnityProjectScanner.IsUnityProject(dir))
+                {
+                    problems.Add(
+                        "That folder is not a Unity project. Pick the folder that contains Assets and ProjectSettings.");
+                    continue;
+                }
+
+                if (known.Add(dir)) added.Add(dir);
+            }
+
+            if (added.Count > 0)
+            {
+                _settings.Update(nameof(Settings.UnityProjects), s => s.UnityProjects.AddRange(added));
+                Rescan(added);
+            }
+
+            return problems;
         }
 
         /// <summary>Forgets a Unity project (links already made to its models stay).</summary>
@@ -464,11 +484,12 @@ namespace VRMR.App.Services
         {
             if (!_settings.Value.UnityProjects.Contains(dir)) return;
             _settings.Update(nameof(Settings.UnityProjects), s => s.UnityProjects.Remove(dir));
+            _avatars.ForgetProjectScan(dir);
             RaiseChanged();
         }
 
         /// <summary>Looks through the linked Unity projects for avatars again, in the background.</summary>
-        public void Rescan()
+        public void Rescan(IEnumerable<string> projects = null)
         {
             if (_settings.Value.UnityProjects.Count == 0)
             {
@@ -476,7 +497,7 @@ namespace VRMR.App.Services
                 return;
             }
 
-            _avatars.ScanAsync();
+            _avatars.ScanAsync(projects);
             // the scan reports its progress as text only: look at it a few times a second until it is done
             _scanWatch ??= _ui.Every(TimeSpan.FromMilliseconds(250), () =>
             {

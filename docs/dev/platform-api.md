@@ -131,12 +131,19 @@ SteamVRLocator.IsRunning(machine)         // is vrserver up
 BlenderInstalls.Find(machine, userPath)   // List<BlenderInstall>, best first
     // BlenderInstall: Exe, Version, Source (User, Registry, InstallFolder, Launcher, Steam), Channel (Release, Daily, Experimental)
 
-UnityProjects.Find(machine, extraPaths)   // List<UnityProjectInfo>, from Unity Hub's project list plus Settings.UnityProjects
+UnityProjects.Find(machine, extraPaths)   // List<UnityProjectInfo>, only explicitly linked paths
     // UnityProjectInfo: Path, Name, EditorVersion, Exists, HasBridge, FromHub
 UnityProjects.HasBridge(projectDir)
+UnityProjectSources.Discover(machine, source, folder) // explicit import from Unity Hub, ALCOM or Creator Companion
 ```
 
 `userPath` is `Settings.BlenderPath`: a `blender.exe` or the folder that holds it; it wins over everything found. `BlenderLocator` (`Vrmr.Export`) still opens exports in Blender and uses the same list.
+
+Unity project counts and rows use `Settings.UnityProjects`, including missing links. Startup and environment checks do not read manager project lists or automatically link projects. In Settings → Folders, choose **Folder**, **Unity Hub**, **ALCOM** or **VRChat Creator Companion** under **Add project from**. The manager picker reads its saved list only when opened and adds only selected projects. **Locate data folder…** supports custom manager locations. Imports do not synchronize subsequent manager changes.
+
+Manager lookup reads Hub JSON, legacy `userProjects`, VCC LiteDB and ALCOM SQLite stores without updating them. Bridge indicators detect package dependencies or copied assembly definitions; they do not verify Unity compilation.
+
+Adding projects indexes only the newly linked paths. Additions during indexing are queued and repeated pending requests are combined. Each linked project's row shows its own progress, unique avatar count and linked-avatar count; no combined scan result is shown. Existing projects are not reindexed when another project is added.
 
 ## EnvironmentProbe
 

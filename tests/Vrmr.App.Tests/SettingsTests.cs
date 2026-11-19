@@ -280,11 +280,12 @@ namespace VRMR.App.Tests
                 Assert.Equal(project, Assert.Single(folders.Projects).Path);
                 Assert.Same(folders.Projects[0], folders.SelectedProject);
                 Assert.True(
-                    await HeadlessUi.WaitForAsync(() => !host.AvatarService.Scanning && folders.ScanInfo.Contains("1 project")),
-                    "the scan did not report: " + folders.ScanInfo);
+                    await HeadlessUi.WaitForAsync(() =>
+                        !host.AvatarService.Scanning && folders.Projects[0].ScanInfo.Contains("Found avatars: 0")),
+                    "the scan did not report: " + folders.Projects[0].ScanInfo);
                 Assert.False(folders.Projects[0].Missing);
 
-                folders.RemoveProjectCommand.Execute(null);
+                folders.RemoveProjectCommand.Execute(folders.Projects[0]);
                 Assert.False(folders.HasProjects);
                 Assert.Empty(host.Settings.UnityProjects);
             });

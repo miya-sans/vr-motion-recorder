@@ -163,14 +163,21 @@ namespace VRMR
     {
         public readonly List<AvatarEntry> Entries = new();
         readonly Dictionary<string, AvatarProfile> _cache = new(StringComparer.OrdinalIgnoreCase);
+        readonly HashSet<string> _forgottenProjects = new(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<string, string> _projectScanInfo = new(StringComparer.OrdinalIgnoreCase);
         readonly Settings _s;
+        readonly object _scanLock = new();
+        readonly HashSet<string> _scanPending = new(StringComparer.OrdinalIgnoreCase);
+        readonly Func<string, Action<string>, List<UnityProjectScanner.Result>> _scanProject;
+        readonly Queue<string> _scanQueue = new();
         readonly Dictionary<string, AvatarEntry> _transient = new(StringComparer.OrdinalIgnoreCase);
-        public string LastScanInfo = "";
         public volatile bool Scanning;
 
-        public AvatarLibrary(Settings s)
+        public AvatarLibrary(Settings s,
+            Func<string, Action<string>, List<UnityProjectScanner.Result>> scanProject = null)
         {
             _s = s;
+            _scanProject = scanProject ?? UnityProjectScanner.Scan;
             Reload();
             LoadExportedProfiles();
         }
@@ -690,19 +697,98 @@ namespace VRMR
             Updated?.Invoke();
         }
 
-        public void ScanAsync()
+        /// <summary>The progress or last result for one project, with its own linked-avatar count.</summary>
+        public string ProjectScanInfo(string project)
         {
-            if (Scanning) return;
-            Scanning = true;
-            var projects = _s.UnityProjects.ToList();
-            new Thread(() =>
+            string path = UnityProjects.NormalizePath(project);
+            if (path == null) return "";
+            lock (_scanLock)
             {
-                int found = 0;
+                if (_projectScanInfo.TryGetValue(path, out string info)) return info;
+                int linked = LinkedAvatarCount(path);
+                return linked == 1 ? "1 avatar linked" : linked + " avatars linked";
+            }
+        }
+
+        /// <summary>Discards a removed project's progress and skips any pending work for it.</summary>
+        public void ForgetProjectScan(string project)
+        {
+            string path = UnityProjects.NormalizePath(project);
+            if (path == null) return;
+            lock (_scanLock)
+            {
+                _forgottenProjects.Add(path);
+                _projectScanInfo.Remove(path);
+            }
+        }
+
+        /// <summary>Queues only the supplied projects, or all linked projects when explicitly called without paths.</summary>
+        public void ScanAsync(IEnumerable<string> projectPaths = null)
+        {
+            lock (_scanLock)
+            {
+                foreach (string project in projectPaths ?? _s.UnityProjects)
+                {
+                    string path = UnityProjects.NormalizePath(project);
+                    if (path == null) continue;
+                    _forgottenProjects.Remove(path);
+                    if (!_scanPending.Add(path)) continue;
+                    _scanQueue.Enqueue(path);
+                    _projectScanInfo[path] = "Queued";
+                }
+
+                if (Scanning || _scanQueue.Count == 0) return;
+                Scanning = true;
+            }
+
+            new Thread(ScanProjects) { IsBackground = true, Name = "Unity scan" }.Start();
+        }
+
+        int LinkedAvatarCount(string project)
+        {
+            string prefix = project + Path.DirectorySeparatorChar;
+            return _s.AvatarModelMap.Values.Count(model =>
+                UnityProjects.NormalizePath(model)?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        void ScanProjects()
+        {
+            while (true)
+            {
+                string project;
+                lock (_scanLock)
+                {
+                    if (_scanQueue.Count == 0)
+                    {
+                        Scanning = false;
+                        break;
+                    }
+
+                    project = _scanQueue.Dequeue();
+                    if (_forgottenProjects.Contains(project))
+                    {
+                        _scanPending.Remove(project);
+                        continue;
+                    }
+
+                    _projectScanInfo[project] = "Scanning…";
+                }
+
                 try
                 {
-                    foreach (string proj in projects)
+                    var results = _scanProject(project, message =>
                     {
-                        foreach (var r in UnityProjectScanner.Scan(proj, msg => LastScanInfo = msg))
+                        lock (_scanLock)
+                            if (!_forgottenProjects.Contains(project))
+                                _projectScanInfo[project] = "Scanning… " +
+                                                            (message.StartsWith("Indexing ", StringComparison.Ordinal)
+                                                                ? "Indexing files"
+                                                                : message);
+                    });
+                    lock (_scanLock)
+                    {
+                        if (_forgottenProjects.Contains(project)) continue;
+                        foreach (var r in results)
                         {
                             bool hasJson = _s.AvatarModelMap.TryGetValue(r.AvatarId, out string cur) &&
                                            cur.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
@@ -713,22 +799,29 @@ namespace VRMR
                                 _s.AvatarModelMap[r.AvatarId] = r.ModelMetaPath;
                             }
 
-                            found++;
                             AppLog.Info(
                                 $"Avatar {r.AvatarId} -> {Path.GetFileName(r.ModelMetaPath.Replace(".meta", ""))} ({r.DisplayName})");
                         }
-                    }
 
-                    _s.Save();
-                    LastScanInfo = $"Found {found} avatar(s) in {projects.Count} project(s)";
+                        _s.Save();
+                        int found = results.Select(result => result.AvatarId).Distinct(StringComparer.OrdinalIgnoreCase)
+                            .Count();
+                        _projectScanInfo[project] = $"Found avatars: {found} · {LinkedAvatarCount(project)} linked";
+                    }
                 }
-                catch (Exception ex) { LastScanInfo = "Scan failed: " + ex.Message; }
+                catch (Exception ex)
+                {
+                    lock (_scanLock)
+                        if (!_forgottenProjects.Contains(project))
+                            _projectScanInfo[project] = "Scan failed: " + ex.Message;
+                }
                 finally
                 {
-                    Scanning = false;
-                    Updated?.Invoke();
+                    lock (_scanLock) _scanPending.Remove(project);
                 }
-            }) { IsBackground = true, Name = "Unity scan" }.Start();
+            }
+
+            Updated?.Invoke();
         }
 
         // ------------------------------------------------------------------ takes

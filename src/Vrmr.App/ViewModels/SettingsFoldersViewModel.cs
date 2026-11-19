@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -11,14 +12,54 @@ using VRMR.App.Services;
 namespace VRMR.App.ViewModels
 {
     /// <summary>A linked Unity project in the list.</summary>
-    public sealed class UnityProjectRowViewModel
+    public sealed class UnityProjectRowViewModel : ObservableObject
     {
+        string _scanInfo = "";
+
+        public UnityProjectRowViewModel(UnityProjectInfo project, bool alreadyAdded = false)
+        {
+            Path = project.Path;
+            Name = project.Name;
+            Missing = !project.Exists;
+            HasBridge = project.HasBridge;
+            AlreadyAdded = alreadyAdded;
+            Info = Missing
+                ? "Project folder unavailable"
+                : (project.EditorVersion.Length > 0 ? "Unity " + project.EditorVersion + " · " : "") +
+                  (HasBridge ? "Bridge detected" : "No bridge");
+            if (AlreadyAdded) Info += " · Already added";
+        }
+
         public string Path { get; init; } = "";
+        public string Name { get; }
+        public bool HasBridge { get; }
+        public bool AlreadyAdded { get; }
+        public bool CanAdd => !Missing && !AlreadyAdded;
+        public string Indicator => Missing ? "⚠" : "●";
+
+        public string BridgeStatus => Missing
+            ? "Project folder unavailable"
+            : HasBridge
+                ? "Bridge files or package reference detected; Unity compilation is not checked"
+                : "No bridge detected";
 
         /// <summary>"Unity 2022.3.22f1 · bridge installed", or that the folder is gone.</summary>
         public string Info { get; init; } = "";
 
         public bool Missing { get; init; }
+
+        /// <summary>Indexing progress and results for this project.</summary>
+        public string ScanInfo
+        {
+            get => _scanInfo;
+            set
+            {
+                if (SetProperty(ref _scanInfo, value)) OnPropertyChanged(nameof(Details));
+            }
+        }
+
+        /// <summary>The project's version, bridge status and indexing status in one line.</summary>
+        public string Details => Info + (ScanInfo.Length > 0 ? " · " + ScanInfo : "");
     }
 
     /// <summary>
@@ -42,7 +83,6 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] [NotifyPropertyChangedFor(nameof(RecordingsMoved))]
         string _recordingsFolder;
 
-        [ObservableProperty] string _scanInfo = "";
         [ObservableProperty] UnityProjectRowViewModel _selectedProject;
         bool _syncing;
 
@@ -78,6 +118,9 @@ namespace VRMR.App.ViewModels
 
         /// <summary>Asks the view for Blender's program file. Null when cancelled.</summary>
         public Func<Task<string>> PickBlender { get; set; }
+
+        /// <summary>Opens a manager picker and returns only the explicitly selected project paths.</summary>
+        public Func<UnityProjectSource, Task<string[]>> PickProjects { get; set; }
 
         // ------------------------------------------------------------------------------------------ takes and avatars
 
@@ -228,15 +271,25 @@ namespace VRMR.App.ViewModels
         }
 
         [RelayCommand]
-        void RemoveProject()
+        void RemoveProject(UnityProjectRowViewModel project)
         {
-            if (SelectedProject != null) _host.AvatarService.RemoveUnityProject(SelectedProject.Path);
+            if (project != null) _host.AvatarService.RemoveUnityProject(project.Path);
         }
 
         [RelayCommand]
-        void Rescan()
+        async Task AddFromManager(UnityProjectSource source)
         {
-            _host.AvatarService.Rescan();
+            if (PickProjects == null) return;
+            string[] paths = await PickProjects(source);
+            if (paths == null) return;
+            foreach (string problem in _host.AvatarService.AddUnityProjects(paths))
+                _host.Status.Notify(problem, StatusKind.Warning);
+        }
+
+        /// <summary>Creates a picker using this host's machine and linked projects.</summary>
+        public UnityProjectPickerViewModel CreateProjectPicker(UnityProjectSource source)
+        {
+            return new UnityProjectPickerViewModel(_host.Options.Paths.Machine, source, _host.Settings.UnityProjects);
         }
 
         // ------------------------------------------------------------------------------------------ state
@@ -278,23 +331,29 @@ namespace VRMR.App.ViewModels
             var service = _host.AvatarService;
             var found = _host.Environment.Report?.UnityProjects;
             string selected = SelectedProject?.Path;
-            Projects.Clear();
+            var refreshed = new List<UnityProjectRowViewModel>();
             foreach (string path in service.UnityProjects)
             {
                 var info = found?.FirstOrDefault(p => SamePath(p.Path, path));
-                bool missing = info != null ? !info.Exists : !UnityProjectScanner.IsUnityProject(path);
-                string text = missing
-                    ? "This folder is no longer a Unity project. Remove it, or add the project again from its new place."
-                    : info == null
-                        ? ""
-                        : (info.EditorVersion.Length > 0 ? "Unity " + info.EditorVersion + " · " : "") +
-                          (info.HasBridge ? "bridge installed" : "no bridge yet");
-                Projects.Add(new UnityProjectRowViewModel { Path = path, Info = text, Missing = missing });
+                info ??= new UnityProjectInfo(path, Path.GetFileName(path), "",
+                    UnityProjectScanner.IsUnityProject(path), false, false);
+                refreshed.Add(new UnityProjectRowViewModel(info) { ScanInfo = service.ProjectScanInfo(path) });
+            }
+
+            bool sameRows = Projects.Count == refreshed.Count && Projects.Zip(refreshed).All(pair =>
+                pair.First.Path == pair.Second.Path && pair.First.Info == pair.Second.Info);
+            if (sameRows)
+            {
+                for (int i = 0; i < Projects.Count; i++) Projects[i].ScanInfo = refreshed[i].ScanInfo;
+            }
+            else
+            {
+                Projects.Clear();
+                foreach (var row in refreshed) Projects.Add(row);
             }
 
             SelectedProject = Projects.FirstOrDefault(p => p.Path == selected) ?? Projects.FirstOrDefault();
             HasProjects = Projects.Count > 0;
-            ScanInfo = service.ScanInfo;
         }
 
         static bool SamePath(string a, string b)

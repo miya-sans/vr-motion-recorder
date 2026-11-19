@@ -332,7 +332,7 @@ namespace VRMR.App.Tests
                 Assert.Single(avatars.UnityProjects);
                 Assert.True(await ui.WaitForAsync(() => !avatars.Scanning));
                 ui.Advance(0.5); // the watch that follows a scan stops with it
-                Assert.Contains("1 project", avatars.ScanInfo);
+                Assert.Contains("Found avatars: 0", avatars.ProjectScanInfo(project));
 
                 avatars.RemoveUnityProject(project);
                 Assert.Empty(avatars.UnityProjects);

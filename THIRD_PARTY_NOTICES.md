@@ -87,6 +87,9 @@ Shipped with the app:
 |---|---|---|
 | [Avalonia](https://github.com/AvaloniaUI/Avalonia), Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Fonts.Inter (and the Avalonia platform packages they bring in) | MIT | © The AvaloniaUI Project |
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | MIT | © .NET Foundation and Contributors |
+| [LiteDB](https://github.com/litedb-org/LiteDB) | MIT | © Mauricio David |
+| [Microsoft.Data.Sqlite](https://github.com/dotnet/efcore) | MIT | © .NET Foundation and Contributors |
+| [SQLitePCLRaw](https://github.com/ericsink/SQLitePCL.raw) and its native SQLite assets | Apache-2.0; SQLite is public domain | © Eric Sink; SQLite authors |
 | [Silk.NET.OpenGL](https://github.com/dotnet/Silk.NET) (with Silk.NET.Core, Silk.NET.Maths) | MIT | © .NET Foundation and Contributors |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) and its native assets | MIT | © Microsoft Corporation |
 | HarfBuzzSharp and its native assets (through Avalonia) | MIT | © Microsoft Corporation |

@@ -42,7 +42,7 @@ namespace VRMR
         }
     }
 
-    /// <summary>Finds Unity projects from Unity Hub's project list, and checks them for the app's bridge. Never writes.</summary>
+    /// <summary>Inspects explicitly supplied Unity projects. Never writes.</summary>
     public static class UnityProjects
     {
         /// <summary>The assembly definition every copy of the Unity bridge ships, however it was installed.</summary>
@@ -59,9 +59,17 @@ namespace VRMR
             return appData == null ? null : Path.Combine(appData, "UnityHub", "projects-v1.json");
         }
 
+        /// <summary>A canonical project path, or null for an invalid path.</summary>
+        public static string NormalizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            try { return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Trim())); }
+            catch { return null; }
+        }
+
         /// <summary>
-        ///     The projects the caller names (<paramref name="extraPaths" />, in their order), then the ones Unity Hub
-        ///     lists, most recently used first. Projects whose folder is gone are kept with Exists = false.
+        ///     The projects the caller names (<paramref name="extraPaths" />), in their order.
+        ///     Projects whose folder is gone are kept with Exists = false. Manager lists are not read.
         /// </summary>
         public static List<UnityProjectInfo> Find(IMachine machine, IEnumerable<string> extraPaths = null)
         {
@@ -71,10 +79,8 @@ namespace VRMR
             void Add(string path, string title, string version, bool fromHub)
             {
                 if (string.IsNullOrWhiteSpace(path)) return;
-                string full;
-                try { full = Path.GetFullPath(path.Trim()).TrimEnd('\\', '/'); }
-                catch { return; }
-
+                string full = NormalizePath(path);
+                if (full == null) return;
                 if (!seen.Add(full)) return;
                 bool exists = IsProject(full);
                 string v = exists ? EditorVersionOf(full) : "";
@@ -85,34 +91,7 @@ namespace VRMR
             if (extraPaths != null)
                 foreach (string p in extraPaths)
                     Add(p, null, null, false);
-            foreach (var p in HubProjects(machine)) Add(p.Path, p.Title, p.Version, true);
             return list;
-        }
-
-        static IEnumerable<HubEntry> HubProjects(IMachine machine)
-        {
-            var entries = new List<HubEntry>();
-            try
-            {
-                string file = HubProjectsFile(machine);
-                if (file == null || !File.Exists(file)) return entries;
-                var root = Json.ParseObject(File.ReadAllText(file).TrimStart('﻿'));
-                var data = root?.GetObj("data") ?? root; // newer files wrap the list in "data"
-                if (data == null) return entries;
-                foreach (var kv in data)
-                {
-                    if (!(kv.Value is Dictionary<string, object> p)) continue;
-                    string path = p.GetStr("path") ?? kv.Key;
-                    entries.Add(new HubEntry
-                    {
-                        Path = path, Title = p.GetStr("title", ""), Version = p.GetStr("version", ""),
-                        LastModified = p.GetNum("lastModified")
-                    });
-                }
-            }
-            catch (Exception ex) { AppLog.Warn("Unity Hub project list: " + ex.Message); }
-
-            return entries.OrderByDescending(e => e.LastModified);
         }
 
         /// <summary>Whether a folder is a Unity project.</summary>
@@ -153,10 +132,15 @@ namespace VRMR
                 string manifest = Path.Combine(projectDir, "Packages", "manifest.json");
                 if (File.Exists(manifest))
                 {
-                    string text = File.ReadAllText(manifest);
-                    foreach (string marker in BridgeMarkers)
-                        if (text.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0)
-                            return true;
+                    var dependencies = Json.ParseObject(File.ReadAllText(manifest))?.GetObj("dependencies");
+                    if (dependencies != null)
+                        foreach (var dependency in dependencies)
+                            if (dependency.Key.Equals("com.vrmr.motion-bridge", StringComparison.OrdinalIgnoreCase) ||
+                                BridgeMarkers.Any(marker =>
+                                    dependency.Key.Contains(marker, StringComparison.OrdinalIgnoreCase) ||
+                                    dependency.Value is string value &&
+                                    value.Contains(marker, StringComparison.OrdinalIgnoreCase)))
+                                return true;
                 }
 
                 // the usual place first, then a shallow search (a project's Assets can hold many thousands of folders)
@@ -182,12 +166,6 @@ namespace VRMR
             catch { }
 
             return false;
-        }
-
-        sealed class HubEntry
-        {
-            public double LastModified;
-            public string Path, Title, Version;
         }
     }
 }

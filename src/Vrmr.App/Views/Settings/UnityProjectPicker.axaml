@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VRMR.App.ViewModels"
+        x:Class="VRMR.App.Views.Settings.UnityProjectPicker"
+        x:DataType="vm:UnityProjectPickerViewModel"
+        Title="{Binding Title}" Width="740" Height="480" MinWidth="480" MinHeight="320"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Window.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="IsEnabled" Value="{Binding CanAdd, DataType=vm:UnityProjectRowViewModel}" />
+    </Style>
+    <Style Selector="TextBlock.project-detail">
+      <Setter Property="FontSize" Value="{DynamicResource FontSecondary}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected TextBlock.project-detail">
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentMutedBrush}" />
+    </Style>
+    <Style Selector="TextBlock.bridge">
+      <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}" />
+    </Style>
+    <Style Selector="TextBlock.bridge.installed">
+      <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+    <Style Selector="TextBlock.bridge.missing">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+  </Window.Styles>
+  <Grid Margin="{DynamicResource Pad4}" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space3}">
+    <TextBlock Text="{Binding Folder}" TextWrapping="Wrap" Classes="secondary" />
+    <TextBlock Grid.Row="1" Text="{Binding Message}" TextWrapping="Wrap" />
+    <ListBox Grid.Row="2" x:Name="ProjectList" ItemsSource="{Binding Projects}"
+             SelectionMode="Multiple,Toggle" SelectionChanged="SelectionChanged"
+             AutomationProperties.Name="Projects to add">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:UnityProjectRowViewModel">
+          <Grid ColumnDefinitions="Auto,*" Margin="{DynamicResource Pad1}">
+            <TextBlock Text="{Binding Indicator}" Classes="bridge" Classes.installed="{Binding HasBridge}"
+                       Classes.missing="{Binding Missing}"
+                       ToolTip.Tip="{Binding BridgeStatus}" AutomationProperties.Name="{Binding BridgeStatus}" />
+            <StackPanel Grid.Column="1" Margin="{DynamicResource GapLeft}">
+              <TextBlock Text="{Binding Name}" />
+              <TextBlock Text="{Binding Path}" TextWrapping="Wrap" Classes="project-detail" />
+              <TextBlock Text="{Binding Info}" TextWrapping="Wrap" Classes="project-detail" />
+            </StackPanel>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Space2}">
+      <Button Content="Locate data folder…" Command="{Binding LocateDataFolderCommand}" HorizontalAlignment="Left" />
+      <Button Grid.Column="1" Content="Cancel" IsCancel="True" Click="Cancel" />
+      <Button Grid.Column="2" Content="Add selected" IsEnabled="{Binding CanAdd}" Click="AddSelected" />
+    </Grid>
+  </Grid>
+</Window>

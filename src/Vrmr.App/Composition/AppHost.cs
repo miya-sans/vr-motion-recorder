@@ -30,7 +30,6 @@ namespace VRMR.App.Composition
                 Settings.RecordingsDir = paths.RecordingsDir;
                 Settings.AvatarLibraryDir = paths.AvatarLibraryDir;
             }
-            else LinkEnclosingUnityProject(Settings);
 
             try { Directory.CreateDirectory(Settings.RecordingsDir); }
             catch (Exception ex) { AppLog.Warn("Recordings folder: " + ex.Message); }
@@ -127,24 +126,6 @@ namespace VRMR.App.Composition
             UiState.Dispose();
             Recorder.Dispose();
             AppLog.Info("bye");
-        }
-
-        /// <summary>First run from inside a Unity project: link it, so its avatars are found without any setup.</summary>
-        static void LinkEnclosingUnityProject(Settings settings)
-        {
-            if (settings.UnityProjects.Count > 0) return;
-            try
-            {
-                var dir = new DirectoryInfo(AppContext.BaseDirectory);
-                for (int i = 0; i < 4 && dir != null; i++, dir = dir.Parent)
-                    if (UnityProjectScanner.IsUnityProject(dir.FullName))
-                    {
-                        settings.UnityProjects.Add(dir.FullName);
-                        settings.Save();
-                        break;
-                    }
-            }
-            catch (Exception ex) { AppLog.Warn("Unity project lookup: " + ex.Message); }
         }
     }
 }
