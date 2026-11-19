@@ -36,7 +36,7 @@ For changes that could affect motion, run `vrmr dump <takesDir> <outDir>` on cop
 
 ## Submitting changes
 
-Run Rider **Full Cleanup** on changed code and review its diff. Follow the [code style guide](docs/dev/code-style.md) for C#, Avalonia, solver exceptions and analyzer warnings. Add or update tests for behaviour changes and bug fixes.
+Run the applicable CLI checks and review changed code against the [code style guide](docs/dev/code-style.md), including the Avalonia conventions and solver exceptions. Add or update tests for behaviour changes and bug fixes.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) with a short imperative subject. Explain the reason in the body when useful.
 
