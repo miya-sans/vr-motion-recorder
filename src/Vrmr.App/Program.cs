@@ -57,6 +57,7 @@ namespace VRMR.App
                 AppLog.Error("Fatal: " + ex);
                 return 3;
             }
+            finally { AppLog.Close(); }
         }
 
         /// <summary>The Avalonia app (also used by the XAML previewer).</summary>

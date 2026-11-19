@@ -34,6 +34,7 @@ namespace VRMR.Cli
                 Console.Error.WriteLine("vrmr: " + ex.Message);
                 return 1;
             }
+            finally { AppLog.Close(); }
         }
 
         static void Usage()

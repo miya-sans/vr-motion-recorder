@@ -16,6 +16,9 @@ namespace VRMR
         /// <summary>The app's folder name under the user's documents.</summary>
         public const string DocumentsFolderName = "VR Motion Recorder";
 
+        /// <summary>The log subfolder name used by the desktop app and CLI.</summary>
+        public const string LogFolderName = "logs";
+
         static volatile AppPaths _current;
         static readonly object CurrentLock = new();
 
@@ -62,7 +65,7 @@ namespace VRMR
         public string UiStateFile => Path.Combine(AppDataDir, "ui-state.json");
 
         /// <summary>The folder the log file is written to.</summary>
-        public string LogDir => AppDataDir;
+        public string LogDir => Path.Combine(AppDataDir, LogFolderName);
 
         /// <summary>The log of the current run.</summary>
         public string LogFile => Path.Combine(LogDir, AppLog.FileName);

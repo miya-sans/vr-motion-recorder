@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -17,7 +18,8 @@ namespace VRMR
     public static class AppLog
     {
         /// <summary>The log file's name inside the folder given to <see cref="Init" />.</summary>
-        public const string FileName = "vrmr.log";
+        public static readonly string FileName = "vrmr-" + Timestamp().Replace(':', '-') +
+                                                 "-" + Environment.ProcessId + ".log";
 
         static readonly object Lock = new();
         static readonly List<string> Lines = new();
@@ -26,27 +28,56 @@ namespace VRMR
 
         public static void Init(string dir)
         {
-            try
+            lock (Lock)
             {
-                Directory.CreateDirectory(dir);
-                _file = new StreamWriter(Path.Combine(dir, FileName), false, Encoding.UTF8) { AutoFlush = true };
+                Close();
+                try
+                {
+                    Directory.CreateDirectory(dir);
+                    _file = new StreamWriter(Path.Combine(dir, FileName), true, Encoding.UTF8) { AutoFlush = true };
+                }
+                catch { }
             }
-            catch { }
+        }
+
+        /// <summary>Flushes and closes the current log file.</summary>
+        public static void Close()
+        {
+            lock (Lock)
+            {
+                try { _file?.Dispose(); }
+                catch { }
+
+                _file = null;
+            }
+        }
+
+        static string Timestamp()
+        {
+            return DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
         }
 
         static void Write(string level, string msg)
         {
-            string line = $"{DateTime.Now:HH:mm:ss.fff} {level} {msg}";
+            string prefix = Timestamp() + " [" + level + "] ";
+            string[] lines = (msg ?? "").ReplaceLineEndings("\n").Split('\n');
             lock (Lock)
             {
-                Lines.Add(line);
-                if (Lines.Count > 2000) Lines.RemoveRange(0, 500);
-                try { _file?.WriteLine(line); }
-                catch { }
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    lines[i] = prefix + lines[i];
+                    Lines.Add(lines[i]);
+                    if (Lines.Count > 2000) Lines.RemoveRange(0, 500);
+                    try { _file?.WriteLine(lines[i]); }
+                    catch { }
+                }
             }
 
-            try { Line?.Invoke(line); }
-            catch { }
+            foreach (string line in lines)
+            {
+                try { Line?.Invoke(line); }
+                catch { }
+            }
         }
 
         public static void Info(string msg)

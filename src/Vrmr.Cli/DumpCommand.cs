@@ -153,7 +153,7 @@ namespace VRMR.Cli
             string dir = Path.GetFullPath(a[0]), outDir = Path.GetFullPath(a[1]);
             Directory.CreateDirectory(outDir);
             string filter = a.Length > 2 ? a[2] : "";
-            AppLog.Init(Path.Combine(outDir, "log"));
+            AppLog.Init(Path.Combine(outDir, AppPaths.LogFolderName));
             BodySolverSetup.Register();
             var S = new Settings { RecordingsDir = dir, AvatarLibraryDir = Path.Combine(dir, "Avatars") };
             S.UnityProjects.Clear();

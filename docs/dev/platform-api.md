@@ -50,7 +50,7 @@ public sealed class AppPaths
     public string AppDataDir { get; }               // %APPDATA%\VRMotionRecorder
     public string SettingsFile { get; }             // settings.json
     public string UiStateFile { get; }              // ui-state.json: the app's own window and panel state
-    public string LogDir { get; }                   // = AppDataDir (vrmr.log)
+    public string LogDir { get; }                   // AppDataDir\logs (one timestamped log per run)
     public string LogFile { get; }
     public string CalibrationPresetsDir { get; }    // calibrations\
     public string CalibrationSnapshotsDir { get; }  // calibrations\snapshots\
@@ -68,12 +68,12 @@ public sealed class AppPaths
 }
 ```
 
-Normal runs keep the locations the app has always used, so existing data is found as before.
+Normal runs keep existing settings and user data locations. Logs are stored in the `AppDataDir\logs` subfolder.
 
 `--data <dir>` (`ForDataRoot`) puts everything under one folder:
 
 ```
-<dir>\AppData\      settings.json, calibrations\, profiles\, vrmr.log, ...
+<dir>\AppData\      settings.json, calibrations\, profiles\, logs\, ...
 <dir>\Documents\    takes, Avatars\, Scenes\, Exports\
 <dir>\Machine\      what the sandboxed machine sees: LocalLow\VRChat\VRChat\, Local\openvr\, ...
 ```

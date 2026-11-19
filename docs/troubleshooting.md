@@ -1,6 +1,6 @@
 # Troubleshooting
 
-The log of the current run is `%APPDATA%\VRMotionRecorder\vrmr.log`. It is rewritten every time the app starts, so copy it before you restart if you want to report a problem.
+Logs are kept in `%APPDATA%\VRMotionRecorder\logs`. Each run writes a separate `vrmr-<UTC timestamp>-<process ID>.log` file, preserving earlier runs. Settings → About → Open log opens the current run's file. Each line starts with an ISO 8601 UTC timestamp and a bracketed level, for example `2026-11-19T22:05:12.123Z [INF] VR Motion Recorder starting`.
 
 ## Nothing arrives from VRChat
 
