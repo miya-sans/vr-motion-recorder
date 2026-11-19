@@ -685,11 +685,19 @@ namespace VRMR
         public double Duration;
         public EditList Edits = new();
         public Dictionary<string, object> Extra = new();
+
+        /// <summary>The tolerance <see cref="FaceKeys" /> reduced the face parameters with; 0 when they are as received.</summary>
+        public double FaceKeyTolerance;
+
         public string FilePath;
         public HumrStream Humr = new();
         public string Name = "Recording";
         public string Notes = "";
         public AvatarProfile Profile;
+
+        /// <summary>Chunks <see cref="RecordingIO.Load" /> skipped because they were damaged; not saved.</summary>
+        public int SkippedChunks;
+
         public float UserEyeHeight; // measured HMD height at calibration (meters, real world)
 
         List<object> _pendingExportOff;
@@ -765,13 +773,13 @@ namespace VRMR
         {
             return new Dictionary<string, object>
             {
-                ["app"] = "VR Motion Recorder", ["formatVersion"] = 1,
+                ["app"] = "VR Motion Recorder", ["formatVersion"] = (int)RecordingIO.Version,
                 ["name"] = Name, ["created"] = CreatedUtc.ToString("o"), ["duration"] = Duration,
                 ["avatarId"] = AvatarId, ["avatarName"] = AvatarName, ["world"] = WorldName, ["user"] = LocalUser,
                 ["avatarEyeHeight"] = (double)AvatarEyeHeight, ["userEyeHeight"] = (double)UserEyeHeight,
                 ["notes"] = Notes, ["edits"] = Edits.ToJson(), ["extra"] = Extra,
                 ["paramExport"] = Params.Where(p => !p.Export).Select(p => (object)p.Name).ToList(),
-                ["humrTarget"] = Humr.Target
+                ["humrTarget"] = Humr.Target, ["faceKeys"] = FaceKeyTolerance
             };
         }
 
@@ -791,6 +799,7 @@ namespace VRMR
             Edits = EditList.FromJson(m.GetObj("edits"));
             Extra = m.GetObj("extra") ?? new Dictionary<string, object>();
             Humr.Target = m.GetStr("humrTarget", "");
+            FaceKeyTolerance = m.GetNum("faceKeys");
             var off = m.GetList("paramExport");
             if (off != null)
                 foreach (object o in off)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Xunit;
@@ -21,6 +22,13 @@ namespace VRMR.Tests
             var list = back.GetList("list");
             Assert.Equal(3, list.Count);
             Assert.Equal(-0.25f, ((Dictionary<string, object>)list[2]).GetF("k"), 5);
+        }
+
+        [Fact]
+        public void CutOffTextIsAFormatError()
+        {
+            string text = Json.Serialize(new Dictionary<string, object> { ["name"] = "aéb", ["list"] = new List<object> { 1.0 } });
+            for (int n = 0; n < text.Length; n++) Assert.Throws<FormatException>(() => Json.Parse(text.Substring(0, n)));
         }
 
         [Fact]

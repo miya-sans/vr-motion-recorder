@@ -9,11 +9,12 @@ namespace VRMR
 {
     /// <summary>
     ///     .vrmr container: "VRMR" u16 version u16 flags, then chunks [u32 tag][u32 length][payload].
-    ///     Chunks are appended while recording (crash safe: a truncated tail is ignored on load).
+    ///     Chunks are appended while recording (crash safe: a truncated tail is ignored on load). Saving rewrites the
+    ///     samples as compressed column chunks (<see cref="TakeColumns" />).
     /// </summary>
     public static class RecordingIO
     {
-        public const ushort Version = 1;
+        public const ushort Version = 2;
 
         public static readonly uint META = Tag("META"),
             PROF = Tag("PROF"),
@@ -64,70 +65,16 @@ namespace VRMR
                     WriteHeader(w);
                     WriteJsonChunk(w, META, rec.MetaJson());
                     if (rec.Profile != null) WriteJsonChunk(w, PROF, rec.Profile.ToJson());
-                    // params
                     var ms = new MemoryStream();
                     var bw = new BinaryWriter(ms);
                     bw.Write(rec.Params.Count);
                     for (int i = 0; i < rec.Params.Count; i++) WriteParamDef(bw, (ushort)i, rec.Params[i]);
                     Flush(w, PDEF, ms);
-                    for (int i = 0; i < rec.Params.Count; i++)
-                    {
-                        var p = rec.Params[i];
-                        for (int s = 0; s < p.Count; s += 100000)
-                        {
-                            int n = Math.Min(100000, p.Count - s);
-                            ms.SetLength(0);
-                            bw.Write(n);
-                            for (int k = s; k < s + n; k++)
-                            {
-                                bw.Write(p.T[k]);
-                                bw.Write((ushort)i);
-                                bw.Write(p.V[k]);
-                            }
-
-                            Flush(w, PSMP, ms);
-                        }
-                    }
-
-                    // pose streams
                     ms.SetLength(0);
                     bw.Write(rec.Streams.Count);
                     foreach (var st in rec.Streams) WriteStreamDef(bw, st);
                     Flush(w, SDEF, ms);
-                    foreach (var st in rec.Streams)
-                    {
-                        for (int s = 0; s < st.Count; s += 50000)
-                        {
-                            int n = Math.Min(50000, st.Count - s);
-                            ms.SetLength(0);
-                            bw.Write(n);
-                            for (int k = s; k < s + n; k++) WritePose(bw, st.T[k], (ushort)st.Id, st.P[k], st.R[k]);
-                            Flush(w, SSMP, ms);
-                        }
-                    }
-
-                    // HUMR frames
-                    var h = rec.Humr;
-                    for (int s = 0; s < h.Count; s += 5000)
-                    {
-                        int n = Math.Min(5000, h.Count - s);
-                        ms.SetLength(0);
-                        bw.Write(n);
-                        for (int k = s; k < s + n; k++) WriteHumr(bw, h.T[k], h.SrcT[k], h.Hips[k], h.Rot[k]);
-                        Flush(w, HUMR, ms);
-                    }
-
-                    foreach (var hs in rec.Hands)
-                        for (int s0 = 0; s0 < hs.Count; s0 += 10000)
-                        {
-                            int n = Math.Min(10000, hs.Count - s0);
-                            ms.SetLength(0);
-                            bw.Write(n);
-                            for (int k = s0; k < s0 + n; k++)
-                                WriteHand(bw, hs.T[k], hs.Side, hs.Summary[k], hs.Bones[k]);
-                            Flush(w, HAND, ms);
-                        }
-
+                    TakeColumns.Write(w, rec);
                     WriteJsonChunk(w, EVNT,
                         rec.Events.Select(e => (object)new Dictionary<string, object>
                             { ["t"] = e.T, ["type"] = e.Type, ["text"] = e.Text }).ToList());
@@ -224,17 +171,24 @@ namespace VRMR
                     int len = r.ReadInt32();
                     long start = fs.Position;
                     if (len < 0 || start + len > fs.Length || tag == END) break;
-                    if (tag == META) meta = Json.ParseObject(Encoding.UTF8.GetString(r.ReadBytes(len)));
-                    else if (tag == HUMR) s.HasHumr = true;
-                    else if (tag == HAND) s.HasFingers = true;
-                    else if (tag == SSMP) { s.HasDevices = true; }
+                    if (tag == META) meta = ParseMeta(r.ReadBytes(len)) ?? meta;
+                    else if (tag == HUMR || tag == TakeColumns.HCOL) s.HasHumr = true;
+                    else if (tag == HAND || tag == TakeColumns.FCOL) s.HasFingers = true;
+                    else if (tag == SSMP || tag == TakeColumns.SCOL) { s.HasDevices = true; }
                     else if (tag == PDEF && !s.HasFace)
                     {
                         byte[] b = r.ReadBytes(len);
                         if (Encoding.UTF8.GetString(b).Contains("FT/")) s.HasFace = true;
                     }
 
-                    if ((tag == PSMP || tag == SSMP || tag == HUMR) && len >= 12)
+                    if ((tag == TakeColumns.PCOL || tag == TakeColumns.SCOL || tag == TakeColumns.HCOL) &&
+                        len >= TakeColumns.HeaderLength)
+                    {
+                        fs.Position = start;
+                        double last = TakeColumns.LastTime(r.ReadBytes(TakeColumns.HeaderLength), 0);
+                        if (double.IsFinite(last)) maxT = Math.Max(maxT, last);
+                    }
+                    else if ((tag == PSMP || tag == SSMP || tag == HUMR) && len >= 12)
                     {
                         // last sample time of the chunk (samples are time-first records)
                         fs.Position = start;
@@ -264,6 +218,13 @@ namespace VRMR
             }
 
             return s;
+        }
+
+        /// <summary>A META chunk's JSON, or null when it is damaged.</summary>
+        static Dictionary<string, object> ParseMeta(byte[] b)
+        {
+            try { return Json.ParseObject(Encoding.UTF8.GetString(b)); }
+            catch (FormatException) { return null; }
         }
 
         // ------------------------------------------------------------ load
@@ -400,6 +361,10 @@ namespace VRMR
                                 if (side < 2 && nb == HandStream.PackedLength) rec.Hands[side].Add(t, sum, bones);
                             }
                         }
+                        else if (tag == TakeColumns.PCOL) TakeColumns.ReadParam(all, pos, len, paramById);
+                        else if (tag == TakeColumns.SCOL) TakeColumns.ReadPoses(all, pos, len, streamById);
+                        else if (tag == TakeColumns.HCOL) TakeColumns.ReadHumr(all, pos, len, rec.Humr);
+                        else if (tag == TakeColumns.FCOL) TakeColumns.ReadHand(all, pos, len, rec.Hands);
                         else if (tag == EVNT)
                         {
                             var list = Json.Parse(Encoding.UTF8.GetString(all, pos, len)) as List<object>;
@@ -413,6 +378,11 @@ namespace VRMR
                         }
                     }
                     catch (EndOfStreamException) { }
+                    catch (Exception ex) when (ex is InvalidDataException or FormatException)
+                    {
+                        rec.SkippedChunks++;
+                        AppLog.Warn($"{Path.GetFileName(path)}: skipped a damaged chunk at byte {pos - 8}: {ex.Message}");
+                    }
                 }
 
                 pos += len;

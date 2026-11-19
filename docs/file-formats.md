@@ -28,15 +28,15 @@ Defined in `src/Vrmr.Model/Takes/RecordingIO.cs` and `Recording.cs`.
 A take stores **raw inputs only**. Edits are a small list inside its metadata, and the body is solved again from the raw data whenever something changes.
 
 ```
-"VRMR"  u16 version (1)  u16 flags (0)
+"VRMR"  u16 version (2)  u16 flags (0)
 then chunks:  u32 tag (four ASCII characters)  i32 length  payload
 ```
 
-A recording in progress is written chunk by chunk every 200 ms. A file that ends in the middle of a chunk (a crash, a power cut) loads up to the last complete chunk. Unknown tags are skipped.
+A recording in progress is written chunk by chunk every 200 ms, with samples in the plain chunks (`PSMP`, `SSMP`, `HUMR`, `HAND`). A file that ends in the middle of a chunk (a crash, a power cut) loads up to the last complete chunk. When the recording stops, the face parameters are thinned (see below) and the take is rewritten with samples in compressed column chunks (`PCOL`, `SCOL`, `HCOL`, `FCOL`); every later save writes them too. A take ends up about a fifth of its streamed size, roughly 190 MB for two hours with face and finger tracking. `vrmr compact <take.vrmr | folder>` does the same to existing takes. Unknown tags are skipped, and a damaged chunk is skipped with a warning in the log.
 
 | Tag    | Payload                                                                                                                                                                                                                                                                          |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `META` | JSON: name, creation time, duration, avatar id and name, world, user, notes, `edits`, `extra` (see below).                                                                                                                                                                       |
+| `META` | JSON: name, creation time, duration, avatar id and name, world, user, notes, `edits`, `extra` (see below), `faceKeys`.                                                                                                                                                                      |
 | `PROF` | JSON: the skeleton of the base model of the avatar worn, with its library id.                                                                                                                                                                                                    |
 | `PDEF` | Avatar parameter definitions: `i32 count`, then per parameter `u16 id`, `u8 type` (0 float, 1 int, 2 bool), `u16 length`, name.                                                                                                                                                  |
 | `PSMP` | Parameter samples: `i32 count`, then per sample `f64 time`, `u16 id`, `f32 value`.                                                                                                                                                                                               |
@@ -44,10 +44,29 @@ A recording in progress is written chunk by chunk every 200 ms. A file that ends
 | `SSMP` | Pose samples: `i32 count`, then per sample `f64 time`, `u16 id`, position `3 × f32`, rotation `4 × f32`. SteamVR devices are in raw playspace coordinates.                                                                                                                       |
 | `HUMR` | VRChat's own IK frames (worlds with a HUMR recorder): `i32 count`, then per frame `f64 time`, `f64 VRChat's time`, hips position `3 × f32`, 55 bone rotations `4 × f32` each (Unity's humanoid bone order).                                                                      |
 | `HAND` | Finger tracking: `i32 count`, then per sample `f64 time`, `u8 side`, 5 curls and 4 splays as `f32`, `u16 count` and that many `i16` values: SteamVR's 31-bone hand skeleton, quantised.                                                                                          |
+| `PCOL`, `SCOL`, `HCOL`, `FCOL` | Compressed parameter, pose, HUMR and finger samples: `u16 id` (parameter, stream, 0, or side), `i32 count`, `f64` last sample time, `i32` raw length, then a Brotli body of columns (see below). Up to 65536 samples per chunk (8192 HUMR frames, 16384 finger samples). |
 | `EVNT` | JSON list of events, each `{ "t": seconds, "type": …, "text": … }`.                                                                                                                                                                                                              |
 | `END ` | Length 0. Marks a cleanly closed file.                                                                                                                                                                                                                                           |
 
 Sample chunks repeat: a long take has many `PSMP` and `SSMP` chunks. All times are seconds from the start of the take on one high-resolution clock, so face, body and camera stay in step.
+
+### Column chunks
+
+Defined in `src/Vrmr.Model/Takes/TakeColumns.cs`. The body is a list of integer columns, one value per sample. Each column is stored as differences from the previous value, low byte of every value first, then the next byte.
+
+- Times: microseconds, 8 bytes.
+- Positions: micrometres, 8 bytes per axis.
+- Rotations: a 1-byte column with the index (0–3) of the largest component, plus 4 when it is negative, then the other three components in steps of 1/46340, 2 bytes each. The largest is rebuilt so the rotation is unit length.
+- Parameter values and finger summaries: the 4 bytes of the `f32`. Finger bones: the `i16` values.
+- A position or rotation component that is not a number is stored as 0.
+
+Column order: `PCOL` time, value. `SCOL` time, x, y, z, rotation. `HCOL` time, VRChat's time, hips x, y, z, then a rotation per bone. `FCOL` time, 9 summaries, the bone values.
+
+Saving replaces the samples of the open take with the stored values, so a take solves the same before and after it is loaded again.
+
+### Face parameters
+
+Defined in `src/Vrmr.Model/Takes/FaceKeys.cs`. VRCFT sends each face value (`FT/…`, `v2/…`, floats only) about 145 times a second. When a recording stops, values move to steps of 1/4096 and a sample is dropped when the straight line between the samples kept around it passes within 0.002 of it. Kept samples are at most 0.19 s apart, so sampling still interpolates between them. A sampled face value differs from the received one by at most 0.0021. `META.faceKeys` records the tolerance (0: not thinned), and a take is thinned only once.
 
 ### Events
 

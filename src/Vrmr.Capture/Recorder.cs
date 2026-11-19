@@ -720,12 +720,13 @@ namespace VRMR
                 catch (Exception ex) { AppLog.Warn("Linking calibration: " + ex.Message); }
             }
 
-            // rewrite compactly (sorted, with corrected HUMR times)
+            // rewrite compactly (sorted, with corrected HUMR times, face parameters thinned)
+            int faceRemoved = FaceKeys.Reduce(rec);
             try { RecordingIO.Save(rec, rec.FilePath); }
             catch (Exception ex) { AppLog.Error("Save: " + ex.Message); }
 
             AppLog.Info(
-                $"Recording stopped: {rec.Duration:F1}s, {rec.Params.Count} params, {rec.Streams.Count} pose streams, {rec.Humr.Count} HUMR frames");
+                $"Recording stopped: {rec.Duration:F1}s, {rec.Params.Count} params ({faceRemoved} face samples thinned), {rec.Streams.Count} pose streams, {rec.Humr.Count} HUMR frames");
             return rec;
         }
     }

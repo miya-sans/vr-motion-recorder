@@ -12,11 +12,15 @@ namespace VRMR
     /// </summary>
     public static class Json
     {
+        /// <summary>Parses JSON text; malformed or cut-off text throws <see cref="FormatException" />.</summary>
         public static object Parse(string s)
         {
             int i = 0;
-            object v = ParseValue(s, ref i);
-            return v;
+            try { return ParseValue(s, ref i); }
+            catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentOutOfRangeException)
+            {
+                throw new FormatException("Unexpected end of JSON", ex);
+            }
         }
 
         public static Dictionary<string, object> ParseObject(string s)
