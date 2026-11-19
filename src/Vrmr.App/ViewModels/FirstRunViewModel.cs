@@ -20,7 +20,7 @@ namespace VRMR.App.ViewModels
         /// <summary>The <see cref="UiStateStore" /> flag that says the guide has been seen.</summary>
         public const string DoneKey = "firstRun.done";
 
-        /// <summary>The steps: what was found, the recordings folder, the avatar.</summary>
+        /// <summary>The steps: what was found, the project folder, the avatar.</summary>
         public const int StepCount = 3;
 
         readonly AppHost _host;
@@ -39,8 +39,8 @@ namespace VRMR.App.ViewModels
 
         [ObservableProperty] bool _isOpen;
 
-        // the recordings folder
-        [ObservableProperty] string _recordingsFolder = "";
+        // the project folder
+        [ObservableProperty] string _projectFolder = "";
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ShowsFound), nameof(ShowsFolder), nameof(ShowsAvatar), nameof(CanGoBack),
@@ -72,8 +72,11 @@ namespace VRMR.App.ViewModels
         /// <summary>SteamVR, VRChat, VRChat's OSC switch, Blender and Unity projects, as found.</summary>
         public ObservableCollection<StatusRowViewModel> Found { get; }
 
-        /// <summary>Whether the recordings folder can be used.</summary>
-        public StatusRowViewModel FolderState { get; } = new();
+        /// <summary>The recordings library status.</summary>
+        public StatusRowViewModel RecordingsState { get; } = new() { Title = "Recordings" };
+
+        /// <summary>The avatar library status.</summary>
+        public StatusRowViewModel AvatarsState { get; } = new() { Title = "Avatar library" };
 
         public bool ShowsFound => Step == 0;
         public bool ShowsFolder => Step == 1;
@@ -83,7 +86,7 @@ namespace VRMR.App.ViewModels
         public string StepText => $"Step {Step + 1} of {StepCount}";
 
         public string StepTitle => Step == 0 ? "What was found on this computer" :
-            Step == 1 ? "Where to keep your takes" : "The avatar to solve onto";
+            Step == 1 ? "Project folder" : "The avatar to solve onto";
 
         /// <summary>Portable mode: takes stay inside the data folder the app was started with.</summary>
         public bool IsPortable => _host.Options.DataDir != null;
@@ -165,7 +168,8 @@ namespace VRMR.App.ViewModels
             var env = _host.Environment;
             IsChecking = env.Checking;
             foreach (var row in Found) row.Set(env.Item(row.Id));
-            FolderState.Set(env.Item(EnvironmentProbe.RecordingsFolder));
+            RecordingsState.Set(env.Item(EnvironmentProbe.RecordingsFolder));
+            AvatarsState.Set(env.Item(EnvironmentProbe.AvatarsFolder));
             var report = env.Report;
             FoundNeedsAttention = report != null && !report.CanRecord;
             FoundSummary = report == null ? "Looking at this computer…"
@@ -173,32 +177,32 @@ namespace VRMR.App.ViewModels
                 : "Recording needs VRChat with OSC on: see what to do below. You can go on and come back to it later.";
         }
 
-        // ------------------------------------------------------------------------------------------ the recordings folder
+        // ------------------------------------------------------------------------------------------ the project folder
 
         void ShowFolder()
         {
-            RecordingsFolder = _host.Settings.RecordingsDir;
-            FolderMoved = CanMoveFolder && !string.Equals(RecordingsFolder.TrimEnd('\\', '/'),
-                _host.Options.Paths.RecordingsDir.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
+            ProjectFolder = _host.Settings.ProjectFolder;
+            FolderMoved = CanMoveFolder && !string.Equals(ProjectFolder.TrimEnd('\\', '/'),
+                _host.Options.Paths.DocumentsDir.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
         }
 
         [RelayCommand]
         async Task BrowseFolder()
         {
             if (PickFolder == null || IsPortable) return;
-            string dir = await PickFolder("Where to keep your takes", RecordingsFolder);
+            string dir = await PickFolder("Project folder", ProjectFolder);
             if (dir != null) UseFolder(dir);
         }
 
         [RelayCommand]
         void UseDefaultFolder()
         {
-            UseFolder(_host.Options.Paths.RecordingsDir);
+            UseFolder(_host.Options.Paths.DocumentsDir);
         }
 
         void UseFolder(string dir)
         {
-            string problem = SettingsFoldersViewModel.SetRecordingsFolder(_host, dir);
+            string problem = SettingsFoldersViewModel.SetProjectFolder(_host, dir);
             if (problem != null) _host.Status.Notify(problem, StatusKind.Error);
         }
 

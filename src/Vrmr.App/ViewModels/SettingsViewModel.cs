@@ -46,10 +46,6 @@ namespace VRMR.App.ViewModels
             Avatars = new SettingsAvatarsViewModel(host);
             View = new SettingsViewOptionsViewModel(host);
             _categoryIndex = (int)Math.Max(0, Math.Min(Categories.Count - 1, host.UiState.GetNumber(CategoryKey, 0)));
-            host.SettingsStore.Changed += what =>
-            {
-                if (what == nameof(Settings.RecordingsDir) || what == "") OnPropertyChanged(nameof(RecordingsFolder));
-            };
         }
 
         public SettingsSourcesViewModel Sources { get; }
@@ -77,7 +73,6 @@ namespace VRMR.App.ViewModels
         public string Version { get; } = ReadVersion();
 
         public string AppDataFolder => _host.Options.Paths.AppDataDir;
-        public string RecordingsFolder => _host.Settings.RecordingsDir;
 
         /// <summary>Portable mode: everything is inside the data folder the app was started with.</summary>
         public bool IsPortable => _host.Options.DataDir != null;
@@ -143,12 +138,6 @@ namespace VRMR.App.ViewModels
         void OpenAppData()
         {
             FileActions.OpenFolder(AppDataFolder);
-        }
-
-        [RelayCommand]
-        void OpenRecordings()
-        {
-            _host.Library.OpenFolder();
         }
 
         [RelayCommand]

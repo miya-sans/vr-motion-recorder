@@ -129,7 +129,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void InPortableModeTheRecordingsFolderIsShownAndFixed()
+        public void InPortableModeTheProjectFolderIsShownAndFixed()
         {
             var (data, ui, host, guide) = Start();
             using (data)
@@ -137,7 +137,7 @@ namespace VRMR.App.Tests
             {
                 Assert.True(guide.IsPortable);
                 Assert.False(guide.CanMoveFolder);
-                Assert.Equal(host.Settings.RecordingsDir, guide.RecordingsFolder);
+                Assert.Equal(host.Settings.ProjectFolder, guide.ProjectFolder);
                 Assert.False(guide.FolderMoved);
 
                 bool asked = false;
@@ -148,7 +148,26 @@ namespace VRMR.App.Tests
                 };
                 guide.BrowseFolderCommand.Execute(null);
                 Assert.False(asked);
-                Assert.Equal(host.Settings.RecordingsDir, guide.RecordingsFolder);
+                Assert.Equal(host.Settings.ProjectFolder, guide.ProjectFolder);
+            }
+        }
+
+        [Fact]
+        public void SetupShowsProjectRootWhenLibrariesAreElsewhere()
+        {
+            var (data, ui, host, guide) = Start();
+            using (data)
+            using (host)
+            {
+                string project = Path.Combine(data.Root, "Project");
+                host.SettingsStore.Update("", settings =>
+                {
+                    settings.ProjectFolder = project;
+                    settings.RecordingsDir = Path.Combine(data.Root, "OtherTakes");
+                });
+                Assert.Equal(project, guide.ProjectFolder);
+                Assert.Equal("Recordings", guide.RecordingsState.Title);
+                Assert.Equal("Avatar library", guide.AvatarsState.Title);
             }
         }
 

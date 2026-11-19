@@ -37,6 +37,46 @@ namespace VRMR.Tests
         }
 
         [Fact]
+        public void FreshUserSettingsUseNamedProjectSubfolders()
+        {
+            using var tmp = new TempDir();
+            var paths = AppPaths.ForFolders(Path.Combine(tmp.Path, "Settings"), Path.Combine(tmp.Path, "Project"));
+            var settings = Settings.Load(paths);
+            Assert.Equal(Path.Combine(paths.DocumentsDir, "Recordings"), settings.RecordingsDir);
+            Assert.Equal(Path.Combine(paths.DocumentsDir, "Avatars"), settings.AvatarLibraryDir);
+        }
+
+        [Fact]
+        public void ProjectFoldersRoundTripAndFollowRoot()
+        {
+            using var tmp = new TempDir();
+            var paths = PathsWith(tmp, null);
+            var settings = new Settings(paths)
+            {
+                RecordingsPath = "Recordings",
+                AvatarLibraryPath = Path.Combine(tmp.Path, "ExternalAvatars")
+            };
+            settings.Save();
+            var loaded = Settings.Load(paths);
+            string avatars = loaded.AvatarLibraryDir;
+            loaded.ProjectFolder = Path.Combine(tmp.Path, "NewProject");
+            Assert.Equal(Path.Combine(loaded.ProjectFolder, "Recordings"), loaded.RecordingsDir);
+            Assert.Equal(avatars, loaded.AvatarLibraryDir);
+        }
+
+        [Fact]
+        public void LegacyOmittedRecordingsRemainAtProjectRoot()
+        {
+            using var tmp = new TempDir();
+            var paths = PathsWith(tmp, "{}");
+            var settings = Settings.Load(paths);
+            Assert.Equal(".", settings.RecordingsPath);
+            Assert.Equal(paths.RecordingsDir, settings.RecordingsDir);
+            settings.Save();
+            Assert.Equal(settings.RecordingsDir, Settings.Load(paths).RecordingsDir);
+        }
+
+        [Fact]
         public void RetiredWindowSettingsRoundTripWithoutBecomingDefaults()
         {
             using var tmp = new TempDir();
@@ -79,7 +119,7 @@ namespace VRMR.Tests
             {
                 var s = Settings.Load(PathsWith(tmp, FirstVersionFile));
                 Assert.Equal(1, s.LoadedSchema);
-                Assert.Equal("Takes-elsewhere", s.RecordingsDir);
+                Assert.Equal(Path.GetFullPath("Takes-elsewhere"), s.RecordingsDir);
                 Assert.False(s.UseOscQuery);
                 Assert.Equal(9123, s.LegacyPort);
                 Assert.Equal(30, s.ExportFps);
@@ -113,7 +153,7 @@ namespace VRMR.Tests
         }
 
         [Fact]
-        public void DefaultFoldersAreNotWrittenToTheFile()
+        public void ProjectAndLibraryChoicesAreWrittenToTheFile()
         {
             using (var tmp = new TempDir())
             {
@@ -121,9 +161,9 @@ namespace VRMR.Tests
                 var s = Settings.Load(p);
                 s.Save();
                 var d = Json.ParseObject(File.ReadAllText(p.SettingsFile));
-                Assert.False(d.ContainsKey("recordingsDir"));
-                Assert.False(d.ContainsKey("avatarLibraryDir"));
-                Assert.DoesNotContain(tmp.Path.Replace("\\", "\\\\"), File.ReadAllText(p.SettingsFile));
+                Assert.Equal(s.ProjectFolder, d.GetStr("projectFolder"));
+                Assert.Equal(s.RecordingsPath, d.GetStr("recordingsDir"));
+                Assert.Equal(s.AvatarLibraryPath, d.GetStr("avatarLibraryDir"));
 
                 s.RecordingsDir = Path.Combine(tmp.Path, "Elsewhere");
                 s.Save();

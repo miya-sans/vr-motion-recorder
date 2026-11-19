@@ -25,6 +25,14 @@
 
     <c:Section Header="Takes and avatars" StateKey="settings.folders.work">
       <StackPanel>
+        <c:FieldRow Label="Project folder">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Text="{Binding ProjectFolder, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsPortable}" />
+            <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseProjectCommand}"
+                    IsVisible="{Binding CanMoveFolders}" Margin="{DynamicResource GapLeft}" />
+          </Grid>
+        </c:FieldRow>
+        <TextBlock Classes="note" Text="Library folders can be relative to the project or absolute paths." />
         <c:FieldRow Label="Recordings folder" CanReset="{Binding RecordingsMoved}"
                     ResetCommand="{Binding ResetRecordingsCommand}"
                     ToolTip.Tip="Where new takes are saved, and where the library looks for takes. Takes already recorded stay in the old folder until you move them yourself.">

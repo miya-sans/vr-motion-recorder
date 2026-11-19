@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using VRMR.App.Composition;
 using VRMR.App.Controls;
@@ -218,6 +219,12 @@ namespace VRMR.App.Tests
             Assert.Contains("Browse", SettingsFoldersViewModel.CheckFolder("  ", out _));
             Assert.Contains("whole path", SettingsFoldersViewModel.CheckFolder("takes\\new", out _));
 
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Contains("whole path", SettingsFoldersViewModel.CheckFolder("C:Project", out _));
+                Assert.Contains("whole path", SettingsFoldersViewModel.CheckFolder("\\Project", out _));
+            }
+
             string wanted = Path.Combine(data.Root, "New takes") + Path.DirectorySeparatorChar;
             Assert.Null(SettingsFoldersViewModel.CheckFolder(" \"" + wanted + "\" ", out string dir));
             Assert.Equal(Path.Combine(data.Root, "New takes"), dir);
@@ -227,6 +234,46 @@ namespace VRMR.App.Tests
             string file = Path.Combine(data.Root, "a file");
             File.WriteAllText(file, "");
             Assert.Contains("Pick another folder", SettingsFoldersViewModel.CheckFolder(file, out _));
+        }
+
+        [Fact]
+        public void ProjectValidationSkipsAbsoluteOverridesAndRejectsBlockedRelativeLibraries()
+        {
+            using var data = new ScratchData();
+            var settings = new Settings(data.Options.Paths);
+            string root = Path.Combine(data.Root, "Project");
+            string unavailable = Path.Combine(data.Root, "Unavailable");
+            File.WriteAllText(unavailable, "");
+            settings.RecordingsPath = "Recordings";
+            settings.AvatarLibraryPath = Path.Combine(unavailable, "Avatars");
+            string previous = settings.ProjectFolder;
+            Assert.Null(SettingsFoldersViewModel.CheckProjectFolder(settings, root, out string resolved));
+            Assert.Equal(root, resolved);
+            Assert.True(Directory.Exists(Path.Combine(root, "Recordings")));
+            Assert.False(Directory.Exists(settings.AvatarLibraryPath));
+            settings.AvatarLibraryPath = "Blocked";
+            File.WriteAllText(Path.Combine(root, "Blocked"), "");
+            Assert.NotNull(SettingsFoldersViewModel.CheckProjectFolder(settings, root, out _));
+            Assert.Equal(previous, settings.ProjectFolder);
+        }
+
+        [Fact]
+        public async Task AboutShowsSettingsShortcutUnderHelp()
+        {
+            using var data = new ScratchData();
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var host = data.NewHost(new AvaloniaUiDispatcher());
+                var settings = new SettingsViewModel(host);
+                settings.Show(SettingsCategory.About);
+                var window = await Open(settings, host);
+                var button = window.GetLogicalDescendants().OfType<Button>()
+                    .Single(b => Equals(b.Content, "Open settings folder"));
+                Assert.Same(settings.OpenAppDataCommand, button.Command);
+                Assert.DoesNotContain("link", button.Classes);
+                Assert.Contains(button.GetLogicalAncestors().OfType<Section>(), section => Equals(section.Header, "Help"));
+                window.Close();
+            });
         }
 
         [Fact]
@@ -563,7 +610,7 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void AboutNamesTheVersionAndTheFoldersAndHandsCloseAndTheGuideToTheShell()
+        public void AboutNamesTheVersionAndHandsCloseAndTheGuideToTheShell()
         {
             var (data, ui, host, settings) = Start();
             using (data)
@@ -572,7 +619,6 @@ namespace VRMR.App.Tests
                 Assert.Matches(@"^\d+\.\d+", settings.Version);
                 Assert.True(settings.IsPortable);
                 Assert.Equal(host.Options.Paths.AppDataDir, settings.AppDataFolder);
-                Assert.Equal(host.Settings.RecordingsDir, settings.RecordingsFolder);
 
                 int closed = 0, guide = 0;
                 settings.CloseRequested += () => closed++;

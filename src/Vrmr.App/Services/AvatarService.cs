@@ -77,7 +77,7 @@ namespace VRMR.App.Services
             _avatars.Updated += () => OnUi(RaiseChanged);
             _settings.Changed += what =>
             {
-                if (what == nameof(Settings.AvatarLibraryDir)) Reload();
+                if (what == nameof(Settings.AvatarLibraryDir) || what == "") Reload();
             };
         }
 

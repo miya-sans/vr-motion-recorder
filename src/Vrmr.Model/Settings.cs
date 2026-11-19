@@ -17,11 +17,8 @@ namespace VRMR
 
         public bool AutoLinkCalibration = true; // new takes use the latest matching calibration snapshot
 
-        /// <summary>
-        ///     Avatar library: base models (*.vrmavatar.json) the takes are solved onto (AvatarLibrary). Defaults to
-        ///     <see cref="AppPaths.AvatarLibraryDir" />.
-        /// </summary>
-        public string AvatarLibraryDir;
+        /// <summary>The avatar location relative to the project, or an absolute path.</summary>
+        public string AvatarLibraryPath = "Avatars";
 
         public Dictionary<string, string>
             AvatarModelMap = new(); // avtr_ id -> model .meta path (Unity projects; library entries keep their own ids)
@@ -76,10 +73,13 @@ namespace VRMR
         public List<string> PreviewHiddenMeshes = new();
         public bool PreviewMesh = true, PreviewSkeleton; // avatar mesh from its FBX in the 3D view
         public bool PreviewWhileRecording = true;
+        /// <summary>The shared root for relative library paths.</summary>
+        public string ProjectFolder;
+
         public string RecordTriggerParam = "VRMR/Record";
 
-        /// <summary>Where takes are saved. Defaults to <see cref="AppPaths.RecordingsDir" />.</summary>
-        public string RecordingsDir;
+        /// <summary>The recordings location relative to the project, or an absolute path.</summary>
+        public string RecordingsPath = "Recordings";
 
         /// <summary>3D view: draw the headset, controllers and trackers.</summary>
         public bool ShowDevices = true;
@@ -109,8 +109,25 @@ namespace VRMR
         public Settings(AppPaths paths)
         {
             Paths = paths ?? throw new ArgumentNullException(nameof(paths));
-            RecordingsDir = paths.RecordingsDir;
-            AvatarLibraryDir = paths.AvatarLibraryDir;
+            ProjectFolder = paths.DocumentsDir;
+            if (paths.DataRoot != null) RecordingsPath = ".";
+        }
+
+        /// <summary>
+        ///     Avatar library: base models (*.vrmavatar.json) the takes are solved onto (AvatarLibrary). Defaults to
+        ///     <see cref="AppPaths.AvatarLibraryDir" />.
+        /// </summary>
+        public string AvatarLibraryDir
+        {
+            get => ResolveFolder(AvatarLibraryPath);
+            set => AvatarLibraryPath = value;
+        }
+
+        /// <summary>The resolved recordings folder.</summary>
+        public string RecordingsDir
+        {
+            get => ResolveFolder(RecordingsPath);
+            set => RecordingsPath = value;
         }
 
         /// <summary>The app data folder in use. New code asks <see cref="AppPaths" /> directly.</summary>
@@ -152,8 +169,16 @@ namespace VRMR
         void Read(Dictionary<string, object> d)
         {
             // folders: a missing or empty entry means the default location
-            RecordingsDir = NonEmpty(d.GetStr("recordingsDir"), RecordingsDir);
-            AvatarLibraryDir = NonEmpty(d.GetStr("avatarLibraryDir"), AvatarLibraryDir);
+            ProjectFolder = NonEmpty(d.GetStr("projectFolder"), ProjectFolder);
+            RecordingsPath = NonEmpty(d.GetStr("recordingsDir"), d.ContainsKey("projectFolder") ? RecordingsPath : ".");
+            AvatarLibraryPath = NonEmpty(d.GetStr("avatarLibraryDir"), AvatarLibraryPath);
+            if (!d.ContainsKey("projectFolder"))
+            {
+                if (!string.IsNullOrWhiteSpace(d.GetStr("recordingsDir")))
+                    RecordingsPath = Path.GetFullPath(RecordingsPath);
+                if (!string.IsNullOrWhiteSpace(d.GetStr("avatarLibraryDir")))
+                    AvatarLibraryPath = Path.GetFullPath(AvatarLibraryPath);
+            }
             UnityProjects = ToStrList(d.GetList("unityProjects")) ?? UnityProjects;
             var map = d.GetObj("avatarModelMap");
             if (map != null)
@@ -213,6 +238,12 @@ namespace VRMR
             return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
 
+        /// <summary>Resolves a library location against the project folder.</summary>
+        public string ResolveFolder(string folder)
+        {
+            return Path.GetFullPath(Path.Combine(ProjectFolder, folder));
+        }
+
         static List<string> ToStrList(List<object> l)
         {
             if (l == null) return null;
@@ -232,10 +263,9 @@ namespace VRMR
                     if (kv.Key != "schema")
                         d[kv.Key] = kv.Value;
 
-            // a folder still at its default is left out: the file then holds no path of this computer, and follows the
-            // default wherever the file is used
-            SetOrOmit(d, "recordingsDir", RecordingsDir, Paths.RecordingsDir);
-            SetOrOmit(d, "avatarLibraryDir", AvatarLibraryDir, Paths.AvatarLibraryDir);
+            d["projectFolder"] = ProjectFolder;
+            d["recordingsDir"] = RecordingsPath;
+            d["avatarLibraryDir"] = AvatarLibraryPath;
             d["unityProjects"] = new List<object>(UnityProjects);
             var map = new Dictionary<string, object>();
             foreach (var kv in AvatarModelMap) map[kv.Key] = kv.Value;
@@ -286,22 +316,6 @@ namespace VRMR
             d["showBaseStations"] = ShowBaseStations;
             d["lastScene"] = LastScene;
             return d;
-        }
-
-        static void SetOrOmit(Dictionary<string, object> d, string key, string value, string defaultValue)
-        {
-            if (string.IsNullOrWhiteSpace(value) || SamePath(value, defaultValue)) d.Remove(key);
-            else d[key] = value;
-        }
-
-        static bool SamePath(string a, string b)
-        {
-            try
-            {
-                return string.Equals(Path.GetFullPath(a).TrimEnd('\\', '/'), Path.GetFullPath(b).TrimEnd('\\', '/'),
-                    StringComparison.OrdinalIgnoreCase);
-            }
-            catch { return string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
         }
 
         /// <summary>Writes the settings to the file of the paths they belong to. A failure is logged, not thrown.</summary>

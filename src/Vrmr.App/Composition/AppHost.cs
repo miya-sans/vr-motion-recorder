@@ -26,6 +26,7 @@ namespace VRMR.App.Composition
             Settings = Settings.Load(paths);
             if (paths.DataRoot != null)
             {
+                Settings.ProjectFolder = paths.DocumentsDir;
                 // portable mode: the takes and the avatar library always sit under the data folder
                 Settings.RecordingsDir = paths.RecordingsDir;
                 Settings.AvatarLibraryDir = paths.AvatarLibraryDir;

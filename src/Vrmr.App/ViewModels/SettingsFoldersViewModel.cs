@@ -80,6 +80,9 @@ namespace VRMR.App.ViewModels
 
         [ObservableProperty] bool _hasProjects;
 
+        [ObservableProperty]
+        string _projectFolder;
+
         [ObservableProperty] [NotifyPropertyChangedFor(nameof(RecordingsMoved))]
         string _recordingsFolder;
 
@@ -90,8 +93,9 @@ namespace VRMR.App.ViewModels
         {
             _host = host;
             var s = host.Settings;
-            _recordingsFolder = s.RecordingsDir;
-            _avatarFolder = s.AvatarLibraryDir;
+            _recordingsFolder = s.RecordingsPath;
+            _avatarFolder = s.AvatarLibraryPath;
+            _projectFolder = s.ProjectFolder;
             _blenderPath = s.BlenderPath ?? "";
             host.Environment.Changed += RefreshStates;
             host.AvatarService.Changed += RefreshProjects;
@@ -109,8 +113,8 @@ namespace VRMR.App.ViewModels
         public bool IsPortable => _host.Options.DataDir != null;
 
         public bool CanMoveFolders => !IsPortable;
-        public bool RecordingsMoved => CanMoveFolders && !SamePath(RecordingsFolder, _host.Options.Paths.RecordingsDir);
-        public bool AvatarsMoved => CanMoveFolders && !SamePath(AvatarFolder, _host.Options.Paths.AvatarLibraryDir);
+        public bool RecordingsMoved => CanMoveFolders && RecordingsFolder != "Recordings";
+        public bool AvatarsMoved => CanMoveFolders && AvatarFolder != "Avatars";
         public bool HasBlenderPath => !string.IsNullOrEmpty(BlenderPath);
 
         /// <summary>Asks the view for a folder: the picker's title and the folder to start in. Null when cancelled.</summary>
@@ -136,11 +140,12 @@ namespace VRMR.App.ViewModels
         {
             if (_syncing) return;
             string dir = null;
-            string problem = PortableProblem(_host) ?? CheckFolder(value, out dir);
+            string problem = PortableProblem(_host) ?? CheckLibraryFolder(_host, value, out dir);
             if (problem != null) _host.Status.Notify(problem, StatusKind.Error);
-            else if (!SamePath(dir, _host.Settings.AvatarLibraryDir))
+            else if (LibraryPath(_host, dir) != _host.Settings.AvatarLibraryPath)
             {
-                _host.SettingsStore.Update(nameof(Settings.AvatarLibraryDir), s => s.AvatarLibraryDir = dir);
+                _host.SettingsStore.Update(nameof(Settings.AvatarLibraryDir),
+                    s => s.AvatarLibraryDir = LibraryPath(_host, dir));
                 _host.Status.Info($"The avatar library is now {dir}. Avatars in the old folder stay where they are.");
             }
 
@@ -154,12 +159,72 @@ namespace VRMR.App.ViewModels
         public static string SetRecordingsFolder(AppHost host, string folder)
         {
             string dir = null;
-            string problem = PortableProblem(host) ?? CheckFolder(folder, out dir);
+            string problem = PortableProblem(host) ?? CheckLibraryFolder(host, folder, out dir);
             if (problem != null) return problem;
-            if (SamePath(dir, host.Settings.RecordingsDir)) return null;
-            host.SettingsStore.Update(nameof(Settings.RecordingsDir), s => s.RecordingsDir = dir);
+            if (LibraryPath(host, dir) == host.Settings.RecordingsPath) return null;
+            host.SettingsStore.Update(nameof(Settings.RecordingsDir), s => s.RecordingsDir = LibraryPath(host, dir));
             host.Status.Info($"Takes are now kept in {dir}. Takes in the old folder stay where they are.");
             return null;
+        }
+
+        partial void OnProjectFolderChanged(string value)
+        {
+            if (_syncing) return;
+            string problem = SetProjectFolder(_host, value);
+            if (problem != null) _host.Status.Notify(problem, StatusKind.Error);
+            Sync();
+        }
+
+        [RelayCommand]
+        async Task BrowseProject()
+        {
+            if (PickFolder == null || IsPortable) return;
+            string dir = await PickFolder("Project folder", ProjectFolder);
+            if (dir != null) ProjectFolder = dir;
+        }
+
+        /// <summary>Validates the project and library folders before changing their shared root.</summary>
+        public static string SetProjectFolder(AppHost host, string folder)
+        {
+            string root = null;
+            string problem = PortableProblem(host) ?? CheckProjectFolder(host.Settings, folder, out root);
+            if (problem != null) return problem;
+            host.SettingsStore.Update("", s => s.ProjectFolder = root);
+            return null;
+        }
+
+        /// <summary>Validates a project root and its relative libraries without accessing absolute overrides.</summary>
+        public static string CheckProjectFolder(Settings settings, string folder, out string root)
+        {
+            string problem = CheckFolder(folder, out root);
+            if (problem != null) return problem;
+            foreach (string path in new[] { settings.RecordingsPath, settings.AvatarLibraryPath })
+            {
+                if (Path.IsPathFullyQualified(path)) continue;
+                problem = CheckFolder(Path.Combine(root, path), out _);
+                if (problem != null) return problem;
+            }
+
+            return null;
+        }
+
+        static string LibraryPath(AppHost host, string dir)
+        {
+            string relative = Path.GetRelativePath(host.Settings.ProjectFolder, dir);
+            return relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar) || Path.IsPathRooted(relative)
+                ? dir
+                : relative;
+        }
+
+        static string CheckLibraryFolder(AppHost host, string folder, out string dir)
+        {
+            dir = null;
+            if (string.IsNullOrWhiteSpace(folder)) return "Type a folder, or pick one with Browse.";
+            try
+            {
+                return CheckFolder(host.Settings.ResolveFolder(folder.Trim().Trim('"')), out dir);
+            }
+            catch (Exception ex) { return ex.Message; }
         }
 
         static string PortableProblem(AppHost host)
@@ -179,12 +244,12 @@ namespace VRMR.App.ViewModels
             dir = null;
             string text = (folder ?? "").Trim().Trim('"');
             if (text.Length == 0) return "Type a folder, or pick one with Browse.";
-            if (!Path.IsPathRooted(text))
+            if (!Path.IsPathFullyQualified(text))
                 return
                     $"\"{text}\" is not a whole path. Start with the drive (for example D:\\Takes), or pick the folder with Browse.";
             try
             {
-                dir = Path.GetFullPath(text).TrimEnd('\\', '/');
+                dir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(text));
                 Directory.CreateDirectory(dir);
             }
             catch (Exception ex) { return $"{text} cannot be used: {ex.Message} Pick another folder."; }
@@ -196,7 +261,7 @@ namespace VRMR.App.ViewModels
         async Task BrowseRecordings()
         {
             if (PickFolder == null || IsPortable) return;
-            string dir = await PickFolder("Where to keep your takes", RecordingsFolder);
+            string dir = await PickFolder("Recordings folder", _host.Settings.RecordingsDir);
             if (dir != null) RecordingsFolder = dir;
         }
 
@@ -204,20 +269,20 @@ namespace VRMR.App.ViewModels
         async Task BrowseAvatars()
         {
             if (PickFolder == null || IsPortable) return;
-            string dir = await PickFolder("Where to keep the avatar library", AvatarFolder);
+            string dir = await PickFolder("Avatar library folder", _host.Settings.AvatarLibraryDir);
             if (dir != null) AvatarFolder = dir;
         }
 
         [RelayCommand]
         void ResetRecordings()
         {
-            RecordingsFolder = _host.Options.Paths.RecordingsDir;
+            RecordingsFolder = "Recordings";
         }
 
         [RelayCommand]
         void ResetAvatars()
         {
-            AvatarFolder = _host.Options.Paths.AvatarLibraryDir;
+            AvatarFolder = "Avatars";
         }
 
         [RelayCommand]
@@ -307,8 +372,9 @@ namespace VRMR.App.ViewModels
             _syncing = true;
             try
             {
-                RecordingsFolder = _host.Settings.RecordingsDir;
-                AvatarFolder = _host.Settings.AvatarLibraryDir;
+                ProjectFolder = _host.Settings.ProjectFolder;
+                RecordingsFolder = _host.Settings.RecordingsPath;
+                AvatarFolder = _host.Settings.AvatarLibraryPath;
                 BlenderPath = _host.Settings.BlenderPath ?? "";
             }
             finally { _syncing = false; }

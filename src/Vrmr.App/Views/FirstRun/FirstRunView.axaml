@@ -55,12 +55,12 @@
           <!-- 2: where takes are kept -->
           <StackPanel IsVisible="{Binding ShowsFolder}">
             <TextBlock Classes="note"
-                       Text="Every take is saved as one file in this folder. You can move it later under Settings → Folders; takes already recorded stay where they are." />
+                       Text="New projects use Recordings and Avatars subfolders. Change individual folders under Settings → Folders." />
             <Border Classes="card" Margin="{DynamicResource SettingsBlockGap}">
               <Grid ColumnDefinitions="Auto,*">
                 <c:Icon Data="{DynamicResource Icon.Folder}" Foreground="{DynamicResource TextSecondaryBrush}"
                         VerticalAlignment="Top" Margin="{DynamicResource Pad1}" />
-                <SelectableTextBlock Grid.Column="1" x:Name="FolderText" Text="{Binding RecordingsFolder}"
+                <SelectableTextBlock Grid.Column="1" x:Name="FolderText" Text="{Binding ProjectFolder}"
                                      TextWrapping="Wrap" VerticalAlignment="Center"
                                      Margin="{DynamicResource GapLeftSmall}" />
               </Grid>
@@ -68,14 +68,17 @@
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space3}" IsVisible="{Binding CanMoveFolder}"
                         Margin="{DynamicResource GapRow}">
               <Button Content="Browse…" Command="{Binding BrowseFolderCommand}"
-                      ToolTip.Tip="Keep takes in another folder: a drive with more room, say" />
+                      ToolTip.Tip="Choose the project folder" />
               <Button Classes="link" Content="Use the default folder" Command="{Binding UseDefaultFolderCommand}"
                       IsVisible="{Binding FolderMoved}" VerticalAlignment="Center" />
             </StackPanel>
             <TextBlock Classes="note" Text="Portable mode: takes stay inside the data folder the app was started with."
                        IsVisible="{Binding IsPortable}" />
-            <Panel IsVisible="{Binding FolderState.NeedsAttention}">
-              <s:StatusRow DataContext="{Binding FolderState}" />
+            <Panel IsVisible="{Binding RecordingsState.NeedsAttention}">
+              <s:StatusRow DataContext="{Binding RecordingsState}" />
+            </Panel>
+            <Panel IsVisible="{Binding AvatarsState.NeedsAttention}">
+              <s:StatusRow DataContext="{Binding AvatarsState}" />
             </Panel>
           </StackPanel>
 
