@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:VRMR.App.Controls"
         xmlns:vm="using:VRMR.App.ViewModels"
+        xmlns:model="using:VRMR"
         xmlns:v="using:VRMR.App.Views"
         xmlns:takes="using:VRMR.App.Views.Takes"
         xmlns:scene="using:VRMR.App.Views.Scene"
@@ -16,18 +17,46 @@
     <!-- ============================================================ top bar -->
     <Border Grid.Row="0" Classes="panel" Height="{DynamicResource TopBarHeight}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="12,0">
-        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-          <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
-                        Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
-                        Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}"
-                        ToolTip.Tip="{Binding RecordTip}" MinWidth="116" VerticalAlignment="Center"
-                        FontFeatures="{DynamicResource TabularFigures}" />
-          <c:IconToggle x:Name="LiveButton" Icon="{DynamicResource Icon.Live}" Content="Live"
-                        IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}"
-                        IsEnabled="{Binding !IsRecording}"
-                        ToolTip.Tip="Live: closes the open take and shows what SteamVR and VRChat send right now. Click a take to leave it, or Live again to go back to the last take." />
-        </StackPanel>
+      <Grid ColumnDefinitions="3*,Auto,*,Auto,Auto" Margin="12,0">
+        <c:SegmentedControl x:Name="WorkflowSwitch" SelectedIndex="{Binding Takes.WorkflowIndex}"
+                            IsVisible="{Binding IsTakes}" VerticalAlignment="Center" MinWidth="400"
+                            Background="Transparent" BorderThickness="0" Padding="0">
+          <c:SegmentedControl.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="MinHeight" Value="{DynamicResource TopBarControlHeight}" />
+              <Setter Property="Margin" Value="0,0,4,0" />
+              <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+            </Style>
+            <Style Selector="ListBoxItem:selected">
+              <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            </Style>
+          </c:SegmentedControl.Styles>
+          <ListBoxItem ToolTip.Tip="Calibrations and live devices" AutomationProperties.Name="Record">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Data="{DynamicResource Icon.RecordSolid}" VerticalAlignment="Center" />
+              <TextBlock Text="Record" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem ToolTip.Tip="Review a take" AutomationProperties.Name="View">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Data="{DynamicResource Icon.PlaySolid}" VerticalAlignment="Center" />
+              <TextBlock Text="View" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem ToolTip.Tip="Take editor (work in progress)" AutomationProperties.Name="Edit">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Data="{DynamicResource Icon.Edit}" VerticalAlignment="Center" />
+              <TextBlock Text="Edit" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem ToolTip.Tip="Export the open take" AutomationProperties.Name="Export">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Data="{DynamicResource Icon.Export}" VerticalAlignment="Center" />
+              <TextBlock Text="Export" />
+            </StackPanel>
+          </ListBoxItem>
+        </c:SegmentedControl>
         <c:SegmentedControl Grid.Column="1" x:Name="WorkspaceSwitch" IsVisible="{Binding SceneAvailable}"
                             SelectedIndex="{Binding WorkspaceIndex}" Margin="16,0,0,0" VerticalAlignment="Center"
                             MinWidth="160">
@@ -76,8 +105,34 @@
     <!-- ============================================================ workspace -->
     <Grid Grid.Row="1" x:Name="MainGrid" ColumnDefinitions="260,Auto,*,Auto,320">
       <!-- library -->
-      <Border Grid.Column="0" x:Name="LibraryHost" Classes="panel" IsVisible="{Binding LibraryOpen}">
-        <v:LibraryPanel DataContext="{Binding Library}" />
+      <Border Grid.Column="0" x:Name="LibraryHost" Classes="panel">
+        <DockPanel>
+          <c:IconButton DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="4"
+                        Icon="{DynamicResource Icon.PanelLeft}" Command="{Binding ToggleLibraryCommand}"
+                        ToolTip.Tip="Show or hide the library (Ctrl+1)" />
+          <Panel IsVisible="{Binding LibraryOpen}">
+            <Panel IsVisible="{Binding !ShowCalibrations}">
+              <v:LibraryPanel DataContext="{Binding Library}" />
+            </Panel>
+            <ScrollViewer IsVisible="{Binding ShowCalibrations}" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel DataContext="{Binding Takes.Inspector}" x:DataType="vm:TakeInspectorViewModel"
+                          Margin="{DynamicResource PadPanel}" Spacing="8">
+                <TextBlock Text="Calibrations" Classes="title" />
+                <ItemsControl ItemsSource="{Binding SavedCalibrations}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="model:CalibrationSnapshot">
+                      <TextBlock Text="{Binding Label}" TextWrapping="Wrap" Margin="4,6" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="No saved calibrations" Classes="secondary" IsVisible="{Binding !SavedCalibrations.Count}" />
+                <c:IconButton Icon="{DynamicResource Icon.Pose}" Content="{Binding CaptureLabel}"
+                              Command="{Binding CaptureNowCommand}" ToolTip.Tip="Capture a T-pose after a five-second countdown" />
+                <takes:RecordCalibrationView />
+              </StackPanel>
+            </ScrollViewer>
+          </Panel>
+        </DockPanel>
       </Border>
       <GridSplitter Grid.Column="1" x:Name="LibrarySplitter" Width="1" ResizeDirection="Columns"
                     IsVisible="{Binding LibraryOpen}" />
@@ -91,27 +146,25 @@
             <takes:ViewOverlay DataContext="{Binding Takes}" />
           </Panel>
           <scene:SceneWorkspaceView x:Name="SceneView" IsVisible="{Binding IsScene}" />
-          <!-- panel fold buttons -->
-          <c:IconButton Icon="{DynamicResource Icon.PanelLeft}" Command="{Binding ToggleLibraryCommand}"
-                        ToolTip.Tip="Show or hide the library (Ctrl+1)"
-                        HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8" />
-          <c:IconButton Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}"
-                        ToolTip.Tip="Show or hide the inspector (Ctrl+2)"
-                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" />
           <v:ToastHost VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16" />
         </Panel>
         <Border Grid.Row="1" Classes="panel" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="{DynamicResource HairlineTop}">
           <Panel>
             <Panel IsVisible="{Binding IsTakes}">
-              <takes:TransportBar DataContext="{Binding Takes}" />
+              <takes:TransportBar DataContext="{Binding Takes}" IsVisible="{Binding !ShowDevicesTab}" />
             </Panel>
+            <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
+                          Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True" Content="{Binding RecordText}"
+                          Command="{Binding ToggleRecordCommand}" ToolTip.Tip="{Binding RecordTip}"
+                          HorizontalAlignment="Center" Margin="8" MinWidth="144" IsVisible="{Binding ShowCalibrations}"
+                          FontFeatures="{DynamicResource TabularFigures}" />
             <ContentControl x:Name="SceneTransportHost" IsVisible="{Binding IsScene}" />
           </Panel>
         </Border>
         <GridSplitter Grid.Row="2" x:Name="TimelineSplitter" Height="1" ResizeDirection="Rows"
-                      IsVisible="{Binding TimelineOpen}" />
-        <Panel Grid.Row="3" x:Name="TimelineHost" IsVisible="{Binding TimelineOpen}">
+                      IsVisible="{Binding TimelineVisible}" />
+        <Panel Grid.Row="3" x:Name="TimelineHost" IsVisible="{Binding TimelineVisible}">
           <c:TimelineControl x:Name="Timeline" Model="{Binding Takes.Timeline}" IsVisible="{Binding IsTakes}" />
           <ContentControl x:Name="SceneTimelineHost" IsVisible="{Binding IsScene}" />
         </Panel>
@@ -120,13 +173,18 @@
       <!-- inspector -->
       <GridSplitter Grid.Column="3" x:Name="InspectorSplitter" Width="1" ResizeDirection="Columns"
                     IsVisible="{Binding InspectorOpen}" />
-      <Border Grid.Column="4" x:Name="InspectorHost" Classes="panel" IsVisible="{Binding InspectorOpen}">
-        <Panel>
-          <Panel IsVisible="{Binding IsTakes}">
-            <takes:TakesInspector x:Name="TakesInspectorView" DataContext="{Binding Takes}" />
+      <Border Grid.Column="4" x:Name="InspectorHost" Classes="panel">
+        <DockPanel>
+          <c:IconButton DockPanel.Dock="Top" HorizontalAlignment="Right" Margin="4"
+                        Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}"
+                        ToolTip.Tip="Show or hide the inspector (Ctrl+2)" />
+          <Panel IsVisible="{Binding InspectorOpen}">
+            <Panel IsVisible="{Binding IsTakes}">
+              <takes:TakesInspector x:Name="TakesInspectorView" DataContext="{Binding Takes}" />
+            </Panel>
+            <ContentControl x:Name="SceneInspectorHost" IsVisible="{Binding IsScene}" />
           </Panel>
-          <ContentControl x:Name="SceneInspectorHost" IsVisible="{Binding IsScene}" />
-        </Panel>
+        </DockPanel>
       </Border>
 
       <!-- pages over the workspace -->

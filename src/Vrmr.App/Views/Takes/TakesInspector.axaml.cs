@@ -22,7 +22,7 @@ namespace VRMR.App.Views.Takes
         {
             if (DataContext is TakesWorkspaceViewModel vm && vm.HasTake)
             {
-                vm.InspectorTab = 0;
+                if (!vm.ShowTakeTab) vm.WorkflowIndex = TakesWorkspaceViewModel.ViewMode;
                 TakeView.FocusName();
             }
         }

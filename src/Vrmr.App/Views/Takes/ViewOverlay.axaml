@@ -9,7 +9,7 @@
     <c:EmptyState x:Name="Empty" IsVisible="{Binding ShowEmpty}" Title="{Binding EmptyTitle}"
                   Text="{Binding EmptyText}" Icon="{DynamicResource Icon.Pose}" />
     <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="48,0,48,10">
+                Margin="8,0,8,10">
       <c:ToggleChip Content="Mesh" IsChecked="{Binding ShowMesh}"
                     ToolTip.Tip="The avatar's own mesh. Single meshes can be hidden under Settings → View." />
       <c:ToggleChip Content="Skeleton" IsChecked="{Binding ShowSkeleton}" ToolTip.Tip="The bones, over the mesh" />

@@ -20,18 +20,10 @@ namespace VRMR.App.Viewport
         public LivePresenter(LiveService live) { _live = live; }
 
         /// <summary>Fills the view with the live state only.</summary>
-        public void Show(IViewport view)
+        public void Show(IViewport view, bool devicesOnly = false)
         {
             var rec = _live.Recorder;
             var scene = view.Scene;
-            var match = _live.CurrentMatch();
-            string key = rec.AvatarId + "|" + match?.Entry?.Id;
-            if (key != _profileKey)
-            {
-                _profileKey = key;
-                _profile = match?.Entry?.Profile();
-            }
-
             scene.Markers.Clear();
             var ov = rec.OpenVR;
             bool connected = ov != null && ov.Connected;
@@ -61,9 +53,39 @@ namespace VRMR.App.Viewport
                     shown++;
                 }
 
+            if (devicesOnly && scene.Profile != null) scene.SetProfile(null);
             // first time devices show up without an avatar on screen: frame the whole tracking space
             if (shown > 0 && !_framedDevices && scene.Profile == null) _framedDevices = view.FrameDevices();
             if (shown == 0) _framedDevices = false;
+
+            string info = devicesOnly ? "" : ShowVrChat(scene);
+            if (devicesOnly && !connected)
+            {
+                scene.Overlay = scene.OverlayRight = "";
+                view.SceneChanged();
+                return;
+            }
+
+            string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
+            string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :
+                !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
+                "SteamVR: " + DeviceText.Summary(ov.Devices());
+            if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";
+            scene.Overlay = head + (info.Length > 0 ? "\n" + info : "") + "\n" + steamVr;
+            scene.OverlayRight = devicesOnly ? "" : _live.WornAvatar;
+            view.SceneChanged();
+        }
+
+        string ShowVrChat(ViewScene scene)
+        {
+            var rec = _live.Recorder;
+            var match = _live.CurrentMatch();
+            string key = rec.AvatarId + "|" + match?.Entry?.Id;
+            if (key != _profileKey)
+            {
+                _profileKey = key;
+                _profile = match?.Entry?.Profile();
+            }
 
             double now = Clock.Now;
             if (rec.VrcHeadTime > 0 && now - rec.VrcHeadTime < 1)
@@ -135,14 +157,7 @@ namespace VRMR.App.Viewport
             }
             else if (scene.Profile != null) scene.SetProfile(null);
 
-            string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
-            string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :
-                !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
-                "SteamVR: " + DeviceText.Summary(ov.Devices());
-            if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";
-            scene.Overlay = head + (info.Length > 0 ? "\n" + info : "") + "\n" + steamVr;
-            scene.OverlayRight = _live.WornAvatar;
-            view.SceneChanged();
+            return info;
         }
     }
 }

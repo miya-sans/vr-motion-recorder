@@ -11,6 +11,7 @@ using VRMR.App.Services;
 using VRMR.App.ViewModels;
 using VRMR.App.Viewport;
 using VRMR.App.Views;
+using VRMR.App.Views.Takes;
 using Xunit;
 using VisualExtensions = Avalonia.VisualTree.VisualExtensions;
 
@@ -99,7 +100,7 @@ namespace VRMR.App.Tests
                 Assert.True(takes.CanPlay);
                 Assert.False(takes.IsLive);
                 Assert.False(takes.ShowEmpty);
-                Assert.Equal(TakesWorkspaceViewModel.TakeTab, takes.InspectorTab);
+                Assert.Equal(TakesWorkspaceViewModel.ViewMode, takes.WorkflowIndex);
                 Assert.NotNull(s.Window.Viewport.Scene.Profile);
                 Assert.Equal("Flow take", takes.Inspector.Name);
                 Assert.Contains("IK solve", takes.SolveText);
@@ -171,7 +172,7 @@ namespace VRMR.App.Tests
                 Assert.Equal(2, takes.SpeedIndex);
 
                 // inside the inspector the wheel scrolls the panel instead
-                var inPanel = combos.First(c => VisualExtensions.FindAncestorOfType<ScrollViewer>(c) != null);
+                var inPanel = combos.First(c => VisualExtensions.FindAncestorOfType<TakeInspectorView>(c) != null);
                 var scroller = VisualExtensions.FindAncestorOfType<ScrollViewer>(inPanel);
                 int before = inPanel.SelectedIndex;
                 inPanel.Focus();
@@ -438,6 +439,57 @@ namespace VRMR.App.Tests
                 HeadlessUi.Capture(s.Window, "flow-no-matches");
                 s.Shell.Library.ClearSearchCommand.Execute(null);
                 Assert.Single(s.Shell.Library.Items);
+            });
+        }
+
+        [Fact]
+        public async Task WorkflowTabsSwitchPanelsAndKeepTheOpenTake()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var tabs = s.Window.FindControl<ListBox>("WorkflowSwitch");
+                var grid = s.Window.FindControl<Grid>("MainGrid");
+                var takes = s.Shell.Takes;
+                var take = s.Host.Session.Take;
+                tabs.SelectedIndex = TakesWorkspaceViewModel.RecordMode;
+                Assert.True(s.Shell.ShowCalibrations);
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(takes.ShowDevicesTab);
+                Assert.True(s.Window.GetVisualDescendantOfType<ViewOverlay>().IsEffectivelyVisible);
+                takes.ShowDevices = false;
+                Assert.False(s.Window.Viewport.Options.Devices);
+                takes.ShowDevices = true;
+                Assert.True(s.Window.Viewport.Options.Devices);
+                Assert.False(s.Shell.TimelineVisible);
+                Assert.Null(s.Window.Viewport.Scene.Profile);
+                Assert.Empty(s.Window.Viewport.Scene.Markers);
+                Assert.Empty(s.Window.Viewport.Scene.Overlay);
+                Assert.False(takes.ShowEmpty);
+                var snapshot = new CalibrationSnapshot { Name = "Standing T-pose" };
+                snapshot.Devices.Add(new CalibrationSnapshot.Device { Class = 1 });
+                s.Host.Recorder.Calibrations.Save(snapshot);
+                Assert.True(await HeadlessUi.WaitForAsync(() =>
+                    takes.Inspector.SavedCalibrations.Any(c => c.Id == snapshot.Id)));
+                HeadlessUi.Capture(s.Window, "flow-record");
+
+                tabs.SelectedIndex = TakesWorkspaceViewModel.ExportMode;
+                Assert.True(takes.ShowExportTab);
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(s.Window.GetVisualDescendantOfType<LibraryPanel>().IsEffectivelyVisible);
+
+                foreach (int mode in new[] { TakesWorkspaceViewModel.ViewMode, TakesWorkspaceViewModel.EditMode })
+                {
+                    tabs.SelectedIndex = mode;
+                    Assert.Equal(mode == TakesWorkspaceViewModel.ViewMode, takes.ShowTakeTab);
+                    Assert.True(s.Shell.TimelineVisible);
+                    Assert.NotNull(s.Window.Viewport.Scene.Profile);
+                    Assert.False(s.Shell.ShowCalibrations);
+                    Assert.True(s.Shell.LibraryOpen);
+                    Assert.True(grid.ColumnDefinitions[0].Width.Value > 0);
+                }
+
+                Assert.Same(take, s.Host.Session.Take);
             });
         }
 

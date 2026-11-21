@@ -88,8 +88,8 @@ namespace VRMR.App.Tests
             using var rig = new Rig();
             var takes = rig.Shell.Takes;
             Assert.True(takes.IsLive);
-            Assert.True(takes.ShowEmpty);
-            Assert.Equal("Waiting for VRChat or SteamVR", takes.EmptyTitle);
+            Assert.False(takes.ShowEmpty);
+            Assert.Empty(rig.View.Scene.Overlay);
             Assert.False(rig.View.Animating); // nothing arrives: no frames
 
             rig.AttachSteamVr();
@@ -122,16 +122,16 @@ namespace VRMR.App.Tests
             Assert.Contains("out of range", hip.Label);
             Assert.Equal(1, rig.View.Framed);
 
-            // VRChat's own head, wrists and camera arrive over OSC
+            // OSC poses stay out of the SteamVR recording preview.
             rig.SendFloats("/tracking/vrsystem/head/pose", 0, 1.5f, 0, 0, 0, 0);
             rig.SendFloats("/usercamera/Pose", 1, 1.2f, 2, 0, 180, 0);
             Assert.True(rig.WaitFor(() => rig.Host.Recorder.VrcHeadTime > 0 && rig.Host.Recorder.VrcCameraTime > 0));
             rig.View.Tick(1 / 60.0);
-            Assert.Contains(scene.Markers, m => m.Kind == MarkerKind.VrcPose && m.Label == "VRChat head");
-            Assert.Contains(scene.Markers, m => m.Kind == MarkerKind.Camera);
+            Assert.DoesNotContain(scene.Markers, m => m.Kind == MarkerKind.VrcPose);
+            Assert.DoesNotContain(scene.Markers, m => m.Kind == MarkerKind.Camera);
 
             // the Devices panel (it is the inspector's tab while Live is on)
-            Assert.Equal(TakesWorkspaceViewModel.DevicesTab, takes.InspectorTab);
+            Assert.Equal(TakesWorkspaceViewModel.RecordMode, takes.WorkflowIndex);
             rig.Feed();
             rig.SendFloats("/avatar/parameters/FT/v2/JawOpen", 0.7f);
             Assert.True(rig.WaitFor(() => rig.Host.Recorder.LastFaceTime > 0));
@@ -275,6 +275,8 @@ namespace VRMR.App.Tests
             var clip = rig.Host.Session.Clip;
             Assert.Equal("ik", clip.BodySource);
             Assert.True(clip.Frames > 60);
+            Assert.Null(rig.View.Scene.Profile);
+            rig.Shell.Takes.WorkflowIndex = TakesWorkspaceViewModel.ViewMode;
             Assert.NotNull(rig.View.Scene.Profile);
             Assert.Contains("IK solve", rig.View.Scene.Overlay);
         }
@@ -444,6 +446,7 @@ namespace VRMR.App.Tests
             _ = rig.Host.Session.OpenAsync(rig.Host.Library.Items[0].Path);
             Assert.True(rig.WaitFor(() => rig.Host.Session.Solve == SolveState.Done, 30000));
             var takes = rig.Shell.Takes;
+            takes.WorkflowIndex = TakesWorkspaceViewModel.ViewMode;
 
             takes.TogglePlayCommand.Execute(null);
             for (int i = 0; i < 20; i++) rig.View.Tick(1 / 60.0);
