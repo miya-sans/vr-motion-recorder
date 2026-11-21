@@ -17,11 +17,17 @@
     <Border Grid.Row="0" Classes="panel" Height="{DynamicResource TopBarHeight}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="12,0">
-        <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
-                      Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
-                      Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}"
-                      ToolTip.Tip="{Binding RecordTip}" MinWidth="116" VerticalAlignment="Center"
-                      FontFeatures="{DynamicResource TabularFigures}" />
+        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
+                        Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
+                        Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}"
+                        ToolTip.Tip="{Binding RecordTip}" MinWidth="116" VerticalAlignment="Center"
+                        FontFeatures="{DynamicResource TabularFigures}" />
+          <c:IconToggle x:Name="LiveButton" Icon="{DynamicResource Icon.Live}" Content="Live"
+                        IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}"
+                        IsEnabled="{Binding !IsRecording}"
+                        ToolTip.Tip="Live: closes the open take and shows what SteamVR and VRChat send right now. Click a take to leave it, or Live again to go back to the last take." />
+        </StackPanel>
         <c:SegmentedControl Grid.Column="1" x:Name="WorkspaceSwitch" IsVisible="{Binding SceneAvailable}"
                             SelectedIndex="{Binding WorkspaceIndex}" Margin="16,0,0,0" VerticalAlignment="Center"
                             MinWidth="160">

@@ -4,7 +4,7 @@
              xmlns:vm="using:VRMR.App.ViewModels"
              x:Class="VRMR.App.Views.Takes.TransportBar"
              x:DataType="vm:TakesWorkspaceViewModel">
-  <!-- Playback | trim and cut | placement and calibration | live, the time on the right, undo and redo last. -->
+  <!-- Playback | trim and cut | placement and calibration, the time on the right, undo and redo last. -->
   <Grid ColumnDefinitions="Auto,*,Auto" Height="40" Margin="8,0">
     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
       <c:IconButton x:Name="SkipStartButton" Icon="{DynamicResource Icon.SkipStart}"
@@ -55,10 +55,6 @@
       <c:IconButton x:Name="CalibrateButton" Icon="{DynamicResource Icon.Pose}" Content="Calibrate"
                     Command="{Binding CalibrateHereCommand}" IsEnabled="{Binding HasTake}"
                     ToolTip.Tip="Use the pose at the playhead as the T-pose the trackers are bound to" />
-
-      <Rectangle Classes="divider" Width="1" Height="18" Margin="8,0" />
-      <c:IconToggle x:Name="LiveButton" Icon="{DynamicResource Icon.Live}" Content="Live" IsChecked="{Binding IsLive}"
-                    ToolTip.Tip="Show what SteamVR and VRChat send right now instead of the take. Nothing is recorded. Playing or scrubbing switches it off." />
     </StackPanel>
     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
       <TextBlock x:Name="TimeLabel" Text="{Binding TimeText}" Classes="secondary tabular" VerticalAlignment="Center"

@@ -154,10 +154,8 @@ namespace VRMR.App.Tests
             Assert.True(panel.Devices.Single(d => d.Detail.Contains("SIM-FOOT-R")).TrackingDegraded ||
                         panel.Devices.Single(d => d.Detail.Contains("SIM-FOOT-R")).TrackingLost);
 
-            // scrubbing or opening a take leaves Live; the Live button comes back to it
+            // without a take to go back to, Live stays on
             takes.IsLive = false;
-            Assert.False(rig.View.Animating);
-            takes.ToggleLiveCommand.Execute(null);
             Assert.True(takes.IsLive);
             Assert.True(rig.View.Animating);
         }

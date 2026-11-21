@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -42,9 +43,9 @@ namespace VRMR.App.ViewModels
         /// </summary>
         [ObservableProperty] int _inspectorTab;
 
-        [ObservableProperty] bool _isLive;
         [ObservableProperty] bool _isPlaying;
         [ObservableProperty] bool _isSolving;
+        string _lastTakePath;
         IDisposable _liveWatch;
         [ObservableProperty] bool _loop = true;
         List<double[]> _segments = new();
@@ -78,7 +79,6 @@ namespace VRMR.App.ViewModels
             _showHeadset = s.ShowHmdModel;
             _showPlayArea = s.ShowPlayArea;
             _showBaseStations = s.ShowBaseStations;
-            _isLive = true;
 
             _session.TakeChanged += OnTakeChanged;
             _session.ClipChanged += OnClipChanged;
@@ -97,7 +97,6 @@ namespace VRMR.App.ViewModels
                 UpdateAnimating();
             };
             Timeline.SelectionChanged += () => HasSelection = Timeline.HasSelection;
-            Timeline.Scrubbed += () => { IsLive = false; };
             host.Recording.StateChanged += OnRecordingChanged;
             host.Recording.Stopped += rec =>
             {
@@ -114,6 +113,19 @@ namespace VRMR.App.ViewModels
             _inspectorTab = host.CaptureOn ? DevicesTab : TakeTab;
             Devices.SetVisible(_inspectorTab == DevicesTab);
             UpdateTimeText();
+        }
+
+        /// <summary>
+        ///     Live mode: no take is open and the view shows only what SteamVR and VRChat send now. Switching it on closes
+        ///     the open take; switching it off opens the last take again. Opening a take leaves it.
+        /// </summary>
+        public bool IsLive
+        {
+            get => _session.Take == null;
+            set
+            {
+                if (value != IsLive) _ = ToggleLive();
+            }
         }
 
         public TimelineViewModel Timeline { get; }
@@ -240,9 +252,9 @@ namespace VRMR.App.ViewModels
             bool recording = _host.Recording.IsRecording;
             bool shown = false;
             if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view);
-            if (!shown && (IsLive || recording || _session.Take == null))
+            if (!shown && (IsLive || recording))
             {
-                _host.LivePresenter.Show(_view, _session.Take != null && !IsLive);
+                _host.LivePresenter.Show(_view);
                 shown = true;
             }
 
@@ -361,7 +373,7 @@ namespace VRMR.App.ViewModels
             }
             else if (IsLive || _host.Recording.IsRecording)
             {
-                _host.LivePresenter.Show(_view, false);
+                _host.LivePresenter.Show(_view);
                 UpdateChipAvailability();
                 if (!_host.Live.HasLiveMotion) UpdateAnimating();
             }
@@ -373,8 +385,15 @@ namespace VRMR.App.ViewModels
         {
             var take = _session.Take;
             HasTake = take != null;
-            IsLive = take == null;
-            if (take != null && InspectorTab == DevicesTab) InspectorTab = TakeTab;
+            if (take?.FilePath != null) _lastTakePath = take.FilePath;
+            OnPropertyChanged(nameof(IsLive));
+            if (take == null)
+            {
+                _clock.Playing = false;
+                if (PlacementTool.Active) SetGizmo(false);
+                if (_host.CaptureOn) InspectorTab = DevicesTab;
+            }
+            else if (InspectorTab == DevicesTab) InspectorTab = TakeTab;
             _framed = false;
             RecomputeSegments();
             OnPropertyChanged(nameof(TakeTitle));
@@ -430,22 +449,14 @@ namespace VRMR.App.ViewModels
 
         void OnRecordingChanged()
         {
-            if (_host.Recording.IsRecording)
+            // recording is live: the open take is saved and closed
+            if (_host.Recording.IsRecording && _session.Take != null)
             {
-                _clock.Playing = false;
-                IsLive = true;
+                _session.SaveIfDirtyNow();
+                _session.Close();
             }
 
             ApplyViewOptions();
-            Present();
-            UpdateAnimating();
-        }
-
-        partial void OnIsLiveChanged(bool value)
-        {
-            if (value) _clock.Playing = false;
-            if (value && _host.CaptureOn) InspectorTab = DevicesTab;
-            else if (!value && InspectorTab == DevicesTab && _session.Take != null) InspectorTab = TakeTab;
             Present();
             UpdateAnimating();
         }
@@ -483,7 +494,6 @@ namespace VRMR.App.ViewModels
         void TogglePlay()
         {
             if (_session.Take == null || _session.Clip == null) return;
-            IsLive = false;
             if (_clock.Playing) _clock.Pause();
             else
             {
@@ -496,7 +506,6 @@ namespace VRMR.App.ViewModels
         void SeekStart()
         {
             if (_session.Take == null) return;
-            IsLive = false;
             _clock.Seek(_session.Take.Edits.TrimIn, _session.Take.Duration);
         }
 
@@ -504,7 +513,6 @@ namespace VRMR.App.ViewModels
         void SeekEnd()
         {
             if (_session.Take == null) return;
-            IsLive = false;
             _clock.Seek(Timeline.TrimOut, _session.Take.Duration);
         }
 
@@ -523,7 +531,6 @@ namespace VRMR.App.ViewModels
         void Step(int frames)
         {
             if (_session.Take == null || _session.Clip == null) return;
-            IsLive = false;
             _clock.Step(frames, _session.Clip.Fps, _session.Take.Duration);
         }
 
@@ -576,7 +583,6 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void OriginHere()
         {
-            IsLive = false;
             _host.Placement.OriginHere();
             _host.Status.Info(_host.Placement.LastAction);
         }
@@ -584,7 +590,6 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void TurnLeft()
         {
-            IsLive = false;
             _host.Placement.Turn(-90);
             _host.Status.Info(_host.Placement.LastAction);
         }
@@ -592,7 +597,6 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void TurnRight()
         {
-            IsLive = false;
             _host.Placement.Turn(90);
             _host.Status.Info(_host.Placement.LastAction);
         }
@@ -606,10 +610,20 @@ namespace VRMR.App.ViewModels
             _host.Status.Info($"Calibrating at {Services.TimeText.Format(t)}");
         }
 
+        /// <summary>Enters Live (the open take is saved and closed) or leaves it for the last take.</summary>
         [RelayCommand]
-        void ToggleLive()
+        async Task ToggleLive()
         {
-            IsLive = !IsLive;
+            if (_session.Take != null)
+            {
+                await _session.SaveIfDirtyAsync();
+                _session.Close();
+                return;
+            }
+
+            if (!_host.Recording.IsRecording && File.Exists(_lastTakePath) && await _session.OpenAsync(_lastTakePath))
+                return;
+            _host.Ui.Post(() => OnPropertyChanged(nameof(IsLive))); // nothing to leave for: the button stays on
         }
 
         [RelayCommand]
@@ -635,7 +649,6 @@ namespace VRMR.App.ViewModels
         {
             if (turn.HasValue) PlacementTool.Turn = turn.Value;
             PlacementTool.Active = on;
-            if (on) IsLive = false;
             if (_view != null)
             {
                 _view.Tool = on && _active ? PlacementTool : null;

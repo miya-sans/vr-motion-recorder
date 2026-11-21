@@ -168,7 +168,14 @@ namespace VRMR.App.ViewModels
                 i.Name = open ? take.Name + (_session.Dirty ? " •" : "") : i.Info.Name;
             }
 
-            if (take?.FilePath != null && (Selected == null ||
+            // Live (no take open) leaves nothing selected, so clicking any take opens it
+            if (take == null && Selected != null && !_session.Opening)
+            {
+                _syncingSelection = true;
+                try { Selected = null; }
+                finally { _syncingSelection = false; }
+            }
+            else if (take?.FilePath != null && (Selected == null ||
                                            !string.Equals(Selected.Path, take.FilePath,
                                                StringComparison.OrdinalIgnoreCase)))
             {

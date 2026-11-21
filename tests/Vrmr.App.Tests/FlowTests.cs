@@ -59,6 +59,36 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
+        public async Task LiveClosesTheTakeAndClickingATakeOpensItAgain()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var takes = s.Shell.Takes;
+                var library = s.Shell.Library;
+
+                await takes.ToggleLiveCommand.ExecuteAsync(null);
+                Assert.True(takes.IsLive);
+                Assert.Null(s.Host.Session.Take);
+                Assert.False(takes.HasTake);
+                Assert.Null(library.Selected);
+                Assert.Null(s.Window.Viewport.Scene.Profile); // nothing of the take stays in the view
+
+                library.Selected = library.Items[0];
+                await WaitSolved(s);
+                Assert.False(takes.IsLive);
+                Assert.NotNull(s.Window.Viewport.Scene.Profile);
+
+                // Live on and off again comes back to the last take
+                await takes.ToggleLiveCommand.ExecuteAsync(null);
+                Assert.True(takes.IsLive);
+                await takes.ToggleLiveCommand.ExecuteAsync(null);
+                Assert.False(takes.IsLive);
+                Assert.Same(library.Items[0], library.Selected);
+            });
+        }
+
+        [Fact]
         public async Task OpeningATakeShowsItAndLeavesLive()
         {
             await HeadlessUi.RunAsync(async () =>

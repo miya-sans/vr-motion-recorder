@@ -19,11 +19,8 @@ namespace VRMR.App.Viewport
 
         public LivePresenter(LiveService live) { _live = live; }
 
-        /// <summary>
-        ///     Fills the view with the live state. <paramref name="keepAvatar" />: leave a take's avatar in the scene
-        ///     when there is no live body (the take stays visible under the devices).
-        /// </summary>
-        public void Show(IViewport view, bool keepAvatar)
+        /// <summary>Fills the view with the live state only.</summary>
+        public void Show(IViewport view)
         {
             var rec = _live.Recorder;
             var scene = view.Scene;
@@ -136,7 +133,7 @@ namespace VRMR.App.Viewport
                 scene.MeshScale = _map.Valid ? 1f / _map.Scale : 1f;
                 scene.FaceWeights = _live.FaceValues();
             }
-            else if (scene.Profile != null && !keepAvatar) scene.SetProfile(null);
+            else if (scene.Profile != null) scene.SetProfile(null);
 
             string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
             string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :

@@ -22,7 +22,6 @@ namespace VRMR.App.Views.Takes
             bool labels = width >= HideLabelsBelow;
             OriginButton.Content = labels ? "Origin" : null;
             CalibrateButton.Content = labels ? "Calibrate" : null;
-            LiveButton.Content = labels ? "Live" : null;
             bool steps = width >= HideStepsBelow;
             SkipStartButton.IsVisible =
                 StepBackButton.IsVisible = StepForwardButton.IsVisible = SkipEndButton.IsVisible = steps;
