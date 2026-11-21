@@ -88,5 +88,5 @@ dotnet test --project tests/Vrmr.App.Tests -c Release
 
 `tests/Vrmr.App.Tests` holds the service tests and headless UI tests (Avalonia.Headless with Skia: the real window, drawn off screen).
 
-- Tests that need real takes are skipped unless `VRMR_PRIVATE_DATA` points to a folder with copies of your own takes (`.vrmr`) and an `Avatars` folder. Takes are personal data and never part of the repository.
+- Tests that need real takes use `VRMR_PRIVATE_DATA`. Point it to a folder with copies of your takes (`.vrmr`) at the root or in `Recordings`. Tests that load avatar meshes also need an `Avatars` folder there. On Windows, the tests check the user-level setting if the process setting has no takes. Takes are personal data and never part of the repository.
 - With `VRMR_SHOTS` set to a folder, the screenshot tests save each state as a PNG there. Screenshots of your own avatars and take names stay on your machine.

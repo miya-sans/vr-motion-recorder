@@ -14,7 +14,7 @@ namespace VRMR.Tests
             var produced = new FaceMapping { Mode = FaceMapping.Naming.UnifiedExpressions }.EvaluateUE(name => 0.4f)
                 .Keys;
             var searched = FaceMapping.AllShapeNames.ToHashSet();
-            Assert.Empty(produced.Where(name => !searched.Contains(name)));
+            Assert.DoesNotContain(produced, name => !searched.Contains(name));
         }
 
         [Fact]

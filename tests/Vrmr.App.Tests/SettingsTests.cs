@@ -563,11 +563,11 @@ namespace VRMR.App.Tests
                 using var host = PrivateData.NewHost(new AvaloniaUiDispatcher());
                 var settings = new SettingsViewModel(host);
                 var view = settings.View;
-                await OpenATake(host);
+                await SolveTakeWithLibraryAvatar(host);
                 settings.Show(SettingsCategory.View);
                 settings.SetActive(true);
-                Assert.True(await HeadlessUi.WaitForAsync(() => view.HasMeshes, 120000),
-                    "no meshes were listed: " + view.MeshInfo);
+                await view.MeshLoad;
+                Assert.True(view.HasMeshes, "no meshes were listed: " + view.MeshInfo);
                 var before = host.Settings.PreviewHiddenMeshes.ToList();
                 try
                 {
@@ -654,16 +654,15 @@ namespace VRMR.App.Tests
 
         // ------------------------------------------------------------------------------------------ drawn off screen
 
-        /// <summary>On the UI thread: opens the smallest of the private takes and waits for its solve.</summary>
-        static async Task OpenATake(AppHost host)
+        static async Task SolveTakeWithLibraryAvatar(AppHost host)
         {
-            var opening = host.Session.OpenAsync(PrivateData.Takes()[0]);
-            Assert.True(await HeadlessUi.WaitForAsync(() => opening.IsCompleted, 60000), "the take did not open");
-            Assert.True(
-                await HeadlessUi.WaitForAsync(
-                    () => host.Session.Solve == SolveState.Done || host.Session.Solve == SolveState.Failed, 120000),
-                "the take did not solve");
-            Assert.True(host.Session.Solve == SolveState.Done, "the solve failed: " + host.Session.SolveError);
+            var avatar = host.AvatarService.Entries.FirstOrDefault(e => !e.BuiltIn && AvatarService.HasFbx(e));
+            Assert.True(avatar != null, "the private avatar library has no avatar with an existing FBX");
+
+            var take = await Task.Run(() => RecordingIO.Load(PrivateData.Takes()[0]));
+            take.Edits.TargetAvatar = avatar.Id;
+            host.Session.Show(take);
+            Assert.True(await host.Session.WhenSolved(), "the solve failed: " + host.Session.SolveError);
         }
 
         static async Task<Window> Open(SettingsViewModel settings, AppHost host, double scale = 1)
@@ -787,10 +786,10 @@ namespace VRMR.App.Tests
                 Assert.False(settings.Avatars.IsEmpty);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-avatars-real"));
 
-                await OpenATake(host);
+                await SolveTakeWithLibraryAvatar(host);
                 settings.Show(SettingsCategory.View);
-                Assert.True(await HeadlessUi.WaitForAsync(() => settings.View.HasMeshes, 120000),
-                    "no meshes were listed: " + settings.View.MeshInfo);
+                await settings.View.MeshLoad;
+                Assert.True(settings.View.HasMeshes, "no meshes were listed: " + settings.View.MeshInfo);
                 await HeadlessUi.SettleAsync(80);
                 Assert.NotNull(HeadlessUi.Capture(window, "settings-view-real"));
                 window.Close();

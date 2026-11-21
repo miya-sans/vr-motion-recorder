@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRMR.App.Composition;
@@ -60,6 +61,9 @@ namespace VRMR.App.ViewModels
 
         public ObservableCollection<MeshRowViewModel> Meshes { get; } = new();
 
+        /// <summary>Completes when the latest mesh request has updated the list.</summary>
+        internal Task MeshLoad { get; private set; } = Task.CompletedTask;
+
         /// <summary>Applies a theme ("dark", "light", "system") to the running app; set by the view.</summary>
         public Action<string> ApplyTheme { get; set; }
 
@@ -80,10 +84,15 @@ namespace VRMR.App.ViewModels
             if (active) LoadMeshes();
         }
 
-        async void LoadMeshes()
+        void LoadMeshes()
         {
             var profile = _host.Session.Clip?.Profile;
             if (profile != null && profile == _listed) return;
+            MeshLoad = LoadMeshesAsync(profile);
+        }
+
+        async Task LoadMeshesAsync(AvatarProfile profile)
+        {
             _listed = profile;
             int load = ++_load;
             if (profile != null && Meshes.Count == 0) MeshInfo = "Reading the avatar's meshes…";

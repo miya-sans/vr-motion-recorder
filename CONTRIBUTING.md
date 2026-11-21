@@ -16,7 +16,7 @@ dotnet test --solution VRMotionRecorder.slnx -c Release --no-build
 dotnet run --project src/Vrmr.App -c Release
 ```
 
-On Windows, `build.cmd` builds and tests the solution. Build output goes to `artifacts/`. Building, testing and reviewing saved takes work with SteamVR and VRChat closed.
+On Windows, `build.cmd` builds and tests the solution. Run `build.cmd avatar-meshes` to check the two Settings tests that load a real avatar's meshes. Build output goes to `artifacts/`. Building, testing and reviewing saved takes work with SteamVR and VRChat closed.
 
 Choose checks that exercise the change. For library tests, use `dotnet test --project tests/Vrmr.Tests/Vrmr.Tests.csproj -c Release`. Check the cross-platform CLI with `dotnet build src/Vrmr.Cli/Vrmr.Cli.csproj -c Release` and integration packaging with `python integrations/package.py dist`. For documentation-only edits, check the affected links and diff.
 

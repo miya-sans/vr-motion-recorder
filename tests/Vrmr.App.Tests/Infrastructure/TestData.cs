@@ -134,20 +134,21 @@ namespace VRMR.App.Tests
         public const string Variable = "VRMR_PRIVATE_DATA";
 
         public const string SkipReason = "Needs copies of real takes: set " + Variable +
-                                         " to a folder with .vrmr files and an Avatars folder.";
+                                         " to a folder with .vrmr files (at the root or under Recordings).";
 
         static readonly Lazy<string> Root = new(Prepare);
 
-        /// <summary>The folder given by the environment, or null.</summary>
+        /// <summary>The private fixture folder, with the Windows user setting as a fallback.</summary>
         public static string Source
         {
             get
             {
                 string dir = Environment.GetEnvironmentVariable(Variable);
-                return !string.IsNullOrEmpty(dir) && Directory.Exists(dir) &&
-                       Directory.GetFiles(dir, "*.vrmr").Length > 0
-                    ? dir
-                    : null;
+                if (IsFixture(dir)) return dir;
+                if (!OperatingSystem.IsWindows()) return null;
+
+                dir = Environment.GetEnvironmentVariable(Variable, EnvironmentVariableTarget.User);
+                return IsFixture(dir) ? dir : null;
             }
         }
 
@@ -166,11 +167,26 @@ namespace VRMR.App.Tests
                 .ToArray();
         }
 
+        static bool IsFixture(string dir)
+        {
+            return Directory.Exists(dir) && (HasTakes(dir) || HasTakes(Path.Combine(dir, "Recordings")));
+        }
+
+        static bool HasTakes(string dir)
+        {
+            return Directory.Exists(dir) && Directory.EnumerateFiles(dir, "*.vrmr").Any();
+        }
+
         static string Prepare()
         {
             string src = Source ?? throw new InvalidOperationException(SkipReason);
             string root = Path.Combine(Path.GetTempPath(), "vrmr-app-tests-" + Guid.NewGuid().ToString("N"));
-            CopyAll(src, Path.Combine(root, "Documents"));
+            string documents = Path.Combine(root, "Documents");
+            CopyAll(src, documents);
+            if (!HasTakes(documents))
+                foreach (string take in Directory.GetFiles(Path.Combine(documents, "Recordings"), "*.vrmr"))
+                    File.Move(take, Path.Combine(documents, Path.GetFileName(take)));
+
             AppDomain.CurrentDomain.ProcessExit += (o, e) =>
             {
                 try { Directory.Delete(root, true); }

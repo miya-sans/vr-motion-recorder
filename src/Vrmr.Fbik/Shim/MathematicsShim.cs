@@ -301,9 +301,11 @@ namespace VRMR.Fbik
             new float4(0, 0, 1, 0), new float4(0, 0, 0, 1));
     }
 
+#pragma warning disable CS8981 // Match Unity.Mathematics' quaternion type name.
     [Serializable]
     public struct quaternion : IEquatable<quaternion>
     {
+#pragma warning restore CS8981
         public float4 value;
         public static readonly quaternion identity = new(0f, 0f, 0f, 1f);
         public quaternion(float x, float y, float z, float w) { value = new float4(x, y, z, w); }
@@ -421,8 +423,10 @@ namespace VRMR.Fbik
         }
     }
 
+#pragma warning disable CS8981 // Match Unity.Mathematics' math type name.
     public static class math
     {
+#pragma warning restore CS8981
         public const float PI = 3.14159265358979323846f;
         public const float EPSILON = 1.1920928955078125e-7f;
         public const float FLT_MIN_NORMAL = 1.175494351e-38F;

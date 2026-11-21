@@ -304,7 +304,7 @@ namespace VRMR
                 var tri = new List<int>();
                 var tuv = new List<float>();
                 var tmat = new List<int>();
-                int corner = 0, poly = 0, start = 0;
+                int poly = 0;
                 var polyC = new List<int>();
 
                 int Pick(string map, string refType, int[] index, int cornerI, int cp, int polyI)
