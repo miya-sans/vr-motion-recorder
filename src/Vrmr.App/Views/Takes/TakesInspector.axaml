@@ -5,28 +5,20 @@
              xmlns:takes="using:VRMR.App.Views.Takes"
              x:Class="VRMR.App.Views.Takes.TakesInspector"
              x:DataType="vm:TakesWorkspaceViewModel">
-  <!-- The inspector of the Takes workspace: Take and Export for the open take, Devices for what is live. -->
-  <Grid RowDefinitions="Auto,*">
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}"
-            Padding="44,8,8,8">
-      <c:SegmentedControl x:Name="Tabs" SelectedIndex="{Binding InspectorTab}">
-        <ListBoxItem ToolTip.Tip="What SteamVR and VRChat send right now">Devices</ListBoxItem>
-        <ListBoxItem ToolTip.Tip="Take settings and live calibration">Take</ListBoxItem>
-        <ListBoxItem ToolTip.Tip="Write the open take as FBX or Unity animation">Export</ListBoxItem>
-      </c:SegmentedControl>
-    </Border>
-    <Panel Grid.Row="1">
-      <Panel IsVisible="{Binding ShowTakeTab}">
-        <takes:TakeInspectorView x:Name="TakeView" DataContext="{Binding Inspector}" />
-      </Panel>
-      <Panel IsVisible="{Binding ShowExportTab}">
-        <ContentControl x:Name="ExportHost" IsVisible="{Binding HasTake}" />
-        <c:EmptyState Icon="{DynamicResource Icon.Export}" Text="Pick a take in the library to export it."
-                      IsVisible="{Binding !HasTake}" />
-      </Panel>
-      <Panel IsVisible="{Binding ShowDevicesTab}">
-        <takes:DevicesView DataContext="{Binding Devices}" />
-      </Panel>
+  <Panel>
+    <Panel IsVisible="{Binding ShowTakeTab}">
+      <takes:TakeInspectorView x:Name="TakeView" DataContext="{Binding Inspector}" IsVisible="{Binding HasTake}" />
+      <c:EmptyState Icon="{DynamicResource Icon.Take}"
+                    Text="Pick a take in the library to see and change its settings here."
+                    IsVisible="{Binding !HasTake}" />
     </Panel>
-  </Grid>
+    <Panel IsVisible="{Binding ShowExportTab}">
+      <ContentControl x:Name="ExportHost" IsVisible="{Binding HasTake}" />
+      <c:EmptyState Icon="{DynamicResource Icon.Export}" Text="Pick a take in the library to export it."
+                    IsVisible="{Binding !HasTake}" />
+    </Panel>
+    <Panel IsVisible="{Binding ShowDevicesTab}">
+      <takes:DevicesView DataContext="{Binding Devices}" />
+    </Panel>
+  </Panel>
 </UserControl>

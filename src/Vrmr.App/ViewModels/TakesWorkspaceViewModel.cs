@@ -17,8 +17,8 @@ namespace VRMR.App.ViewModels
     /// </summary>
     public partial class TakesWorkspaceViewModel : ObservableObject, IGestureSource
     {
-        /// <summary>The inspector's tabs.</summary>
-        public const int DevicesTab = 0, TakeTab = 1, ExportTab = 2;
+        /// <summary>The workflow tabs, in navigation order.</summary>
+        public const int RecordMode = 0, ViewMode = 1, EditMode = 2, ExportMode = 3;
 
         readonly PlaybackClock _clock;
         readonly AppHost _host;
@@ -30,6 +30,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _emptyText = "";
         [ObservableProperty] string _emptyTitle = "";
         bool _framed, _active = true;
+        bool _showingRecordingTake;
         [ObservableProperty] bool _hasBaseStations;
         [ObservableProperty] string _frameText = "";
         [ObservableProperty] bool _hasHeadset;
@@ -37,12 +38,6 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _hasSelection;
 
         [ObservableProperty] bool _hasTake;
-
-        /// <summary>
-        ///     Which inspector tab shows. It follows what the view shows (Devices with Live, Take with a take) until the user
-        ///     picks one.
-        /// </summary>
-        [ObservableProperty] int _inspectorTab;
 
         [ObservableProperty] bool _isPlaying;
         [ObservableProperty] bool _isSolving;
@@ -73,8 +68,8 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] int _speedIndex = 2;
         [ObservableProperty] string _timeText = "";
         [ObservableProperty] string _timeTip;
+        [ObservableProperty] int _workflowIndex;
         IViewport _view;
-        CalibrationPose _shownCalibration;
 
         public TakesWorkspaceViewModel(AppHost host)
         {
@@ -122,7 +117,10 @@ namespace VRMR.App.ViewModels
             host.Recording.StateChanged += OnRecordingChanged;
             host.Recording.Stopped += rec =>
             {
-                if (_active) _session.Show(rec);
+                if (!_active) return;
+                _showingRecordingTake = true;
+                try { _session.Show(rec); }
+                finally { _showingRecordingTake = false; }
             };
             PlacementTool.Changed += () =>
             {
@@ -132,8 +130,8 @@ namespace VRMR.App.ViewModels
             };
             Inspector = new TakeInspectorViewModel(host, this);
             Devices = new DevicesViewModel(host);
-            _inspectorTab = host.CaptureOn ? DevicesTab : TakeTab;
-            Devices.SetVisible(_inspectorTab == DevicesTab);
+            _workflowIndex = host.CaptureOn ? RecordMode : ViewMode;
+            Devices.SetVisible(ShowDevicesTab);
             UpdateTimeText();
         }
 
@@ -164,9 +162,12 @@ namespace VRMR.App.ViewModels
             !_active ? null : ShowCalibrationPose ? CalibrationTool : PlacementTool.Active ? PlacementTool : null;
         public TakeInspectorViewModel Inspector { get; }
         public DevicesViewModel Devices { get; }
-        public bool ShowTakeTab => InspectorTab == TakeTab;
-        public bool ShowExportTab => InspectorTab == ExportTab;
-        public bool ShowDevicesTab => InspectorTab == DevicesTab;
+        public bool ShowTakeTab => WorkflowIndex == ViewMode;
+        public bool ShowExportTab => WorkflowIndex == ExportMode;
+        public bool ShowDevicesTab => WorkflowIndex == RecordMode;
+
+        bool ShowLive => ShowDevicesTab || IsLive || _host.Recording.IsRecording;
+        bool HasLiveMotion => ShowDevicesTab ? _host.Live.SteamVrConnected : _host.Live.HasLiveMotion;
 
         /// <summary>Speed labels for the transport.</summary>
         public IReadOnlyList<string> SpeedLabels { get; } = new[] { "0.25×", "0.5×", "1×", "1.5×", "2×" };
@@ -182,12 +183,21 @@ namespace VRMR.App.ViewModels
             return _session.Gesture();
         }
 
-        partial void OnInspectorTabChanged(int value)
+        partial void OnWorkflowIndexChanged(int value)
         {
             OnPropertyChanged(nameof(ShowTakeTab));
             OnPropertyChanged(nameof(ShowExportTab));
             OnPropertyChanged(nameof(ShowDevicesTab));
-            Devices.SetVisible(value == DevicesTab && _active);
+            Devices.SetVisible(ShowDevicesTab && _active);
+            if (ShowDevicesTab)
+            {
+                _clock.Playing = false;
+                if (PlacementTool.Active) SetGizmo(false);
+            }
+
+            ApplyViewOptions();
+            Present();
+            UpdateAnimating();
         }
 
         // ------------------------------------------------------------------------------------------ the view
@@ -224,7 +234,7 @@ namespace VRMR.App.ViewModels
                 UpdateAnimating();
             }
 
-            Devices.SetVisible(active && InspectorTab == DevicesTab);
+            Devices.SetVisible(active && WorkflowIndex == RecordMode);
         }
 
         void ApplyViewOptions()
@@ -310,36 +320,16 @@ namespace VRMR.App.ViewModels
         public void Present()
         {
             if (_view == null || !_active) return;
-            bool recording = _host.Recording.IsRecording;
-            bool shown = false;
-            if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view, Timeline.PreviewTime);
-            var cal = _host.TakePresenter.ShownCalibration;
-            if (!ReferenceEquals(cal, _shownCalibration))
+            bool shown;
+            if (ShowLive)
             {
-                _shownCalibration = cal;
-                CalibrationViewChanged?.Invoke();
-            }
-
-            FrameText = shown && _session.Clip != null
-                ? $"frame {_host.TakePresenter.Frame}/{_host.TakePresenter.LastFrame}"
-                : "";
-            if (shown && !IsLive && !recording && !_framed && _view.Scene.Profile != null)
-            {
-                _view.FrameAll();
-                _framed = true;
-            }
-
-            if (!shown && (IsLive || recording))
-            {
-                _host.LivePresenter.Show(_view);
+                _host.LivePresenter.Show(_view, ShowDevicesTab);
                 shown = true;
             }
+            else shown = _host.TakePresenter.Show(_view);
 
             if (!shown)
             {
-                _view.Scene.SetProfile(null);
-                _view.Scene.Markers.Clear();
-                _view.Scene.PlayArea = null;
                 _view.Scene.Overlay = "";
                 _view.Scene.OverlayRight = "";
                 _view.SceneChanged();
@@ -366,6 +356,13 @@ namespace VRMR.App.ViewModels
 
         void UpdateEmptyState()
         {
+            if (ShowDevicesTab)
+            {
+                ShowEmpty = false;
+                return;
+            }
+
+
             var take = _session.Take;
             bool nothing = _view.Scene.Profile == null && _view.Scene.Markers.Count == 0;
             if (take != null && !IsLive)
@@ -422,15 +419,15 @@ namespace VRMR.App.ViewModels
         {
             if (_view == null) return;
             bool recording = _host.Recording.IsRecording;
-            bool live = (IsLive || recording) && _host.Live.HasLiveMotion;
+            bool live = ShowLive && HasLiveMotion;
             _view.FrameCap = recording ? _settings.Value.PreviewWhileRecording ? 15 : 4 : 60;
             _view.Animating = _active && (_clock.Playing || live);
             // while Live is on but nothing arrives yet, look once a second whether a source came up (no redraws meanwhile)
-            bool watch = _active && _host.CaptureOn && (IsLive || recording) && !live;
+            bool watch = _active && _host.CaptureOn && ShowLive && !live;
             if (watch && _liveWatch == null)
                 _liveWatch = _host.Ui.Every(TimeSpan.FromSeconds(1), () =>
                 {
-                    if (_host.Live.HasLiveMotion)
+                    if (HasLiveMotion)
                     {
                         Present();
                         UpdateAnimating();
@@ -446,16 +443,16 @@ namespace VRMR.App.ViewModels
         void OnFrameTick(TimeSpan elapsed)
         {
             if (!_active) return;
-            if (_clock.Playing && _session.Take != null)
+            if (!ShowDevicesTab && _clock.Playing && _session.Take != null)
             {
                 _clock.Advance(Math.Min(0.1, elapsed.TotalSeconds), _segments);
                 if (_host.FaceReplay.Enabled) _host.FaceReplay.Send(_session.Take, _clock.Playhead);
             }
-            else if (IsLive || _host.Recording.IsRecording)
+            else if (ShowLive)
             {
-                _host.LivePresenter.Show(_view);
+                _host.LivePresenter.Show(_view, ShowDevicesTab);
                 UpdateChipAvailability();
-                if (!_host.Live.HasLiveMotion) UpdateAnimating();
+                if (!HasLiveMotion) UpdateAnimating();
             }
         }
 
@@ -472,9 +469,10 @@ namespace VRMR.App.ViewModels
             {
                 _clock.Playing = false;
                 if (PlacementTool.Active) SetGizmo(false);
-                if (_host.CaptureOn && InspectorTab == ExportTab) InspectorTab = DevicesTab;
+                if (_host.CaptureOn) WorkflowIndex = RecordMode;
             }
-            else if (InspectorTab == DevicesTab) InspectorTab = TakeTab;
+            else if (WorkflowIndex == RecordMode && !_showingRecordingTake) WorkflowIndex = ViewMode;
+
             _framed = false;
             RecomputeSegments();
             OnPropertyChanged(nameof(TakeTitle));
@@ -487,6 +485,11 @@ namespace VRMR.App.ViewModels
         {
             CanPlay = _session.Clip != null;
             Present();
+            if (_session.Clip?.Profile != null && !_framed && _view != null && !ShowLive)
+            {
+                _view.FrameAll();
+                _framed = true;
+            }
         }
 
         void OnEditsChanged(string what)
@@ -569,7 +572,7 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void TogglePlay()
         {
-            if (_session.Take == null) return;
+            if (ShowDevicesTab || _session.Take == null) return;
             if (_clock.Playing) _clock.Pause();
             else
             {
@@ -581,7 +584,7 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void SeekStart()
         {
-            if (_session.Take == null) return;
+            if (ShowDevicesTab || _session.Take == null) return;
             _clock.Seek(_session.Take.Edits.TrimIn, _session.Take.Duration);
         }
 

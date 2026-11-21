@@ -106,6 +106,10 @@ namespace VRMR.App.ViewModels
             Host = host;
             Library = new LibraryViewModel(host);
             Takes = new TakesWorkspaceViewModel(host);
+            Takes.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(TakesWorkspaceViewModel.WorkflowIndex)) UpdatePanelVisibility();
+            };
             SettingsPage = new SettingsViewModel(host);
             FirstRun = new FirstRunViewModel(host);
             CalibrationDefaults = new CalibrationSettingsViewModel(host.Calibration, () => null, true);
@@ -234,6 +238,8 @@ namespace VRMR.App.ViewModels
         public Workspace Workspace => WorkspaceIndex == 1 ? Workspace.Scene : Workspace.Takes;
         public bool IsTakes => WorkspaceIndex == 0;
         public bool IsScene => WorkspaceIndex == 1;
+        public bool TimelineVisible => TimelineOpen && !ShowCalibrations;
+        public bool ShowCalibrations => IsTakes && Takes.ShowDevicesTab;
 
         /// <summary>Opens the take that was open when the app was closed, if it is still in the recordings folder.</summary>
         public void ReopenLastTake()
@@ -265,8 +271,15 @@ namespace VRMR.App.ViewModels
             OnPropertyChanged(nameof(IsTakes));
             OnPropertyChanged(nameof(IsScene));
             OnPropertyChanged(nameof(Workspace));
+            UpdatePanelVisibility();
             Takes.SetActive(IsTakes);
             WorkspaceChanged?.Invoke(Workspace);
+        }
+
+        void UpdatePanelVisibility()
+        {
+            OnPropertyChanged(nameof(ShowCalibrations));
+            OnPropertyChanged(nameof(TimelineVisible));
         }
 
         partial void OnLibraryOpenChanged(bool value)
@@ -282,6 +295,7 @@ namespace VRMR.App.ViewModels
         partial void OnTimelineOpenChanged(bool value)
         {
             OnPropertyChanged(nameof(TimelineTip));
+            OnPropertyChanged(nameof(TimelineVisible));
             Host.UiState.Set("panel.timeline", value);
         }
 
@@ -404,7 +418,7 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void ToggleTimeline()
         {
-            TimelineOpen = !TimelineOpen;
+            if (!ShowCalibrations) TimelineOpen = !TimelineOpen;
         }
 
         [RelayCommand]

@@ -161,9 +161,9 @@
       <!-- ============================================================ calibration -->
       <c:Section Header="Calibration" StateKey="take.calibration" Summary="{Binding CalibrationSummary}"
                  SummaryTone="{Binding CalibrationTone}"
-                 ToolTip.Tip="Body trackers are bound to the avatar in a T-pose. With no take selected, these settings edit the live calibration defaults.">
+                 ToolTip.Tip="Like VRChat: the headset and controllers need no calibration. Body trackers are bound to the avatar's T-pose at one moment. Every VRChat calibration is saved to a library, and new takes use the latest one that fits. The recorded data is kept, so every change here solves again without recording again.">
         <StackPanel>
-          <c:FieldRow Label="From" ToolTip.Tip="{Binding SourceTip}" IsEnabled="{Binding HasTake}">
+          <c:FieldRow Label="From" ToolTip.Tip="{Binding SourceTip}">
             <ComboBox ItemsSource="{Binding Sources}" SelectedIndex="{Binding SourceIndex}" />
           </c:FieldRow>
           <TextBlock Text="{Binding SourceNote}" Classes="note" Classes.warning="{Binding SourceWarning}"
@@ -171,21 +171,20 @@
                      IsVisible="{Binding SourceNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <TextBlock Text="{Binding CalibrationPose}" Classes="note" Classes.warning="{Binding CalibrationPoseWarning}"
                      IsVisible="{Binding CalibrationPose, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}"
-                      IsEnabled="{Binding HasTake}">
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}">
             <Button Content="At playhead" Command="{Binding CalibrateAtPlayheadCommand}"
                     ToolTip.Tip="Calibrate at the playhead: move it to a moment where you stand in a T-pose" />
             <Button Content="Find T-pose" Command="{Binding FindTPoseCommand}"
                     ToolTip.Tip="Calibrate at the best T-pose found in this take: arms out, looking ahead, holding still" />
             <c:ToggleChip Content="Show" IsChecked="{Binding Workspace.ShowCalibrationPose}"
-                          ToolTip.Tip="Show the calibration in the 3D view: the avatar's T-pose at the center, facing ahead, and the devices where they were against it. Move trackers here to edit this calibration. Playing turns it off." />
+                          ToolTip.Tip="Show the calibration in the 3D view and move its trackers with the gizmo. Playing turns it off." />
           </StackPanel>
           <StackPanel IsVisible="{Binding Workspace.ShowCalibrationPose}" IsEnabled="{Binding HasTake}"
                       Margin="{DynamicResource GapRow}">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Classes="note" Text="{Binding NudgeSummary}" VerticalAlignment="Center" />
               <c:ToggleChip Grid.Column="1" Content="Mirror" IsChecked="{Binding Workspace.MirrorTrackers}"
-                            ToolTip.Tip="Moving a left or right tracker puts its partner at the mirror image of where it ends up, across the avatar's middle" />
+                            ToolTip.Tip="Mirror a moved tracker onto its partner across the avatar's middle" />
             </Grid>
             <TextBlock Classes="note" Text="No body trackers in this calibration." IsVisible="{Binding NoNudgeRows}" />
             <ItemsControl ItemsSource="{Binding NudgeRows}">
@@ -193,10 +192,10 @@
                 <DataTemplate x:DataType="vm:TrackerNudgeRowViewModel">
                   <c:FieldRow Label="{Binding Label}" Unit="cm" CanReset="{Binding Moved}"
                               ResetCommand="{Binding ResetCommand}"
-                              ToolTip.Tip="Where this tracker is moved against the avatar in this calibration: right, up, forward, in avatar cm. Up lowers the bone under the tracker; a foot only goes as low as its leg reaches.">
+                              ToolTip.Tip="Where this tracker is moved against the avatar in this calibration, in avatar centimetres.">
                     <Grid ColumnDefinitions="Auto,4,*,4,*,4,*">
                       <c:IconToggle Icon="{DynamicResource Icon.Gizmo}" IsChecked="{Binding Selected}"
-                                    ToolTip.Tip="Move it with the gizmo in the view (or click the tracker there)" />
+                                    ToolTip.Tip="Move it with the gizmo in the view (or click the tracker)" />
                       <c:NumberField Grid.Column="2" Value="{Binding X}" Step="0.5" Decimals="1" Minimum="-30"
                                      Maximum="30" ToolTip.Tip="Right" />
                       <c:NumberField Grid.Column="4" Value="{Binding Y}" Step="0.5" Decimals="1" Minimum="-30"
@@ -212,11 +211,10 @@
 
           <takes:CalibrationSettingsView DataContext="{Binding Settings}" />
 
-
           <c:Section Header="VRChat's settings in this take" Level="2" IsExpanded="False" StateKey="take.cal.vrc"
                      Summary="{Binding VrcSettingsSummary}"
                      ToolTip.Tip="VRChat's spine mode and measurement while recording, and where they changed. For takes recorded before the app logged them, add a change at the playhead.">
-            <StackPanel IsEnabled="{Binding HasTake}">
+            <StackPanel>
               <TextBlock Classes="note" Text="{Binding VrcSettingsText}" />
               <Grid ColumnDefinitions="*,8,Auto">
                 <ComboBox ItemsSource="{Binding VrcChangeKinds}" SelectedIndex="{Binding VrcChangeKind}" />
@@ -232,12 +230,12 @@
             <StackPanel>
               <TextBlock Classes="note" Text="{Binding SettingsOwner}" />
               <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}">
-                <Button Content="Make these the defaults" Command="{Binding MakeDefaultCommand}" IsEnabled="{Binding HasTake}"
+                <Button Content="Make these the defaults" Command="{Binding MakeDefaultCommand}"
                         ToolTip.Tip="Every take without settings of its own then uses these" />
                 <Button Content="Use the defaults" Command="{Binding UseDefaultsCommand}"
                         IsEnabled="{Binding TakeHasOwnSettings}" ToolTip.Tip="Drop this take's own settings" />
               </StackPanel>
-              <c:FieldRow Label="Preset" ToolTip.Tip="Named calibration settings you can load into the take or the defaults">
+              <c:FieldRow Label="Preset" ToolTip.Tip="Named calibration settings you can load into any take">
                 <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
                           PlaceholderText="No preset picked" />
               </c:FieldRow>
@@ -261,9 +259,8 @@
                          Text="Calibrations saved from VRChat, from takes, or captured here. Pick one under From to use it." />
               <WrapPanel>
                 <Button Content="{Binding CaptureLabel}" Command="{Binding CaptureNowCommand}" Margin="0,0,8,8"
-                        ToolTip.Tip="Capture the live device poses after a countdown. Stand straight, look ahead, and hold your arms out." />
+                        ToolTip.Tip="Saves where your devices are after a 5 second countdown: stand straight, look ahead, arms out. For when you do not calibrate in VRChat." />
                 <Button Content="Save this take's" Command="{Binding SaveTakeCalibrationCommand}" Margin="0,0,8,8"
-                        IsEnabled="{Binding HasTake}"
                         ToolTip.Tip="Saves the calibration this take uses to the library, so other takes can use it" />
                 <Button Content="Delete picked" Command="{Binding DeleteSourceCommand}"
                         IsEnabled="{Binding CanDeleteSource}" Margin="0,0,8,8"
@@ -276,7 +273,6 @@
 
           <c:Section Header="Result" Level="2" IsExpanded="False" StateKey="take.cal.result">
             <SelectableTextBlock Text="{Binding CalibrationResult}" Foreground="{DynamicResource TextSecondaryBrush}"
-                                 IsEnabled="{Binding HasTake}"
                                  FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap" LineHeight="18" />
           </c:Section>
         </StackPanel>

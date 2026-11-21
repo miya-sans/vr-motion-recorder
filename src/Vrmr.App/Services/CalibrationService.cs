@@ -239,6 +239,9 @@ namespace VRMR.App.Services
 
         // ------------------------------------------------------------------------------------------ sources
 
+        /// <summary>Saved calibrations from the latest library refresh.</summary>
+        public IReadOnlyList<CalibrationSnapshot> SavedCalibrations => _library;
+
         /// <summary>Reads the calibration library again in the background.</summary>
         public void RefreshLibrary()
         {

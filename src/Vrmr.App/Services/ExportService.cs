@@ -267,7 +267,7 @@ namespace VRMR.App.Services
                     ? ""
                     : " (" + _session.SolveError.TrimEnd('.', ' ') + ")";
                 return
-                    $"Export did not start: the take could not be solved{why}. Try another calibration source or avatar on the Take tab, then export again.";
+                    $"Export did not start: the take could not be solved{why}. Try another calibration source or avatar in View, then export again.";
             }
 
             return _session.Take == take ? null : anotherTake;

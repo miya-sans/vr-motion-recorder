@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using VRMR.App.Services;
 
 namespace VRMR.App.Viewport
@@ -26,18 +27,10 @@ namespace VRMR.App.Viewport
         }
 
         /// <summary>Fills the view with the live state only.</summary>
-        public void Show(IViewport view)
+        public void Show(IViewport view, bool devicesOnly = false)
         {
             var rec = _live.Recorder;
             var scene = view.Scene;
-            var match = _live.CurrentMatch();
-            string key = rec.AvatarId + "|" + match?.Entry?.Id;
-            if (key != _profileKey)
-            {
-                _profileKey = key;
-                _profile = match?.Entry?.Profile();
-            }
-
             scene.Markers.Clear();
             var ov = rec.OpenVR;
             bool connected = rec.DeviceTrackingEnabled && ov != null && ov.Connected;
@@ -55,7 +48,9 @@ namespace VRMR.App.Viewport
                                      && ov.LiveFingerTime[side] > 0 && Clock.Now - ov.LiveFingerTime[side] < 0.5;
                     scene.Markers.Add(new ViewMarker
                     {
-                        Pose = new Pose(d.Pos, d.Rot), Faded = !d.Valid, Size = 1,
+                        Pose = new Pose(d.Pos, d.Rot),
+                        Faded = !d.Valid,
+                        Size = 1,
                         Tint = d.Class == 1
                             ? MarkerTint.Head
                             : d.Class == 2
@@ -69,33 +64,75 @@ namespace VRMR.App.Viewport
                         Label = DeviceText.Name(d) + (d.Battery >= 0 ? $"  {d.Battery * 100:0}%" : "") +
                                 (d.Valid ? "" : "\n" + d.TrackingText) +
                                 (showCurls ? FingerCurls(ov.LiveFingers[side]) : ""),
-                        FovL = d.FovL, FovR = d.FovR, FovT = d.FovT, FovB = d.FovB
+                        FovL = d.FovL,
+                        FovR = d.FovR,
+                        FovT = d.FovT,
+                        FovB = d.FovB
                     });
                     shown++;
                 }
 
+            if (devicesOnly && scene.Profile != null) scene.SetProfile(null);
             // first time devices show up without an avatar on screen: frame the whole tracking space
             if (shown > 0 && !_framedDevices && scene.Profile == null) _framedDevices = view.FrameDevices();
             if (shown == 0) _framedDevices = false;
 
             double now = Clock.Now;
+            string info = devicesOnly ? "" : ShowVrChat(view, scene, headset, ov, devices, now);
+            if (devicesOnly && !connected)
+            {
+                scene.Overlay = scene.OverlayRight = "";
+                view.SceneChanged();
+                return;
+            }
+
+            string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
+            string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :
+                !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
+                "SteamVR: " + DeviceText.Summary(ov.Devices());
+            if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";
+            scene.Overlay = head + (info.Length > 0 ? "\n" + info : "") + "\n" + steamVr;
+            scene.OverlayRight = devicesOnly ? "" : _live.WornAvatar;
+            view.SceneChanged();
+        }
+
+        string ShowVrChat(
+            IViewport view, ViewScene scene, OpenVRSource.Device headset, OpenVRSource ov,
+            List<OpenVRSource.Device> devices, double now)
+        {
+            var rec = _live.Recorder;
+            var match = _live.CurrentMatch();
+            string key = rec.AvatarId + "|" + match?.Entry?.Id;
+            if (key != _profileKey)
+            {
+                _profileKey = key;
+                _profile = match?.Entry?.Profile();
+            }
+
             if (rec.VrcHeadTime > 0 && now - rec.VrcHeadTime < 1)
             {
                 scene.Markers.Add(new ViewMarker
                 {
-                    Pose = rec.VrcHead, Tint = MarkerTint.VrcPose, Kind = MarkerKind.VrcPose, Size = 1,
+                    Pose = rec.VrcHead,
+                    Tint = MarkerTint.VrcPose,
+                    Kind = MarkerKind.VrcPose,
+                    Size = 1,
                     Label = "VRChat head"
                 });
                 scene.Markers.Add(new ViewMarker
-                    { Pose = rec.VrcLeftWrist, Tint = MarkerTint.VrcPose, Kind = MarkerKind.VrcPose, Size = 1 });
+                { Pose = rec.VrcLeftWrist, Tint = MarkerTint.VrcPose, Kind = MarkerKind.VrcPose, Size = 1 });
                 scene.Markers.Add(new ViewMarker
-                    { Pose = rec.VrcRightWrist, Tint = MarkerTint.VrcPose, Kind = MarkerKind.VrcPose, Size = 1 });
+                { Pose = rec.VrcRightWrist, Tint = MarkerTint.VrcPose, Kind = MarkerKind.VrcPose, Size = 1 });
             }
 
             if (rec.VrcCameraTime > 0 && now - rec.VrcCameraTime < 2)
                 scene.Markers.Add(new ViewMarker
                 {
-                    Pose = rec.VrcCamera, Tint = MarkerTint.Camera, Kind = MarkerKind.Camera, Size = 1, Label = "camera"
+                    Pose = rec.VrcCamera,
+                    Tint = MarkerTint.Camera,
+                    Kind = MarkerKind.Camera,
+                    Size = 1,
+                    Label = "camera"
                 });
 
             string info = "";
@@ -127,7 +164,11 @@ namespace VRMR.App.Viewport
                         rot[b] = prof.HumanRestRot(b);
                 var pose = new BakedClip
                 {
-                    Profile = prof, Frames = 1, Fps = 1, Hips = new[] { hips }, Rot = new[] { rot },
+                    Profile = prof,
+                    Frames = 1,
+                    Fps = 1,
+                    Hips = new[] { hips },
+                    Rot = new[] { rot },
                     BoneExists = prof.HumanExists
                 };
                 pose.EvaluateNodes(0, scene.NodePos, scene.NodeRot);
@@ -157,14 +198,7 @@ namespace VRMR.App.Viewport
             }
             else if (scene.Profile != null) scene.SetProfile(null);
 
-            string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
-            string steamVr = !rec.DeviceTrackingEnabled || ov == null ? "SteamVR: off (Devices panel)" :
-                !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
-                "SteamVR: " + DeviceText.Summary(devices);
-            if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";
-            scene.Overlay = head + (info.Length > 0 ? "\n" + info : "") + "\n" + steamVr;
-            scene.OverlayRight = _live.WornAvatar;
-            view.SceneChanged();
+            return info;
         }
 
         static void ShowRest(ViewScene scene, AvatarProfile profile, OpenVRSource.Device headset)

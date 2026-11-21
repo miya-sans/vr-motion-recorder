@@ -123,21 +123,23 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public async Task LiveClosesTheTakeAndClickingATakeOpensItAgain()
+        public async Task RecordWorkspaceShowsLiveDevicesWithoutClosingTheTake()
         {
             await HeadlessUi.RunAsync(async () =>
             {
                 using var s = await OpenTake();
                 var takes = s.Shell.Takes;
-                var library = s.Shell.Library;
+                var take = s.Host.Session.Take;
                 var record = s.Window.FindControl<Button>("RecordButton");
                 var recordDelay = s.Window.FindControl<ComboBox>("RecordDelay");
                 var calibrationDelay = s.Window.FindControl<ComboBox>("CalibrationDelay");
                 Assert.False(record.IsEffectivelyVisible);
 
-                await takes.ToggleLiveCommand.ExecuteAsync(null);
-                Assert.True(takes.IsLive);
-                Assert.Null(s.Host.Session.Take);
+                takes.WorkflowIndex = TakesWorkspaceViewModel.RecordMode;
+                await HeadlessUi.SettleAsync();
+                Assert.True(takes.ShowDevicesTab);
+                Assert.False(takes.IsLive);
+                Assert.Same(take, s.Host.Session.Take);
                 Assert.True(record.IsEffectivelyVisible);
                 Assert.Equal(0, recordDelay.SelectedIndex);
                 Assert.Equal(3, calibrationDelay.SelectedIndex);
@@ -145,21 +147,12 @@ namespace VRMR.App.Tests
                 calibrationDelay.SelectedIndex = 0;
                 Assert.Equal(3, s.Host.Settings.RecordCountdownSeconds);
                 Assert.Equal("Live sources off", s.Shell.LiveCalibrationText);
-                Assert.False(takes.HasTake);
-                Assert.Null(library.Selected);
                 Assert.Null(s.Window.Viewport.Scene.Profile); // nothing of the take stays in the view
 
-                library.Selected = library.Items[0];
-                await WaitSolved(s);
-                Assert.False(takes.IsLive);
+                takes.WorkflowIndex = TakesWorkspaceViewModel.ViewMode;
+                await HeadlessUi.SettleAsync();
                 Assert.NotNull(s.Window.Viewport.Scene.Profile);
-
-                // Live on and off again comes back to the last take
-                await takes.ToggleLiveCommand.ExecuteAsync(null);
-                Assert.True(takes.IsLive);
-                await takes.ToggleLiveCommand.ExecuteAsync(null);
-                Assert.False(takes.IsLive);
-                Assert.Same(library.Items[0], library.Selected);
+                Assert.Same(take, s.Host.Session.Take);
             });
         }
 
@@ -193,7 +186,7 @@ namespace VRMR.App.Tests
                 Assert.True(takes.CanPlay);
                 Assert.False(takes.IsLive);
                 Assert.False(takes.ShowEmpty);
-                Assert.Equal(TakesWorkspaceViewModel.TakeTab, takes.InspectorTab);
+                Assert.Equal(TakesWorkspaceViewModel.ViewMode, takes.WorkflowIndex);
                 Assert.NotNull(s.Window.Viewport.Scene.Profile);
                 Assert.Equal("Flow take", takes.Inspector.Name);
                 Assert.Contains("IK solve", takes.SolveText);
@@ -410,7 +403,7 @@ namespace VRMR.App.Tests
                 Assert.Equal(2, takes.SpeedIndex);
 
                 // inside the inspector the wheel scrolls the panel instead
-                var inPanel = combos.First(c => VisualExtensions.FindAncestorOfType<ScrollViewer>(c) != null);
+                var inPanel = combos.First(c => VisualExtensions.FindAncestorOfType<TakeInspectorView>(c) != null);
                 var scroller = VisualExtensions.FindAncestorOfType<ScrollViewer>(inPanel);
                 int before = inPanel.SelectedIndex;
                 inPanel.Focus();
@@ -456,7 +449,9 @@ namespace VRMR.App.Tests
                     {
                         var play = VisualExtensions.GetVisualDescendants(opening.Window).OfType<IconButton>()
                             .Single(button => button.Name == "PlayButton");
-                        Assert.True(play.IsEffectivelyEnabled);
+                        Assert.True(play.IsEffectivelyEnabled,
+                            $"workflow={opening.Shell.Takes.WorkflowIndex}, hasTake={opening.Shell.Takes.HasTake}, " +
+                            $"showDevices={opening.Shell.Takes.ShowDevicesTab}");
                         play.Command.Execute(null);
                         Assert.True(opening.Shell.Takes.IsPlaying);
                         for (int i = 0; i < 10; i++)
@@ -702,34 +697,29 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public async Task TakeInspectorKeepsLiveCalibrationAvailableAfterClosingTheTake()
+        public async Task RecordWorkspaceKeepsLiveCalibrationAvailableAfterClosingTheTake()
         {
             await HeadlessUi.RunAsync(async () =>
             {
                 using var s = await OpenTake();
                 var takes = s.Shell.Takes;
-                takes.InspectorTab = TakesWorkspaceViewModel.TakeTab;
-                var inspector = s.Window.FindControl<UserControl>("TakesInspectorView");
-                var view = inspector.FindControl<UserControl>("TakeView");
-                var sections = VisualExtensions.GetVisualDescendants(view).OfType<Section>();
-                Assert.Single(sections, section => Equals(section.Header, "Calibration")).IsExpanded = true;
-                Assert.Single(sections, section => Equals(section.Header, "Calibration library")).IsExpanded = true;
-                await HeadlessUi.SettleAsync();
-
-                var buttons = VisualExtensions.GetVisualDescendants(view).OfType<Button>();
-                var save = view.FindControl<Button>("SaveButton");
-                var atPlayhead = Assert.Single(buttons, button => Equals(button.Content, "At playhead"));
-                var capture = Assert.Single(buttons, button => Equals(button.Content, "Capture now"));
-                Assert.True(atPlayhead.IsEffectivelyEnabled);
-
+                var view = s.Window.FindControl<RecordCalibrationView>("RecordCalibrationEditor");
                 s.Host.Session.Close();
+                takes.WorkflowIndex = TakesWorkspaceViewModel.RecordMode;
                 await HeadlessUi.SettleAsync();
 
+                Assert.Equal(TakesWorkspaceViewModel.RecordMode, takes.WorkflowIndex);
                 Assert.True(view.IsEffectivelyVisible);
-                Assert.True(save.IsEffectivelyVisible);
-                Assert.False(save.IsEffectivelyEnabled);
+                var sections = VisualExtensions.GetVisualDescendants(view).OfType<Section>();
+                Assert.Single(sections, section => Equals(section.Header, "Calibration settings")).IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+                var buttons = VisualExtensions.GetVisualDescendants(view).OfType<Button>();
+                var atPlayhead = Assert.Single(buttons, button => Equals(button.Content, "At playhead"));
                 Assert.True(atPlayhead.IsEffectivelyVisible);
-                Assert.False(atPlayhead.IsEffectivelyEnabled);
+                Assert.True(atPlayhead.IsEffectivelyEnabled);
+                var libraryButtons = VisualExtensions.GetVisualDescendants(s.Window.FindControl<Border>("LibraryHost"))
+                    .OfType<Button>();
+                var capture = Assert.Single(libraryButtons, button => Equals(button.Content, "Capture now"));
                 Assert.True(capture.IsEffectivelyVisible);
                 Assert.True(capture.IsEffectivelyEnabled);
                 var combos = VisualExtensions.GetVisualDescendants(view).OfType<ComboBox>();
@@ -740,7 +730,6 @@ namespace VRMR.App.Tests
 
                 await s.Host.Session.OpenAsync(s.Shell.Library.Items[0].Path);
                 await WaitSolved(s);
-                Assert.True(atPlayhead.IsEffectivelyEnabled);
                 Assert.Null(s.Host.Session.Take.Edits.Calib);
             });
         }
@@ -836,114 +825,71 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public async Task ReviewShowsFramesBesideTheTimecodeAndKeepsStatusClearOfTheFoldout()
-        {
-            await HeadlessUi.RunAsync(async () =>
-            {
-                using var s = await OpenTake(width: 1100);
-                var live = s.Window.FindControl<VRMR.App.Controls.IconToggle>("LiveButton");
-                var library = s.Window.FindControl<Border>("LibraryHost");
-                var libraryButtons = VisualExtensions.GetVisualDescendants(library).OfType<Button>();
-                var hide = Assert.Single(libraryButtons, b => Equals(ToolTip.GetTip(b), "Hide library (Ctrl+1)"));
-                double liveRight = live.TranslatePoint(new Point(live.Bounds.Width, 0), library).Value.X;
-                var hideStart = hide.TranslatePoint(default, library).Value;
-                Assert.Equal(live.TranslatePoint(default, library).Value.Y, hideStart.Y);
-                Assert.True(liveRight <= hideStart.X);
-                Assert.True(hideStart.X + hide.Bounds.Width <= library.Bounds.Width);
-                Assert.True(live.TryFindResource("AccentBrush", live.ActualThemeVariant, out object accent));
-                Assert.Equal(accent, live.BorderBrush);
-
-                var take = s.Host.Session.Take;
-                var clip = s.Host.Session.Clip;
-                var counter = s.Window.FindControl<TextBlock>("FrameCounter");
-                s.Host.Clock.Seek(1, take.Duration);
-                int frame = clip.FrameAt(take.Edits.SourceToEdited(1, take.Duration));
-                Assert.Equal($"frame {frame}/{clip.Frames - 1}", counter.Text);
-                Assert.Empty(s.Window.Viewport.Scene.OverlayRight);
-                var status = s.Window.FindControl<TextBlock>("ViewStatus");
-                Assert.Contains("IK solve", status.Text);
-                Assert.DoesNotContain("frame ", status.Text);
-
-                s.Shell.LibraryOpen = false;
-                await HeadlessUi.SettleAsync(20);
-                var buttons = VisualExtensions.GetVisualDescendants(s.Window).OfType<Button>();
-                var reopen = Assert.Single(buttons, b => Equals(ToolTip.GetTip(b), "Show library (Ctrl+1)"));
-                var right = reopen.TranslatePoint(new Point(reopen.Bounds.Width, 0), s.Window).Value;
-                Assert.True(status.TranslatePoint(default, s.Window).Value.X > right.X);
-            });
-        }
-
-        [Fact]
-        public async Task SettingsToggleOpensAndClosesThePageAndReflectsEscape()
+        public async Task WorkflowTabsSwitchPanelsAndKeepTheOpenTake()
         {
             await HeadlessUi.RunAsync(async () =>
             {
                 using var s = await OpenTake();
-                var toggle = s.Window.FindControl<VRMR.App.Controls.IconToggle>("SettingsToggle");
-                var page = s.Window.FindControl<ContentControl>("PageHost");
-                var centre = new Point(toggle.Bounds.Width / 2, toggle.Bounds.Height / 2);
-                var point = toggle.TranslatePoint(centre, s.Window).Value;
+                var tabs = s.Window.FindControl<ListBox>("WorkflowSwitch");
+                var grid = s.Window.FindControl<Grid>("MainGrid");
+                var takes = s.Shell.Takes;
+                var take = s.Host.Session.Take;
+                tabs.SelectedIndex = TakesWorkspaceViewModel.RecordMode;
+                Assert.True(s.Shell.ShowCalibrations);
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(takes.ShowDevicesTab);
+                Assert.True(s.Window.GetVisualDescendantOfType<ViewOverlay>().IsEffectivelyVisible);
+                takes.ShowDevices = false;
+                Assert.False(s.Window.Viewport.Options.Devices);
+                takes.ShowDevices = true;
+                Assert.True(s.Window.Viewport.Options.Devices);
+                Assert.False(s.Shell.TimelineVisible);
+                Assert.Null(s.Window.Viewport.Scene.Profile);
+                Assert.Empty(s.Window.Viewport.Scene.Markers);
+                Assert.False(takes.ShowEmpty);
+                var snapshot = new CalibrationSnapshot { Name = "Standing T-pose" };
+                snapshot.Devices.Add(new CalibrationSnapshot.Device { Class = 1 });
+                s.Host.Recorder.Calibrations.Save(snapshot);
+                Assert.True(await HeadlessUi.WaitForAsync(() =>
+                    takes.Inspector.SavedCalibrations.Any(c => c.Id == snapshot.Id)));
+                HeadlessUi.Capture(s.Window, "flow-record");
 
-                void Click()
+                tabs.SelectedIndex = TakesWorkspaceViewModel.ExportMode;
+                Assert.True(takes.ShowExportTab);
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(s.Window.GetVisualDescendantOfType<LibraryPanel>().IsEffectivelyVisible);
+
+                foreach (int mode in new[] { TakesWorkspaceViewModel.ViewMode, TakesWorkspaceViewModel.EditMode })
                 {
-                    s.Window.MouseDown(point, MouseButton.Left);
-                    s.Window.MouseUp(point, MouseButton.Left);
+                    tabs.SelectedIndex = mode;
+                    Assert.Equal(mode == TakesWorkspaceViewModel.ViewMode, takes.ShowTakeTab);
+                    Assert.True(s.Shell.TimelineVisible);
+                    Assert.NotNull(s.Window.Viewport.Scene.Profile);
+                    Assert.False(s.Shell.ShowCalibrations);
+                    Assert.True(s.Shell.LibraryOpen);
+                    Assert.True(grid.ColumnDefinitions[0].Width.Value > 0);
                 }
 
-                Assert.False(toggle.IsChecked);
-                Click();
-                Assert.True(page.IsVisible);
-                Assert.True(toggle.IsChecked);
-                Assert.True(toggle.TryFindResource("AccentBrush", toggle.ActualThemeVariant, out object accent));
-                Assert.Equal(accent, toggle.BorderBrush);
-                Click();
-                Assert.False(page.IsVisible);
-                Assert.False(toggle.IsChecked);
-                Assert.NotEqual(accent, toggle.BorderBrush);
-
-                s.Shell.OpenSettingsCommand.Execute(null);
-                Assert.True(toggle.IsChecked);
-                s.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
-                Assert.False(toggle.IsChecked);
-                Assert.False(page.IsVisible);
+                Assert.Same(take, s.Host.Session.Take);
             });
         }
 
         [Fact]
-        public async Task SidePanelButtonsReopenBothPanelsAndDevicesIsTheFirstTab()
+        public async Task SettingsButtonOpensThePageAndEscapeClosesIt()
         {
             await HeadlessUi.RunAsync(async () =>
             {
-                using var s = await OpenTake(width: 1100);
-                async Task Click(string tip)
-                {
-                    var buttons = VisualExtensions.GetVisualDescendants(s.Window).OfType<Button>();
-                    var button = Assert.Single(buttons, b => b.IsEffectivelyVisible && Equals(ToolTip.GetTip(b), tip));
-                    var centre = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
-                    var point = button.TranslatePoint(centre, s.Window).Value;
-                    s.Window.MouseDown(point, MouseButton.Left);
-                    s.Window.MouseUp(point, MouseButton.Left);
-                    await HeadlessUi.SettleAsync(20);
-                }
+                using var s = await OpenTake();
+                var button = s.Window.FindControl<Button>("SettingsButton");
+                var page = s.Window.FindControl<ContentControl>("PageHost");
 
-                await Click("Hide library (Ctrl+1)");
-                await Click("Hide inspector (Ctrl+2)");
-                Assert.False(s.Shell.LibraryOpen);
-                Assert.False(s.Shell.InspectorOpen);
-                await Click("Show library (Ctrl+1)");
-                await Click("Show inspector (Ctrl+2)");
-                Assert.True(s.Shell.LibraryOpen);
-                Assert.True(s.Shell.InspectorOpen);
+                button.Command.Execute(null);
+                await HeadlessUi.SettleAsync();
+                Assert.True(page.IsVisible);
 
-                var inspector = s.Window.FindControl<UserControl>("TakesInspectorView");
-                var tabs = inspector.FindControl<ListBox>("Tabs");
-                Assert.Equal(["Devices", "Take", "Export"], tabs.Items.Cast<ListBoxItem>().Select(t => (string)t.Content));
-                tabs.SelectedIndex = 0;
-                Assert.True(s.Shell.Takes.ShowDevicesTab);
-                tabs.SelectedIndex = 1;
-                Assert.True(s.Shell.Takes.ShowTakeTab);
-                tabs.SelectedIndex = 2;
-                Assert.True(s.Shell.Takes.ShowExportTab);
+                s.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                Assert.False(page.IsVisible);
+                Assert.False(s.Shell.SettingsOpen);
             });
         }
 
@@ -971,24 +917,19 @@ namespace VRMR.App.Tests
                 double resized = timeline.Bounds.Height;
                 Assert.True(resized > original);
 
-                async Task Click()
-                {
-                    var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), s.Window).Value;
-                    s.Window.MouseDown(point, MouseButton.Left);
-                    s.Window.MouseUp(point, MouseButton.Left);
-                    await HeadlessUi.SettleAsync(20);
-                }
-
-                await Click();
-                Assert.False(s.Shell.TimelineOpen);
+                s.Shell.ToggleTimelineCommand.Execute(null);
+                await HeadlessUi.SettleAsync(20);
+                Assert.False(s.Shell.TimelineVisible);
                 Assert.Equal("Show timeline (Ctrl+3)", ToolTip.GetTip(button));
                 s.Window.KeyPress(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
                 await HeadlessUi.SettleAsync(20);
                 Assert.Equal(resized, timeline.Bounds.Height);
                 s.Window.KeyPress(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
                 await HeadlessUi.SettleAsync(20);
-                await Click();
-                Assert.True(s.Shell.TimelineOpen);
+                Assert.False(s.Shell.TimelineVisible);
+                s.Shell.ToggleTimelineCommand.Execute(null);
+                await HeadlessUi.SettleAsync(20);
+                Assert.True(s.Shell.TimelineVisible);
                 Assert.Equal(resized, timeline.Bounds.Height);
                 Assert.Equal("Hide timeline (Ctrl+3)", ToolTip.GetTip(button));
             });
@@ -1000,6 +941,27 @@ namespace VRMR.App.Tests
             await HeadlessUi.RunAsync(async () =>
             {
                 using var s = await OpenTake();
+                async Task Click(string tip)
+                {
+                    var buttons = VisualExtensions.GetVisualDescendants(s.Window).OfType<Button>();
+                    var button = Assert.Single(buttons,
+                        b => b.IsEffectivelyVisible && Equals(ToolTip.GetTip(b), tip));
+                    var centre = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
+                    var point = button.TranslatePoint(centre, s.Window).Value;
+                    s.Window.MouseDown(point, MouseButton.Left);
+                    s.Window.MouseUp(point, MouseButton.Left);
+                    await HeadlessUi.SettleAsync(20);
+                }
+
+                await Click("Hide library (Ctrl+1)");
+                await Click("Hide inspector (Ctrl+2)");
+                Assert.False(s.Shell.LibraryOpen);
+                Assert.False(s.Shell.InspectorOpen);
+                await Click("Show library (Ctrl+1)");
+                await Click("Show inspector (Ctrl+2)");
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(s.Shell.InspectorOpen);
+
                 s.Window.KeyPress(Key.D1, RawInputModifiers.Control, PhysicalKey.Digit1, null);
                 s.Window.KeyPress(Key.D2, RawInputModifiers.Control, PhysicalKey.Digit2, null);
                 Assert.False(s.Shell.LibraryOpen);

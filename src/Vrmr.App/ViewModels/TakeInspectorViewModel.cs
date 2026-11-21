@@ -254,6 +254,8 @@ namespace VRMR.App.ViewModels
             SyncAll();
         }
 
+        public IReadOnlyList<CalibrationSnapshot> SavedCalibrations => _calibration.SavedCalibrations;
+
         public CalibrationSettingsViewModel Settings { get; }
 
         /// <summary>Asks the view for a model file inside a Unity project.</summary>
@@ -742,6 +744,7 @@ namespace VRMR.App.ViewModels
 
         void SyncCalibration()
         {
+            OnPropertyChanged(nameof(SavedCalibrations));
             var r = _session.Take;
             _syncing = true;
             try

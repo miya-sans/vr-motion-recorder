@@ -44,6 +44,7 @@ namespace VRMR.App.Views
             _shell = shell;
             DataContext = shell;
             Section.StateStore = shell.Host.UiState;
+            NumberField.SetGestureSource(LibraryHost, shell.Takes);
             NumberField.SetGestureSource(InspectorHost, shell.Takes);
             ViewHost.SizeChanged += (_, e) =>
             {
@@ -54,7 +55,7 @@ namespace VRMR.App.Views
             shell.PropertyChanged += (o, e) =>
             {
                 if (e.PropertyName is nameof(ShellViewModel.LibraryOpen) or nameof(ShellViewModel.InspectorOpen)
-                    or nameof(ShellViewModel.TimelineOpen)) ApplyPanelSizes();
+                    or nameof(ShellViewModel.TimelineVisible)) ApplyPanelSizes();
             };
             shell.Library.ConfirmDelete = ConfirmDeleteAsync;
             shell.Library.PickFile = PickTakeAsync;
@@ -79,7 +80,7 @@ namespace VRMR.App.Views
             shell.Takes.AttachView(View);
             var settings = new SettingsPage { DataContext = shell.SettingsPage };
             settings.FindControl<ContentControl>("CalibrationDefaultsHost").Content = new CalibrationSettingsView
-                { DataContext = shell.CalibrationDefaults };
+            { DataContext = shell.CalibrationDefaults };
             PageHost.Content = settings;
             FirstRunHost.Content = new FirstRunView { DataContext = shell.FirstRun };
             TakesInspectorView.SetExportView(new ExportView { DataContext = new ExportViewModel(shell.Host) });
@@ -102,27 +103,28 @@ namespace VRMR.App.Views
         {
             if (_shell == null) return;
             var cols = MainGrid.ColumnDefinitions;
-            cols[0].Width = _shell.LibraryOpen ? new GridLength(Math.Max(200, _shell.LibraryWidth)) : new GridLength(0);
+            cols[0].Width = _shell.LibraryOpen ? new GridLength(Math.Max(200, _shell.LibraryWidth)) : GridLength.Auto;
             cols[0].MinWidth = _shell.LibraryOpen ? 200 : 0;
             bool side = _shell.InspectorOpen && !_narrow;
-            cols[4].Width = side ? new GridLength(Math.Max(280, _shell.InspectorWidth)) : new GridLength(0);
+            cols[4].Width = side ? new GridLength(Math.Max(280, _shell.InspectorWidth)) : GridLength.Auto;
             cols[4].MinWidth = side ? 280 : 0;
             // narrow windows: the inspector lies over the right edge of the view
-            Grid.SetColumn(InspectorHost, _narrow ? 2 : 4);
-            InspectorHost.HorizontalAlignment = _narrow ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+            bool overlay = _narrow && _shell.InspectorOpen;
+            Grid.SetColumn(InspectorHost, overlay ? 2 : 4);
+            InspectorHost.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
             InspectorHost.VerticalAlignment = _narrow ? VerticalAlignment.Top : VerticalAlignment.Stretch;
             InspectorHost.MaxHeight = _narrow ? ViewHost.Bounds.Height : double.PositiveInfinity;
-            InspectorHost.Width = _narrow ? Math.Max(280, _shell.InspectorWidth) : double.NaN;
-            InspectorHost.BorderThickness = _narrow ? new Thickness(1, 0, 0, 0) : default;
+            InspectorHost.Width = overlay ? Math.Max(280, _shell.InspectorWidth) : double.NaN;
+            InspectorHost.BorderThickness = overlay ? new Thickness(1, 0, 0, 0) : default;
             InspectorHost.BorderBrush = this.TryFindResource("BorderBrush", ActualThemeVariant, out object b)
                 ? b as IBrush
                 : null;
             InspectorSplitter.IsVisible = side;
             var rows = CentreGrid.RowDefinitions;
-            rows[2].Height = _shell.TimelineOpen
+            rows[2].Height = _shell.TimelineVisible
                 ? new GridLength(Math.Max(96, _shell.TimelineHeight))
                 : new GridLength(0);
-            rows[2].MinHeight = _shell.TimelineOpen ? 96 : 0;
+            rows[2].MinHeight = _shell.TimelineVisible ? 96 : 0;
         }
 
         protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -196,7 +198,9 @@ namespace VRMR.App.Views
             var start = await StorageProvider.TryGetFolderFromPathAsync(_shell.Library.Folder);
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Open a take", AllowMultiple = false, SuggestedStartLocation = start,
+                Title = "Open a take",
+                AllowMultiple = false,
+                SuggestedStartLocation = start,
                 FileTypeFilter = new[]
                     { new FilePickerFileType("VR Motion Recorder take") { Patterns = new[] { "*.vrmr" } } }
             });
@@ -271,6 +275,8 @@ namespace VRMR.App.Views
                         e.Handled = true;
                         return;
                     case Key.F:
+                        if (_shell.IsTakes && _shell.ShowCalibrations)
+                            _shell.Takes.WorkflowIndex = TakesWorkspaceViewModel.ViewMode;
                         _shell.LibraryOpen = true;
                         this.GetVisualDescendantOfType<LibraryPanel>()?.FocusSearch();
                         e.Handled = true;
@@ -280,7 +286,7 @@ namespace VRMR.App.Views
                         e.Handled = true;
                         return;
                     case Key.D1:
-                        _shell.LibraryOpen = !_shell.LibraryOpen;
+                        _shell.ToggleLibraryCommand.Execute(null);
                         e.Handled = true;
                         return;
                     case Key.D2:
@@ -294,7 +300,7 @@ namespace VRMR.App.Views
                 }
             }
 
-            if (Typing || _shell.SettingsOpen || _shell.HelpOpen || _shell.FirstRun.IsOpen || !_shell.IsTakes) return;
+            if (_shell.ShowCalibrations || Typing || _shell.SettingsOpen || _shell.HelpOpen || _shell.FirstRun.IsOpen || !_shell.IsTakes) return;
 
             var takes = _shell.Takes;
             if (ctrl)
