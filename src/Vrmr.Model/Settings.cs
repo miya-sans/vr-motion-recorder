@@ -64,7 +64,12 @@ namespace VRMR
         public string LastScene = "";
 
         public int LegacyPort = 9001;
-        public bool ListenLegacyPort = true; // also bind 9001 if free
+        /// <summary>
+        ///     Also listen on <see cref="LegacyPort" /> when VRChat does not find the app through OSCQuery. Off by
+        ///     default: face tracking apps such as Cymple own port 9001. Saved under a new key so the old default (on)
+        ///     is not carried over.
+        /// </summary>
+        public bool ListenLegacyPort;
         public int OpenVRRate = 90;
 
         public bool
@@ -187,7 +192,7 @@ namespace VRMR
                         AvatarModelMap[kv.Key] = v;
             DefaultAvatar = d.GetStr("defaultAvatar", DefaultAvatar);
             UseOscQuery = d.GetBool("useOscQuery", UseOscQuery);
-            ListenLegacyPort = d.GetBool("listenLegacyPort", ListenLegacyPort);
+            ListenLegacyPort = d.GetBool("udpFallback", ListenLegacyPort);
             LegacyPort = d.GetInt("legacyPort", LegacyPort);
             VrcInputPort = d.GetInt("vrcInputPort", VrcInputPort);
             EnableOpenVR = d.GetBool("enableOpenVR", EnableOpenVR);
@@ -272,7 +277,7 @@ namespace VRMR
             d["avatarModelMap"] = map;
             d["defaultAvatar"] = DefaultAvatar;
             d["useOscQuery"] = UseOscQuery;
-            d["listenLegacyPort"] = ListenLegacyPort;
+            d["udpFallback"] = ListenLegacyPort;
             d["legacyPort"] = LegacyPort;
             d["vrcInputPort"] = VrcInputPort;
             d["enableOpenVR"] = EnableOpenVR;

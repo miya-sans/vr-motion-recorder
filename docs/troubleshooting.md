@@ -5,8 +5,8 @@ Logs are kept in `%APPDATA%\VRMotionRecorder\logs`. Each run writes a separate `
 ## Nothing arrives from VRChat
 
 - Switch OSC on in VRChat: Action Menu → Options → OSC → Enabled.
-- If another program already uses UDP port 9001 and VRChat was started first, switch VRChat's OSC off and on once. VRChat then finds the recorder through OSCQuery and sends to it as well.
-- A firewall that blocks local multicast (mDNS, UDP 5353) stops OSCQuery discovery. The app still listens on port 9001 when that port is free.
+- If VRChat was started first, switch VRChat's OSC off and on once, or start the recorder before VRChat. VRChat then finds the recorder through OSCQuery and sends to it alongside other OSC apps.
+- A firewall that blocks local multicast (mDNS, UDP 5353) stops OSCQuery discovery. *Also listen on UDP 9001* (Settings → Sources, off by default) then lets the app use VRChat's default port while VRChat runs and has not found the app for 30 seconds. Leave it off with face tracking apps such as Cymple, which own port 9001.
 
 ## No face tracking in the take
 

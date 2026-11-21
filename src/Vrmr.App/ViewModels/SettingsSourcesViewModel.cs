@@ -144,11 +144,11 @@ namespace VRMR.App.ViewModels
                     $"Not listening on UDP {port}: VRChat is found through OSCQuery only.");
             else if (!_host.CaptureOn)
                 LegacyPortState.Set(SourceLevel.Off, $"UDP {port} is used from the next normal start.");
-            else if (recorder.LegacyRx != null) LegacyPortState.Set(SourceLevel.Ok, $"Listening on UDP {port}.");
+            else if (recorder.LegacyRx != null)
+                LegacyPortState.Set(SourceLevel.Ok, $"Listening on UDP {port}: VRChat was not found through OSCQuery.");
             else
-                LegacyPortState.Set(SourceLevel.Waiting,
-                    $"UDP {port} is not open: another program uses it, or the app was started with this switch off.",
-                    "Nothing to do when VRChat shows as receiving: OSCQuery is enough. Otherwise close the other program, or restart the app after switching this on.");
+                LegacyPortState.Set(SourceLevel.Ok,
+                    $"UDP {port} is left free for other apps. It is used only when VRChat runs and is not found through OSCQuery for {Recorder.LegacyGraceSeconds:0} s, and only while no other program has it.");
 
             var face = live?.FirstOrDefault(x => x.Id == SourceStatus.Face);
             if (face != null) Face.Set(face);

@@ -117,8 +117,9 @@ namespace VRMR.App.Services
                 list.Add(new SourceState
                 {
                     Id = VrChat, Label = "VRChat", StateText = "no OSC", Level = SourceLevel.Warning,
-                    Detail = "VRChat is running but sends no OSC." + world + body,
-                    Fix = "Turn OSC on in VRChat: Action Menu → Options → OSC → Enabled."
+                    Detail = "VRChat is running but sends no OSC to the app." + world + body,
+                    Fix =
+                        "Turn OSC on in VRChat: Action Menu → Options → OSC → Enabled. If it is on, switch it off and on so VRChat finds the app, or start the app before VRChat."
                 });
             else
                 list.Add(new SourceState

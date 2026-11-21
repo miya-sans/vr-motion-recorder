@@ -590,7 +590,7 @@ namespace VRMR.App.Tests
                 // the sources as a test may run them: OSC on a private port only, no OSCQuery advertising, no SteamVR, the log in the sandbox
                 var s = new Dictionary<string, object>
                 {
-                    ["useOscQuery"] = false, ["listenLegacyPort"] = true, ["legacyPort"] = OscPort,
+                    ["useOscQuery"] = false, ["udpFallback"] = true, ["legacyPort"] = OscPort,
                     ["enableOpenVR"] = false,
                     ["enableHumr"] = true, ["watchCalibrations"] = true, ["recordTriggerParam"] = "Test/Record"
                 };

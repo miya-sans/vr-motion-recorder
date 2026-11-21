@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -14,6 +15,9 @@ namespace VRMR
     /// </summary>
     public sealed class Recorder : IDisposable
     {
+        /// <summary>Seconds VRChat gets to find the recorder through OSCQuery before UDP 9001 is used instead.</summary>
+        public const double LegacyGraceSeconds = 30;
+
         public readonly object LiveLock = new();
 
         // ---- live state (for UI) ----
@@ -125,20 +129,12 @@ namespace VRMR
                 catch (Exception ex) { AppLog.Error("OSCQuery start failed: " + ex.Message); }
             }
 
-            // legacy: VRChat's default output port, only if nobody else owns it (retried in the background)
+            // legacy: VRChat's default output port, a fallback held only while OSCQuery does not deliver, so apps that
+            // need the port (VRCFaceTracking modules and others) keep it
             if (_settings.ListenLegacyPort)
             {
-                if (!TryBindLegacy())
-                    AppLog.Info("UDP " + _settings.LegacyPort +
-                                " is in use by another app; relying on OSCQuery (will retry)");
-                new Thread(() =>
-                {
-                    while (!_disposed)
-                    {
-                        Thread.Sleep(5000);
-                        if (LegacyRx == null && !_disposed) TryBindLegacy();
-                    }
-                }) { IsBackground = true, Name = "udp retry" }.Start();
+                if (OscQueryRx == null) TryBindLegacy();
+                new Thread(WatchLegacyPort) { IsBackground = true, Name = "udp fallback" }.Start();
             }
 
             if (_settings.EnableOpenVR) StartOpenVR();
@@ -160,6 +156,59 @@ namespace VRMR
                 Thread.Sleep(2500);
                 TryRefreshSnapshot();
             }) { IsBackground = true }.Start();
+        }
+
+        /// <summary>
+        ///     Whether to hold VRChat's default output port: always without OSCQuery (the port is then the only way in),
+        ///     otherwise only while VRChat runs and OSCQuery has not delivered for <see cref="LegacyGraceSeconds" />
+        ///     (VRChat finds the recorder within a few seconds when discovery works).
+        /// </summary>
+        public static bool WantsLegacyPort(bool vrchatRunning, double vrchatSeconds, bool oscQueryOn,
+            double oscQuerySilentSeconds)
+        {
+            if (!oscQueryOn) return true;
+            return vrchatRunning && vrchatSeconds >= LegacyGraceSeconds && oscQuerySilentSeconds >= LegacyGraceSeconds;
+        }
+
+        void WatchLegacyPort()
+        {
+            double vrchatSince = -1;
+            while (!_disposed)
+            {
+                double now = Clock.Now;
+                bool running = IsVrChatRunning();
+                if (!running) vrchatSince = -1;
+                else if (vrchatSince < 0) vrchatSince = now;
+                var rx = OscQueryRx;
+                double silent = rx == null || rx.LastPacketTime <= 0 ? double.MaxValue : now - rx.LastPacketTime;
+                bool want = WantsLegacyPort(running, running ? now - vrchatSince : 0, rx != null, silent);
+                if (want && LegacyRx == null)
+                {
+                    if (TryBindLegacy())
+                        AppLog.Info("OSCQuery has not delivered: listening on UDP " + _settings.LegacyPort +
+                                    " as a fallback");
+                }
+                else if (!want && LegacyRx != null) ReleaseLegacy();
+
+                Thread.Sleep(5000);
+            }
+        }
+
+        static bool IsVrChatRunning()
+        {
+            var found = Process.GetProcessesByName("VRChat");
+            foreach (var p in found) p.Dispose();
+            return found.Length > 0;
+        }
+
+        void ReleaseLegacy()
+        {
+            var rx = LegacyRx;
+            LegacyRx = null;
+            try { rx?.Dispose(); }
+            catch { }
+
+            AppLog.Info("Released UDP " + _settings.LegacyPort + " for other apps");
         }
 
         bool TryBindLegacy()

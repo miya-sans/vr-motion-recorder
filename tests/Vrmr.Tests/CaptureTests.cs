@@ -11,6 +11,20 @@ using Xunit;
 
 namespace VRMR.Tests
 {
+    public class LegacyPortTests
+    {
+        [Fact]
+        public void Port9001IsHeldOnlyWhileVrchatRunsWithoutOscQuery()
+        {
+            const double grace = Recorder.LegacyGraceSeconds;
+            Assert.False(Recorder.WantsLegacyPort(false, 0, true, double.MaxValue));
+            Assert.False(Recorder.WantsLegacyPort(true, grace - 1, true, double.MaxValue));
+            Assert.True(Recorder.WantsLegacyPort(true, grace, true, double.MaxValue));
+            Assert.False(Recorder.WantsLegacyPort(true, grace * 10, true, 1));
+            Assert.True(Recorder.WantsLegacyPort(false, 0, false, double.MaxValue));
+        }
+    }
+
     public class LogTailerTests
     {
         const string Log1 = "output_log_2026-01-01_10-00-00.txt", Log2 = "output_log_2026-01-01_11-00-00.txt";

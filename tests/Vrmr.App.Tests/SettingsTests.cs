@@ -68,7 +68,7 @@ namespace VRMR.App.Tests
                 Assert.Equal("Menu/Record", s.RecordTriggerParam);
                 Assert.Equal("Menu/Record", settings.Recording.TriggerParameter);
                 Assert.False(s.CaptureFingers);
-                Assert.False(s.ListenLegacyPort);
+                Assert.True(s.ListenLegacyPort);
                 Assert.False(s.EnableOpenVR);
                 foreach (string name in new[]
                          {
