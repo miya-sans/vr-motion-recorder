@@ -10,7 +10,7 @@
    - Unity (2022.3 or later): install the [package](../integrations/unity/com.vrmr.motion-bridge/README.md) by Git URL, export into your project, and run **Tools → VR Motion Bridge → Create Timeline From Scene**.
 
      ```
-     https://github.com/miya-sans/vrc-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge
+     https://github.com/miya-sans/vr-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge
      ```
 
 ## Launch options

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         The head and hand offsets and the body behaviour were measured against VRChat on one setup (see
-        [docs/accuracy.md](https://github.com/miya-sans/vrc-motion-recorder/blob/main/docs/accuracy.md)). Reports
+        [docs/accuracy.md](https://github.com/miya-sans/vr-motion-recorder/blob/main/docs/accuracy.md)). Reports
         from other hardware decide which devices get their own profile. A report that says "works fine" is useful too.
 
         Please leave serial numbers out of what you type. Only attach takes you are comfortable sharing in public:

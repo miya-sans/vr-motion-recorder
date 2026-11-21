@@ -29,7 +29,7 @@ Full list: [features.md](docs/features.md)
 
 ### Download and first run
 
-1. Download `VRMotionRecorder-<version>-win-x64.zip` from the [releases page](https://github.com/miya-sans/vrc-motion-recorder/releases).
+1. Download `VRMotionRecorder-<version>-win-x64.zip` from the [releases page](https://github.com/miya-sans/vr-motion-recorder/releases).
 2. Unzip it anywhere and start `VRMotionRecorder.exe`. There is no installer and nothing else to install. Windows may warn about an app it does not know yet; choose *More info → Run anyway*.
 3. The first run walks you through a short setup: what it found (SteamVR, VRChat, Blender, Unity projects), where to keep recordings, and which avatar to use. Every step can be skipped and changed later in Settings.
 
@@ -47,8 +47,8 @@ Full guide: [usage.md](docs/usage.md)
 You need [Git](https://git-scm.com) and the [.NET SDK 10](https://dotnet.microsoft.com/download) or later:
 
 ```
-git clone https://github.com/miya-sans/vrc-motion-recorder
-cd vrc-motion-recorder
+git clone https://github.com/miya-sans/vr-motion-recorder
+cd vr-motion-recorder
 build.cmd
 ```
 
@@ -83,7 +83,7 @@ build.cmd
 
 ## Contributing and support
 
-Bug reports, device reports and feature requests go through the [issue forms](https://github.com/miya-sans/vrc-motion-recorder/issues/new/choose). The solve was measured on one setup: reports from other headsets, controllers and trackers are especially welcome. Please read the [code of conduct](CODE_OF_CONDUCT.md), and report security problems privately as [SECURITY.md](SECURITY.md) says.
+Bug reports, device reports and feature requests go through the [issue forms](https://github.com/miya-sans/vr-motion-recorder/issues/new/choose). The solve was measured on one setup: reports from other headsets, controllers and trackers are especially welcome. Please read the [code of conduct](CODE_OF_CONDUCT.md), and report security problems privately as [SECURITY.md](SECURITY.md) says.
 
 ## Credits
 

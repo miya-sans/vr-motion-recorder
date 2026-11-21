@@ -62,4 +62,4 @@ The app is still running, so the new build cannot replace it. Close the app and 
 
 ## Still stuck
 
-Open a [bug report](https://github.com/miya-sans/vrc-motion-recorder/issues/new/choose). Read your log before you attach it: it can contain folder paths with your Windows user name, avatar names and world names.
+Open a [bug report](https://github.com/miya-sans/vr-motion-recorder/issues/new/choose). Read your log before you attach it: it can contain folder paths with your Windows user name, avatar names and world names.

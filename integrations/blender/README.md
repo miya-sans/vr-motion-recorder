@@ -1,6 +1,6 @@
 # VR Motion Recorder Bridge for Blender
 
-A Blender add-on for [VR Motion Recorder](https://github.com/miya-sans/vrc-motion-recorder). It imports exported
+A Blender add-on for [VR Motion Recorder](https://github.com/miya-sans/vr-motion-recorder). It imports exported
 takes and scenes with everything in step (your avatar's meshes, armature, face shape keys, the recorded face and
 avatar parameters, cameras), helps you move the motion onto your own rig, and sends your edits on to Unity.
 
@@ -11,7 +11,7 @@ Works in Blender 4.2 LTS up to 5.3. It uses slotted actions where Blender has th
 Pick one. Both give the same add-on.
 
 - **As an extension (recommended).** Download `vrmr_bridge-<version>.zip` from the
-  [releases page](https://github.com/miya-sans/vrc-motion-recorder/releases) and drag it into the Blender window, or
+  [releases page](https://github.com/miya-sans/vr-motion-recorder/releases) and drag it into the Blender window, or
   use *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*.
 - **As a single file.** Take `vrmr_bridge.py` from this folder (or from a release), then
   *Edit → Preferences → Add-ons → ⌄ → Install from Disk…*, pick the file and tick the add-on.

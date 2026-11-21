@@ -1,6 +1,6 @@
 # VR Motion Bridge for Unity
 
-The Unity side of [VR Motion Recorder](https://github.com/miya-sans/vrc-motion-recorder). It takes what the app (or
+The Unity side of [VR Motion Recorder](https://github.com/miya-sans/vr-motion-recorder). It takes what the app (or
 its Blender add-on) exports and makes it play on your avatar: FBX clips become Humanoid, face and parameter curves
 become clips, and a take or a whole scene becomes a Timeline you can render with physics on top.
 
@@ -16,13 +16,13 @@ It is an editor-only package. Nothing from it ends up in a build or in an upload
 In Unity: **Window → Package Manager → + → Add package from git URL…** and paste
 
 ```
-https://github.com/miya-sans/vrc-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge
+https://github.com/miya-sans/vr-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge
 ```
 
 To stay on one release, add its tag to the end, for example `#v1.0.0`.
 
 Without git: download `com.vrmr.motion-bridge-<version>.tgz` from the
-[releases page](https://github.com/miya-sans/vrc-motion-recorder/releases) and use **Add package from tarball…**.
+[releases page](https://github.com/miya-sans/vr-motion-recorder/releases) and use **Add package from tarball…**.
 
 If you used the bridge as loose scripts before (a folder `Assets/VRMotionBridge`), delete that folder first. The
 package contains the same scripts with the same ids, and Unity cannot have both.
@@ -65,7 +65,7 @@ are animated, so they simulate on top. Unity Recorder can render the result.
   command switches the Animator to Generic.
 
 Measured numbers are in the main repository's
-[export documentation](https://github.com/miya-sans/vrc-motion-recorder/blob/main/docs/export-and-pipeline.md).
+[export documentation](https://github.com/miya-sans/vr-motion-recorder/blob/main/docs/export-and-pipeline.md).
 
 ## Good to know
 

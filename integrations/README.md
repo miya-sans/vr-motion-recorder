@@ -6,7 +6,7 @@ comfortable. Both are optional, live outside the .NET solution, and are written 
 | Folder | What | Install |
 |---|---|---|
 | [`blender/`](blender/README.md) | Blender add-on (Python, Blender 4.2 to 5.3): import takes and scenes, retarget, send edits to Unity. | Extension zip from a release, or `vrmr_bridge.py` as a single-file add-on. |
-| [`unity/com.vrmr.motion-bridge/`](unity/com.vrmr.motion-bridge/README.md) | Unity editor package (C#, Unity 2022.3+): Humanoid set-up, clips and Timelines from exports. | Package Manager, by Git URL: `https://github.com/miya-sans/vrc-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge` |
+| [`unity/com.vrmr.motion-bridge/`](unity/com.vrmr.motion-bridge/README.md) | Unity editor package (C#, Unity 2022.3+): Humanoid set-up, clips and Timelines from exports. | Package Manager, by Git URL: `https://github.com/miya-sans/vr-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge` |
 
 The two share one version number (the Blender add-on's `bl_info` and manifest, the Unity package's `package.json`),
 because they exchange files with each other. The file formats they read are described in

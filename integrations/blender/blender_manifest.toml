@@ -9,7 +9,7 @@ name = "VR Motion Recorder Bridge"
 tagline = "Import VR Motion Recorder takes and scenes, send edits to Unity"
 maintainer = "VR Motion Recorder contributors"
 type = "add-on"
-website = "https://github.com/miya-sans/vrc-motion-recorder"
+website = "https://github.com/miya-sans/vr-motion-recorder"
 
 tags = ["Animation", "Import-Export"]
 
