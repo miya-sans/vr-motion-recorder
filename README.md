@@ -37,7 +37,7 @@ Full list: [features.md](docs/features.md)
 
 Full guide: [usage.md](docs/usage.md)
 
-1. Start SteamVR and check your devices in the live view.
+1. Start SteamVR and check your devices in Record.
 2. Press **F9** to start and stop recording.
 3. Open the take to review or trim it.
 4. Export an FBX or Unity animation clip.

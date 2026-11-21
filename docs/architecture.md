@@ -65,7 +65,7 @@ Fingers come from SteamVR Skeletal Input: real curl and splay on controllers tha
 ## Recording timing
 
 - The take file is written while you record, every 200 ms, so a crash or a power cut keeps everything up to the last fraction of a second.
-- Recording is cheap: OSC is parsed without allocations on its own thread, SteamVR is polled at 90 Hz in the background, and the 3D view drops to a skeleton while recording.
+- Recording is cheap: OSC is parsed without allocations on its own thread, SteamVR is polled at 90 Hz in the background, and Record previews live SteamVR devices.
 
 Every stream shares one high-resolution clock, so face, body and camera stay in step.
 
@@ -158,7 +158,7 @@ A HUMR recorder stamps VRChat's bones with VRChat's game clock, which falls behi
 
 Takes store the play area and the base stations as they were when recording started (about 0.8 KB), so a replay shows them where they were around the body. Base stations are for orientation only: they do not feed the solve.
 
-While recording in a world with a HUMR recorder, VRChat's own skeleton is drawn over the devices. VRChat's world is not SteamVR's playspace (it differs by the spawn point, every thumbstick move and the tracking scale), so the view estimates the mapping from the last 3 s. Replaying recorded takes as if live, VRChat's head lands 4.3 cm (median) from where the headset says it should be and the hands 3.3 cm; 6–10 cm on takes with thumbstick moves, where the mapping catches up within 3 s.
+Record shows only SteamVR devices. The live presenter also supports a VRChat skeleton overlay. VRChat's world is not SteamVR's playspace (it differs by the spawn point, every thumbstick move and the tracking scale), so the view estimates the mapping from the last 3 s. Replaying recorded takes as if live, VRChat's head lands 4.3 cm (median) from where the headset says it should be and the hands 3.3 cm; 6–10 cm on takes with thumbstick moves, where the mapping catches up within 3 s.
 
 ## Threads
 

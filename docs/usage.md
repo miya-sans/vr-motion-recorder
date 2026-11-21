@@ -27,7 +27,7 @@ Two options are useful for trying things out; with `dotnet run`, put them after 
 
 ## The live view
 
-With SteamVR running, the 3D view can show what the devices do right now instead of a take: the headset, the controllers and every tracker with a drop line to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. **Live** sits next to the record button and is a mode of its own: it closes the open take, and the view then shows only the live state. Click a take in the library to open it and leave Live; click **Live** again to return to the last take. Recording also switches to Live.
+With SteamVR running, the 3D view can show what the devices do right now instead of a take: the headset, the controllers and every tracker with a drop line to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. Open **Record** for this SteamVR preview and the saved calibrations. Switch to **View** to review the open take, **Edit** for its timeline or **Export** for output options. Switching tabs keeps the take open.
 
 ## Adjust a recorded take
 

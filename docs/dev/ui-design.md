@@ -15,28 +15,12 @@ The app is a tool people use with a headset pushed up on their forehead, between
 
 ## Window layout
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ ● Record 00:00   [ Takes | Scene ]                    SteamVR ●  VRChat ●  Face ●   ⚙  ? │  top bar, 48 px
-├───────────┬──────────────────────────────────────────────────────────────┬───────────────┤
-│ Library   │                                                              │ Inspector     │
-│ search    │                         3D view                              │ (contextual,  │
-│ takes …   │   overlay text top-left, view chips bottom-left,             │  sections     │
-│           │   camera buttons top-right                                   │  that fold)   │
-│ 260 px    │                                                              │ 320 px        │
-│ folds     ├──────────────────────────────────────────────────────────────┤ folds         │
-│           │ transport: ⏮ ▶ ⏭  loop  speed   time            undo redo    │               │
-│           │ timeline (Takes) or tracks (Scene), resizable                │               │
-├───────────┴──────────────────────────────────────────────────────────────┴───────────────┤
-│ status: what is happening now · progress · last message                                  │  24 px
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
+- **Top bar.** Record, View, Edit and Export select the panels around the viewport. Source pills show the state of SteamVR, VRChat and face tracking.
+- **Library** (left). Record lists saved calibrations, Capture now and calibration settings. View, Edit and Export show the take library.
+- **3D view** (centre). Record previews live SteamVR devices. Switching tabs keeps the open take.
+- **Transport and timeline** (bottom). Record shows Record/Stop beneath the preview. View and Edit show the take timeline.
+- **Inspector** (right). Record shows live devices. View shows the open take and calibration source. Edit reserves the inspector for future controls. Export shows formats and options.
 
-- **Top bar.** The record button is the largest control in the window and shows the running time. The workspace switch (Takes | Scene) sits next to it. On the right, one pill per source (SteamVR, VRChat, face tracking) shows its state with a dot (grey off, amber waiting, green receiving); clicking a pill opens a popover with the details and the fix when something is missing (for example "VRChat's OSC is off: turn it on in the Action Menu").
-- **Library** (left). Search on top. Takes are listed newest first with name, date, length and small badges for what they contain (body, face, fingers, VRChat IK reference). The Scene workspace adds the scenes list above the takes; takes are dragged onto tracks.
-- **3D view** (centre). View chips switch Mesh, Skeleton, Devices, Headset, Playspace and Base stations. A "Live" button switches between the open take and what the devices do right now.
-- **Transport and timeline** (bottom). The same transport in both workspaces.
-- **Inspector** (right). Shows what is selected. In Takes: tabs **Take** (name and notes, body and avatar, calibration, trackers, placement, face) and **Export**. In Scene: **Selection** (strip, transition, keys), **Scene**, **Export**. With Live view on and no take: **Devices** (the SteamVR device list, battery, tracking).
 - **Settings** opens as a page over the workspace (not a tab next to per-take controls): Sources, Recording, Folders, Avatars (the avatar library), Calibration defaults, View, About.
 - **First run.** A short guided setup: what was detected (SteamVR, VRChat, Blender, Unity projects), where to keep recordings, and the avatar to solve onto (import one, or use the built-in mannequin). Every step can be skipped and reopened later from Settings.
 

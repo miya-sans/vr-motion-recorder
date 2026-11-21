@@ -85,7 +85,7 @@ With a base model, the 3D view shows the avatar's own meshes with their skin wei
 
 - Single meshes can be hidden (an outfit piece, say), and the choice is remembered.
 - Outfit changes made in Unity by build-time tools or prefab overrides are not part of the FBX, so the view shows the model's stock outfit.
-- While recording, the view shows the skeleton only, to stay light.
+- Record previews live SteamVR devices. Switch to View to see the solved avatar.
 
 ## Your avatar files stay yours
 
