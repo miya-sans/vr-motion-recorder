@@ -21,8 +21,8 @@ The scale, the floor and the tracker offsets come from the same calibration, so 
 ## Quick guide
 
 1. **Calibrate in VRChat as usual** (Calibrate FBT, then both triggers), before or during the take. The app saves every VRChat calibration to its library, and a take uses the calibrations that were in effect while it was recorded.
-2. **For a live calibration,** choose **Sync with VRChat** in the Live transport to use detected VRChat calibrations automatically. To capture manually, choose a 1-, 3- or 5-second countdown and press **Calibrate** while standing in a T-pose (stand straight, look ahead, arms out). In a take's inspector, **Capture now** uses a fixed 5-second countdown to save the current SteamVR poses.
-3. **Change it later if you like.** In the take's inspector (Calibration section) you can pick another calibration from the library, the take's best T-pose or any moment of the take, and change every setting in the table below. Nothing is baked into the recording.
+2. **For a live calibration,** choose **Sync with VRChat** in Record's calibration selector to use detected VRChat calibrations automatically. To capture manually, choose a 1-, 3- or 5-second countdown and press **Calibrate** while standing in a T-pose (stand straight, look ahead, arms out). Without a VRChat calibration, hold a T-pose for about a second somewhere in the take, or use **Capture now** in Record; after a 5-second countdown the current SteamVR poses are saved as a calibration.
+3. **Change it later if you like.** In View, use **Calibration from** to choose a source. In Record → Calibration settings, use **Find T-pose** or **At playhead** and adjust the settings below. Nothing is baked into the recording.
 
 ## How VRChat's calibration is detected
 
@@ -81,11 +81,11 @@ The list marks the snapshots whose trackers match the take, and warns when:
 - a snapshot comes from another SteamVR session;
 - a snapshot was taken hours apart from the take: the straps have probably moved, so recalibrate.
 
-Library commands:
+Calibration library commands in Record:
 
 - **Capture now** saves the current SteamVR poses after a 5-second countdown (stand straight, look ahead, arms out), for when you don't calibrate in VRChat.
-- **Save to library** stores the calibration a take uses (an old take's T-pose, for example), so other takes can use it.
-- **Delete** sends a snapshot to the Recycle Bin. Takes keep their own copy.
+- **Save this take's** stores the calibration a take uses (an old take's T-pose, for example), so other takes can use it.
+- **Delete picked** sends a snapshot to the Recycle Bin. Takes keep their own copy.
 
 Two switches in Settings turn off the watching (saving every VRChat calibration) and the automatic linking of new takes.
 
@@ -96,7 +96,7 @@ A take can contain anything VRChat lets you do while recording, and the solve fo
 - **Calibrations as they happened.** The take starts with the calibration that was in effect when recording started, and each VRChat calibrate-and-confirm takes over from its "Calibrate FBT" click on.
 - **Settings as they happened.** The VRChat options in the *Spine* and *Measure* dropdowns are selected by default. Each option follows recorded changes for that setting. While recording, the app logs VRChat's IK settings every 0.5 s (registry, read-only) as `vrcSettings` events in the take. Takes without these events only have VRChat's log: there a measurement change can be recognised (an avatar reload whose re-measure follows in the same second), but a spine mode change leaves no trace. For those takes you can add a setting change by hand at the playhead (Lock hip / head / both, or by height / by arm span).
 - **After a measurement change** VRChat re-applies the same calibration at the new scale, and so does the solve: with the calibration rescaled, the feet stay within 0.9–1.0 cm of VRChat's.
-- **Stretches.** Each stretch is solved with its own calibration, scale and spine mode, and neighbouring stretches crossfade over 0.3 s. The take's inspector lists the stretches under the calibration result, and the timeline marks VRChat's calibrations, setting changes and playspace jumps and shades where VRChat was not tracking.
+- **Stretches.** Each stretch is solved with its own calibration, scale and spine mode, and neighbouring stretches crossfade over 0.3 s. Record → Calibration settings → Result lists the stretches, and the timeline marks VRChat's calibrations, setting changes and playspace jumps and shades where VRChat was not tracking.
 - **Playspace movers and resets** (OVR Advanced Settings, for example) need no setting; see [Architecture](architecture.md).
 
 **While VRChat is in calibration mode** (from the "Calibrate FBT" click to the confirm) VRChat hides the avatar, and its own IK hangs 30–60 cm off the controllers.

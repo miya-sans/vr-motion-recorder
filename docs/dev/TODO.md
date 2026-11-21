@@ -63,8 +63,8 @@ A source audit against the WinForms UI immediately before removal commit `a8fd40
 
 - [ ] Verify the record hotkey while VRChat has focus and the record parameter from a real avatar menu.
 - [ ] Verify OSCQuery discovery in both directions, avatar/parameter reads and the VRChat pill's no-OSC state.
-- [ ] Check the live view with actual devices, base stations and HUMR avatar motion, then verify synchronization of HUMR and SteamVR recordings.
-- [ ] Measure recording alongside VRChat and SteamVR with the skeleton preview at 15 fps, including CPU cost and sample loss.
+- [ ] Check the live view with actual SteamVR devices and base stations, then verify synchronization of HUMR and SteamVR recordings.
+- [ ] Measure recording alongside VRChat and SteamVR with the Record device preview at 15 fps, including CPU cost and sample loss.
 - [ ] Verify automatic VRChat calibration capture and manual Capture now with real trackers.
 - [ ] Verify face replay arriving in VRChat.
 

@@ -2,7 +2,7 @@
 
 ## Record, review and export
 
-1. **Record.** Start SteamVR, open the app and check that your devices appear. In Takes, click **Live** above the library to show the current device poses. Start recording with **Record** in the transport or **F9**, perform a short movement, then press again to stop. The recorder writes the take to disk as you move.
+1. **Record.** Start SteamVR, open the app and check that your devices appear in Record. Start recording with **Record** in the transport or **F9**, perform a short movement, then press again to stop. The recorder writes the take to disk as you move.
 2. **Review.** Open the take from the library: the body is solved from the raw data and shown on your avatar. Scrub, trim with **I** and **O**, cut with **Del**. Change the calibration, the avatar or a setting, and the take solves again.
 3. **Export.** Choose a folder and the formats: an FBX with your avatar, an armature-only FBX, Unity `.anim` clips.
 4. **Open it in Blender or Unity.**
@@ -28,9 +28,9 @@ Two options are useful for trying things out; with `dotnet run`, put them after 
 
 ## The live view
 
-With SteamVR running, click **Live** above the take library to show what the devices do right now instead of a take: the headset, controllers and trackers with drop lines to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. Click a take in the library to leave Live and review it; click **Live** again to return to the live view. Recording also switches to Live.
+With SteamVR running, choose **Record** to show the current device poses instead of the take: the headset, controllers and trackers with drop lines to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. The Record workspace also lists saved calibrations. Switch to **View** to review the open take, **Edit** for its timeline or **Export** for output options. Switching tabs keeps the take open.
 
-In Live, the transport contains **Record**, its countdown selector, **Calibrate**, a calibration selector and the age in minutes of the last successful calibration. Choose **Sync with VRChat** to use detected VRChat calibrations, or choose a 1-, 3- or 5-second countdown and press **Calibrate** to capture the current SteamVR poses manually. See [calibration.md](calibration.md) for details.
+In Record, the transport contains **Record**, its countdown selector, **Calibrate**, a calibration selector and the age in minutes of the last successful calibration. Choose **Sync with VRChat** to use detected VRChat calibrations, or choose a 1-, 3- or 5-second countdown and press **Calibrate** to capture the current SteamVR poses manually. See [calibration.md](calibration.md) for details.
 
 During take review, the timecode and frame number appear above the timeline. Use the timeline button in the transport area (**Ctrl+3**) to hide or show it, and drag its divider to resize it; reopening it restores its previous height. The library and inspector can also be hidden or shown (**Ctrl+1** and **Ctrl+2**).
 
