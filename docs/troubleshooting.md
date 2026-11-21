@@ -56,6 +56,10 @@ VRChat's bones can only be recorded in a world that has a HUMR recorder, with VR
 
 The download is not code-signed. Windows shows a warning for programs it has not seen often: choose *More info → Run anyway*. If you prefer, build the app from source (see the [README](../README.md)).
 
+## build.cmd says VRMotionRecorder.exe is in use
+
+The app is still running, so the new build cannot replace it. Close the app and run `build.cmd` again.
+
 ## Still stuck
 
 Open a [bug report](https://github.com/miya-sans/vrc-motion-recorder/issues/new/choose). Read your log before you attach it: it can contain folder paths with your Windows user name, avatar names and world names.

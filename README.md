@@ -44,15 +44,17 @@ Full guide: [usage.md](docs/usage.md)
 
 ## Building
 
-You need [Git](https://git-scm.com) and the [.NET SDK 10](https://dotnet.microsoft.com/download) or later. This builds the same app the release zip contains:
+You need [Git](https://git-scm.com) and the [.NET SDK 10](https://dotnet.microsoft.com/download) or later:
 
 ```
 git clone https://github.com/miya-sans/vrc-motion-recorder
 cd vrc-motion-recorder
-dotnet publish src/Vrmr.App/Vrmr.App.csproj -c Release -r win-x64 --self-contained true -o dist/VRMotionRecorder
+build.cmd
 ```
 
-Then start `dist\VRMotionRecorder\VRMotionRecorder.exe`. To run straight from the source instead, use `dotnet run --project src/Vrmr.App -c Release`.
+`build.cmd` puts the app in `dist\VRMotionRecorder.exe`. Pin it to the taskbar or make a shortcut to it. To update, close the app, then run `git pull` and `build.cmd` again: the pinned exe is replaced in place. It needs the .NET 10 runtime, which the SDK installs.
+
+`build.cmd test` also builds and tests the whole solution first. To run straight from the source instead, use `dotnet run --project src/Vrmr.App -c Release`.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) covers tests, the project layout and the rules for contributions.
 
