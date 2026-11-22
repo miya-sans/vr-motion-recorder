@@ -366,6 +366,10 @@ namespace VRMR.App.Views
                 case Key.O: takes.SetOutCommand.Execute(null); break;
                 case Key.Delete: takes.CutCommand.Execute(null); break;
                 case Key.F: takes.FrameAllCommand.Execute(null); break;
+                case Key.NumPad1: takes.SetView(VRMR.Render.ViewPreset.Front); break;
+                case Key.NumPad3: takes.SetView(VRMR.Render.ViewPreset.Side); break;
+                case Key.NumPad7: takes.SetView(VRMR.Render.ViewPreset.Top); break;
+                case Key.NumPad5: takes.SetView(VRMR.Render.ViewPreset.Perspective); break;
                 default: return;
             }
 

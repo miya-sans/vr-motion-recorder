@@ -50,7 +50,7 @@ namespace VRMR.Render
         /// <summary>Length in metres that covers <see cref="Size" /> pixels at the handle's depth.</summary>
         public float WorldSize(ViewCamera camera)
         {
-            return Size * Math.Max(0.05f, camera.Depth(Center)) / Math.Max(1f, camera.Focal);
+            return Size / Math.Max(1e-3f, camera.Scale(Math.Max(0.05f, camera.Depth(Center))));
         }
 
         bool Square(ViewCamera camera, int a, int b, float length, Span<Vector2> points)

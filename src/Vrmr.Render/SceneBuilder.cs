@@ -207,7 +207,7 @@ namespace VRMR.Render
         {
             var c = _cam.ToCamera(at);
             if (c.z <= ViewCamera.Near) return;
-            ref var it = ref Add(Dot, c.z + depthBias, color, Math.Max(minRadius, worldRadius * _cam.Focal / c.z));
+            ref var it = ref Add(Dot, c.z + depthBias, color, Math.Max(minRadius, worldRadius * _cam.Scale(c.z)));
             it.A = _cam.FromCamera(c);
         }
 
@@ -254,13 +254,13 @@ namespace VRMR.Render
         {
             var layout = SkeletonLayout.For(a.Profile);
             var pos = a.NodePos;
-            float thin = overMesh ? 0.45f : 1f, focal = _cam.Focal;
+            float thin = overMesh ? 0.45f : 1f;
             foreach (var s in layout.Human)
             {
                 if (!_cam.Segment(pos[s.From], pos[s.To], out var pa, out var pb, out float d)) continue;
                 var color = s.Side == BoneSide.Left ? _theme.BoneLeft :
                     s.Side == BoneSide.Right ? _theme.BoneRight : _theme.BoneCenter;
-                float w = thin * MathX.Clamp((s.Finger ? 0.012f : 0.03f) * focal / Math.Max(0.1f, d), 1.2f * Px,
+                float w = thin * MathX.Clamp((s.Finger ? 0.012f : 0.03f) * _cam.Scale(Math.Max(0.1f, d)), 1.2f * Px,
                     (s.Finger ? 4f : 11f) * Px);
                 ref var it = ref Add(Line, d, color, w);
                 it.A = pa;
@@ -271,7 +271,7 @@ namespace VRMR.Render
             {
                 if (!_cam.Segment(pos[s.From], pos[s.To], out var pa, out var pb, out float d)) continue;
                 ref var it = ref Add(Line, d, _theme.BoneSecondary,
-                    MathX.Clamp(0.008f * focal / Math.Max(0.1f, d), Px, 3f * Px));
+                    MathX.Clamp(0.008f * _cam.Scale(Math.Max(0.1f, d)), Px, 3f * Px));
                 it.A = pa;
                 it.B = pb;
             }
@@ -281,7 +281,7 @@ namespace VRMR.Render
                 var c = _cam.ToCamera(pos[layout.Head] + Vec3.Up * layout.HeadRadius * 0.7f);
                 if (c.z > ViewCamera.Near)
                 {
-                    ref var it = ref Add(Circle, c.z, _theme.BoneCenter, layout.HeadRadius * focal / c.z);
+                    ref var it = ref Add(Circle, c.z, _theme.BoneCenter, layout.HeadRadius * _cam.Scale(c.z));
                     it.A = _cam.FromCamera(c);
                 }
             }
@@ -291,12 +291,11 @@ namespace VRMR.Render
         {
             var layout = SkeletonLayout.For(a.Profile);
             var pos = a.NodePos;
-            float focal = _cam.Focal;
             foreach (var s in layout.Human)
             {
                 if (s.Finger || !_cam.Segment(pos[s.From], pos[s.To], out var pa, out var pb, out float d)) continue;
                 ref var it = ref Add(Line, d, a.FigureColor,
-                    MathX.Clamp(0.025f * focal / Math.Max(0.1f, d), 1.2f * Px, 9f * Px));
+                    MathX.Clamp(0.025f * _cam.Scale(Math.Max(0.1f, d)), 1.2f * Px, 9f * Px));
                 it.A = pa;
                 it.B = pb;
             }
@@ -441,7 +440,7 @@ namespace VRMR.Render
                 }
 
                 var faceCentre = (corner[0] + corner[2]) * 0.5f;
-                if (Vec3.Dot(n, faceCentre - eye) >= 0) continue; // faces away
+                if (Vec3.Dot(n, _cam.Orthographic ? forward : faceCentre - eye) >= 0) continue; // faces away
                 Vec3 c0 = _cam.ToCamera(corner[0]),
                     c1 = _cam.ToCamera(corner[1]),
                     c2 = _cam.ToCamera(corner[2]),

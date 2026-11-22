@@ -75,6 +75,40 @@ namespace VRMR.Render.Tests
         }
 
         [Fact]
+        public void AParallelViewKeepsSizesAndMatchesTheGpuMatrix()
+        {
+            var c = Camera();
+            c.Orthographic = true;
+            c.LookFrom(0, 0);
+            // the target keeps its size on screen; a metre is as wide near as far
+            Assert.True(c.Project(c.Target, out var t));
+            Assert.Equal(400, t.X, 2);
+            Assert.True(c.Project(c.Target + Vec3.Right, out var near));
+            Assert.True(c.Project(c.Target + Vec3.Right + Vec3.Forward * 2, out var far));
+            Assert.Equal(near.X, far.X, 2);
+            Assert.Equal(c.Focal / 3f, Math.Abs(near.X - t.X), 1);
+
+            // rays run along the view, through the point they were cast from
+            var p = new Vec3(0.6f, 1.4f, 0.3f);
+            Assert.True(c.Project(p, out var s));
+            c.Ray(s, out var origin, out var dir);
+            Assert.True((dir - c.Forward).Length < 1e-5f);
+            var toPoint = p - origin;
+            Assert.True((toPoint - dir * Vec3.Dot(toPoint, dir)).Length < 1e-3f);
+
+            // the GPU's matrix lands on the same pixel
+            Span<float> m = stackalloc float[16];
+            c.ViewProjection(m, 800, 500, 1);
+            float cx = m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12];
+            float cy = m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13];
+            float cz = m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14];
+            float w = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+            Assert.Equal(s.X, (cx / w + 1) * 400, 1);
+            Assert.Equal(s.Y, (1 - cy / w) * 250, 1);
+            Assert.InRange(cz / w, -1f, 1f);
+        }
+
+        [Fact]
         public void PointsBehindTheCameraDoNotProject()
         {
             var c = Camera();

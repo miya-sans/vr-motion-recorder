@@ -143,6 +143,8 @@ While it shows, each body tracker can be moved against the avatar, as an edit of
 - Moving the hip tracker changes how far the legs reach.
 - With offsets, the solve no longer matches VRChat's.
 
+With **Mirror** on (the default), moving a left or right tracker puts its partner at the mirror image of where the moved tracker ends up, across the avatar's middle: the positions are mirrored, not just the offsets. The view's **Front**, **Side** and **Top** buttons (Numpad 1, 3, 7) look at the pose without perspective, which makes lining trackers up easier; dragging to orbit, **3D** or Numpad 5 goes back to perspective.
+
 ## Saving and loading
 
 Calibration settings live in three places:

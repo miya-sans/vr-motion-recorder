@@ -52,6 +52,12 @@ namespace VRMR.App.ViewModels
         List<double[]> _segments = new();
         [ObservableProperty] bool _showBaseStations;
 
+        /// <summary>Moving a left or right tracker in the calibration view mirrors it onto its partner.</summary>
+        [ObservableProperty] bool _mirrorTrackers = true;
+
+        /// <summary>How the 3D view looks: perspective, front, side or top (<see cref="Render.ViewPreset" />).</summary>
+        [ObservableProperty] int _viewIndex;
+
         /// <summary>The view shows the calibration pose of the segment at the playhead instead of the solved pose.</summary>
         [ObservableProperty] bool _showCalibrationPose;
 
@@ -191,6 +197,7 @@ namespace VRMR.App.ViewModels
             _view = view;
             ApplyViewOptions();
             view.FrameTick += OnFrameTick;
+            view.ViewChanged += () => ViewIndex = (int)view.View;
             Present();
             UpdateAnimating();
         }
@@ -263,6 +270,22 @@ namespace VRMR.App.ViewModels
         {
             SaveChip(nameof(Settings.ShowBaseStations), s => s.ShowBaseStations = value);
             Present();
+        }
+
+        partial void OnMirrorTrackersChanged(bool value)
+        {
+            CalibrationTool.Mirror = value;
+        }
+
+        partial void OnViewIndexChanged(int value)
+        {
+            _view?.SetView((Render.ViewPreset)value);
+        }
+
+        /// <summary>Numpad keys as in 3D tools: 1 front, 3 side, 7 top, 5 perspective.</summary>
+        public void SetView(Render.ViewPreset view)
+        {
+            ViewIndex = (int)view;
         }
 
         partial void OnShowCalibrationPoseChanged(bool value)

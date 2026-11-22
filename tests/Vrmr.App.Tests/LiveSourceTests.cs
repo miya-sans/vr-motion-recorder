@@ -622,6 +622,16 @@ namespace VRMR.App.Tests
 
             public void FrameAll() { }
 
+            public Render.ViewPreset View => Render.ViewPreset.Perspective;
+
+            public void SetView(Render.ViewPreset view) { }
+
+            public event Action ViewChanged
+            {
+                add { }
+                remove { }
+            }
+
             public bool FrameDevices()
             {
                 Framed++;

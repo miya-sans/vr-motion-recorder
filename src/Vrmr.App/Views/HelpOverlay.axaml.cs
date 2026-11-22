@@ -19,6 +19,7 @@ namespace VRMR.App.Views
             ("← →", "One frame back or forward"),
             ("Home  End", "Go to the start or the end"),
             ("F", "Fit the avatar in the view"),
+            ("Numpad 1 / 3 / 7 / 5", "Front, side, top, perspective view"),
             (null, "Editing a take"),
             ("I  O", "Start or end the take at the playhead"),
             ("Del", "Remove the selected range"),

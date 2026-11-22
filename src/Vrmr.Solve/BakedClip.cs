@@ -167,6 +167,9 @@ namespace VRMR
         /// <summary>Device poses by role name (Head, LeftHand, Hips, LeftFoot, ...).</summary>
         public readonly Dictionary<string, Pose> Devices = new();
 
+        /// <summary>The tracker offsets this calibration was bound with (avatar cm, see <see cref="EditList.TrackerNudges" />).</summary>
+        public readonly Dictionary<string, Vec3> Nudges = new();
+
         /// <summary>Trackers the take has but the solve didn't use (switched off, or missing from the calibration).</summary>
         public readonly HashSet<string> Unused = new();
 

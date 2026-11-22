@@ -23,8 +23,16 @@
                     Available="{Binding HasBaseStations}"
                     ToolTip.Tip="The base stations with their field of view. Dimmed when this view has none." />
     </StackPanel>
-    <c:IconButton Icon="{DynamicResource Icon.Frame}" Command="{Binding FrameAllCommand}"
-                  ToolTip.Tip="Fit the avatar in the view (F, or double-click)"
-                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8,34,8,8" />
+    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="8,34,8,8">
+      <c:SegmentedControl SelectedIndex="{Binding ViewIndex}">
+        <ListBoxItem ToolTip.Tip="Perspective: drag to orbit (Numpad 5)">3D</ListBoxItem>
+        <ListBoxItem ToolTip.Tip="Front, without perspective (Numpad 1)">Front</ListBoxItem>
+        <ListBoxItem ToolTip.Tip="Right side, without perspective (Numpad 3)">Side</ListBoxItem>
+        <ListBoxItem ToolTip.Tip="Top, without perspective (Numpad 7)">Top</ListBoxItem>
+      </c:SegmentedControl>
+      <c:IconButton Icon="{DynamicResource Icon.Frame}" Command="{Binding FrameAllCommand}"
+                    ToolTip.Tip="Fit the avatar in the view (F, or double-click)" />
+    </StackPanel>
   </Panel>
 </UserControl>

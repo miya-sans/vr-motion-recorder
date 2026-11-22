@@ -422,6 +422,41 @@ namespace VRMR.Render
 
         // ---------------------------------------------------------------- camera
 
+        /// <summary>Perspective (orbit), or a parallel view from the front, the right or the top.</summary>
+        public ViewPreset View { get; private set; }
+
+        /// <summary>The view preset changed (picked, or left by orbiting).</summary>
+        public event Action ViewChanged;
+
+        float _perspYaw, _perspPitch;
+
+        /// <summary>
+        ///     Switches to a view: Front looks along -Z (at the front of an avatar facing +Z), Side at its right side, Top
+        ///     straight down with forward up. Perspective goes back to the orbit angle used before.
+        /// </summary>
+        public void SetView(ViewPreset view)
+        {
+            if (view == View) return;
+            if (View == ViewPreset.Perspective)
+            {
+                _perspYaw = Camera.Yaw;
+                _perspPitch = Camera.Pitch;
+            }
+
+            View = view;
+            Camera.Orthographic = view != ViewPreset.Perspective;
+            switch (view)
+            {
+                case ViewPreset.Front: Camera.LookFrom(0, 0); break;
+                case ViewPreset.Side: Camera.LookFrom(90, 0); break;
+                case ViewPreset.Top: Camera.LookFrom(180, 90); break;
+                default: Camera.LookFrom(_perspYaw, _perspPitch); break;
+            }
+
+            ViewChanged?.Invoke();
+            OnCameraChanged();
+        }
+
         /// <summary>Frames the main actor, or every device when there is none.</summary>
         public void FrameAll()
         {
@@ -563,6 +598,15 @@ namespace VRMR.Render
             _last = ev.Position;
             if (_drag == Drag.Orbit)
             {
+                if (View != ViewPreset.Perspective)
+                {
+                    // orbiting leaves the parallel view where it is
+                    View = ViewPreset.Perspective;
+                    Camera.Orthographic = false;
+                    Camera.Pitch = Math.Min(Camera.Pitch, 85f); // back inside the orbit's range after Top
+                    ViewChanged?.Invoke();
+                }
+
                 Camera.Yaw += dx * OrbitYaw;
                 Camera.Pitch += dy * OrbitPitch;
             }
@@ -642,4 +686,7 @@ namespace VRMR.Render
 
         enum Drag { None, Orbit, Pan, Tool }
     }
+
+    /// <summary>How the 3D view looks at the scene.</summary>
+    public enum ViewPreset { Perspective, Front, Side, Top }
 }

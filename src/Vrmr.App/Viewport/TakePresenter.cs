@@ -55,8 +55,8 @@ namespace VRMR.App.Viewport
         /// <summary>The body tracker picked in the calibration view, or "".</summary>
         public string SelectedTracker { get; set; } = "";
 
-        /// <summary>A drag of <see cref="SelectedTracker" /> not committed yet (view space, avatar metres).</summary>
-        public Vec3 DragOffset { get; set; }
+        /// <summary>Tracker moves not solved in yet, by role (view space, avatar metres): a drag, its mirror, a typed offset.</summary>
+        public Dictionary<string, Vec3> PreviewOffsets { get; } = new();
 
         /// <summary>A body tracker of the shown calibration that can be moved (bound, not a head or hand).</summary>
         public static bool IsBodyTracker(CalibrationPose cal, string role)
@@ -72,7 +72,7 @@ namespace VRMR.App.Viewport
             var cal = ShownCalibration;
             if (cal == null || !cal.Devices.TryGetValue(role, out var p)) return false;
             pos = cal.Root.Inverse.TransformPoint(p.pos);
-            if (role == SelectedTracker) pos += DragOffset;
+            if (PreviewOffsets.TryGetValue(role, out var d)) pos += d;
             return true;
         }
 
@@ -159,10 +159,9 @@ namespace VRMR.App.Viewport
             foreach (var kv in cal.Devices)
             {
                 var pose = toView * kv.Value;
-                bool selected = kv.Key == SelectedTracker;
-                if (selected) pose = new Pose(pose.pos + DragOffset, pose.rot);
+                if (PreviewOffsets.TryGetValue(kv.Key, out var d)) pose = new Pose(pose.pos + d, pose.rot);
                 var m = DeviceMarker(kv.Key, pose, size, cal.Unused.Contains(kv.Key));
-                if (selected) m.Tint = MarkerTint.Accent;
+                if (kv.Key == SelectedTracker) m.Tint = MarkerTint.Accent;
                 scene.Markers.Add(m);
             }
         }

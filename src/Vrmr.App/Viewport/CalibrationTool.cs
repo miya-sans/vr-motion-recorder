@@ -11,6 +11,7 @@ namespace VRMR.App.Viewport
     /// <summary>
     ///     Moves body trackers against the avatar in the calibration view: click a tracker to pick it, drag the arrows on
     ///     world axes (right, up, forward of the calibration pose). A drag is one edit of that calibration's tracker offsets.
+    ///     With <see cref="Mirror" /> the left/right partner is put where the moved tracker's mirror image is.
     /// </summary>
     public sealed class CalibrationTool : IViewportTool
     {
@@ -18,7 +19,8 @@ namespace VRMR.App.Viewport
         readonly ViewGizmo _gizmo = new();
         readonly TakePresenter _presenter;
         readonly TakeSession _session;
-        bool _dragging;
+        bool _dragging, _mirror = true;
+        Vec3 _move;
         IDisposable _gesture;
 
         public CalibrationTool(TakePresenter presenter, TakeSession session)
@@ -27,12 +29,24 @@ namespace VRMR.App.Viewport
             _session = session;
             session.ClipChanged += () =>
             {
-                if (!_dragging) _presenter.DragOffset = Vec3.Zero; // the new solve has the offset in it
+                if (!_dragging) _presenter.PreviewOffsets.Clear(); // the new solve has the offsets in it
             };
         }
 
         /// <summary>The picked tracker (BodyRole name), or "".</summary>
         public string Selected => _presenter.SelectedTracker;
+
+        /// <summary>Moving a left or right tracker puts its partner at the mirror image (across the avatar's middle).</summary>
+        public bool Mirror
+        {
+            get => _mirror;
+            set
+            {
+                if (_mirror == value) return;
+                _mirror = value;
+                Changed?.Invoke();
+            }
+        }
 
         public ViewGizmo Gizmo
         {
@@ -41,7 +55,7 @@ namespace VRMR.App.Viewport
                 if (Selected.Length == 0 || !_presenter.CalibrationDevice(Selected, out var pos)) return null;
                 _gizmo.Center = pos;
                 _gizmo.Rotate = false;
-                var m = _presenter.DragOffset * 100;
+                var m = _move * 100;
                 _gizmo.Status = _dragging
                     ? FormattableString.Invariant($"{m.x:+0.0;-0.0;0} / {m.y:+0.0;-0.0;0} / {m.z:+0.0;-0.0;0} cm")
                     : TrackerService.RoleLabel(Selected) + "   Shift slow · Esc done";
@@ -52,14 +66,20 @@ namespace VRMR.App.Viewport
         public void DragStarted()
         {
             _dragging = true;
-            _presenter.DragOffset = Vec3.Zero;
+            _move = Vec3.Zero;
+            _presenter.PreviewOffsets.Clear();
             _gesture = _session.Gesture();
         }
 
         public void Dragged(Vec3 move, Quat turn, float degrees)
         {
             if (!_dragging) return;
-            _presenter.DragOffset = move;
+            _move = move;
+            var offsets = Offsets(Selected, Nudge(Selected) + move * 100f);
+            _presenter.PreviewOffsets.Clear();
+            foreach (var kv in offsets)
+                if (Shown(kv.Key, out var shown) && Raw(kv.Key, out var raw))
+                    _presenter.PreviewOffsets[kv.Key] = raw + kv.Value * 0.01f - shown;
             Changed?.Invoke();
         }
 
@@ -67,9 +87,9 @@ namespace VRMR.App.Viewport
         {
             if (!_dragging) return;
             _dragging = false;
-            var move = _presenter.DragOffset;
-            if (move.SqrLength > 1e-10f) SetNudge(Selected, Nudge(Selected) + move * 100f);
-            else _presenter.DragOffset = Vec3.Zero;
+            if (_move.SqrLength > 1e-10f) SetNudge(Selected, Nudge(Selected) + _move * 100f);
+            else _presenter.PreviewOffsets.Clear();
+            _move = Vec3.Zero;
             _gesture?.Dispose();
             _gesture = null;
             Changed?.Invoke();
@@ -111,11 +131,23 @@ namespace VRMR.App.Viewport
             role ??= "";
             if (role == Selected) return;
             _presenter.SelectedTracker = role;
-            _presenter.DragOffset = Vec3.Zero;
             Changed?.Invoke();
         }
 
-        /// <summary>The shown calibration's offset of a tracker (avatar cm).</summary>
+        /// <summary>The left/right partner of a tracker role, or "" for one in the middle.</summary>
+        public static string Partner(string role)
+        {
+            return role.StartsWith("Left", StringComparison.Ordinal) ? "Right" + role[4..] :
+                role.StartsWith("Right", StringComparison.Ordinal) ? "Left" + role[5..] : "";
+        }
+
+        /// <summary>The mirror image across the avatar's middle (x = 0 in the calibration view).</summary>
+        public static Vec3 Mirrored(Vec3 v)
+        {
+            return new Vec3(-v.x, v.y, v.z);
+        }
+
+        /// <summary>The shown calibration's offset of a tracker in the edits (avatar cm).</summary>
         public Vec3 Nudge(string role)
         {
             var cal = _presenter.ShownCalibration;
@@ -123,12 +155,13 @@ namespace VRMR.App.Viewport
             return nudges != null && nudges.TryGetValue(role, out var v) ? v : Vec3.Zero;
         }
 
-        /// <summary>Sets the shown calibration's offset of a tracker (avatar cm) as an edit of the take.</summary>
+        /// <summary>Sets a tracker's offset (avatar cm) as one edit of the shown calibration, its mirror partner included.</summary>
         public void SetNudge(string role, Vec3 cm)
         {
             var cal = _presenter.ShownCalibration;
             if (cal == null || _session.Take == null || role.Length == 0) return;
             string key = cal.Key;
+            var offsets = Offsets(role, cm);
             _session.Edit("trackerNudge", e =>
             {
                 if (!e.TrackerNudges.TryGetValue(key, out var own))
@@ -139,10 +172,50 @@ namespace VRMR.App.Viewport
                         : inherited.ToDictionary(k => k.Key, k => k.Value);
                 }
 
-                if (cm.SqrLength < 1e-6f) own.Remove(role);
-                else own[role] = cm;
+                foreach (var kv in offsets)
+                    if (kv.Value.SqrLength < 1e-6f) own.Remove(kv.Key);
+                    else own[kv.Key] = kv.Value;
                 if (own.Count == 0 && !e.TrackerNudges.ContainsKey(EditList.AnyCalibration)) e.TrackerNudges.Remove(key);
             });
+            // show the new places until the solve with them arrives
+            _presenter.PreviewOffsets.Clear();
+            foreach (var kv in offsets)
+                if (Shown(kv.Key, out var shown) && Raw(kv.Key, out var raw))
+                    _presenter.PreviewOffsets[kv.Key] = raw + kv.Value * 0.01f - shown;
+            Changed?.Invoke();
+        }
+
+        /// <summary>
+        ///     The offsets (avatar cm) that put a tracker at its own offset and, mirroring, its partner at the mirror image of
+        ///     where the tracker ends up.
+        /// </summary>
+        Dictionary<string, Vec3> Offsets(string role, Vec3 cm)
+        {
+            var res = new Dictionary<string, Vec3> { [role] = cm };
+            string partner = Partner(role);
+            var cal = _presenter.ShownCalibration;
+            if (!_mirror || partner.Length == 0 || cal == null || !TakePresenter.IsBodyTracker(cal, partner) ||
+                !Raw(role, out var raw) || !Raw(partner, out var partnerRaw)) return res;
+            res[partner] = (Mirrored(raw + cm * 0.01f) - partnerRaw) * 100f;
+            return res;
+        }
+
+        /// <summary>Where a tracker is shown by the last solve (view space, without previews).</summary>
+        bool Shown(string role, out Vec3 pos)
+        {
+            pos = Vec3.Zero;
+            var cal = _presenter.ShownCalibration;
+            if (cal == null || !cal.Devices.TryGetValue(role, out var p)) return false;
+            pos = cal.Root.Inverse.TransformPoint(p.pos);
+            return true;
+        }
+
+        /// <summary>Where a tracker was before any offset (view space).</summary>
+        bool Raw(string role, out Vec3 pos)
+        {
+            if (!Shown(role, out pos)) return false;
+            if (_presenter.ShownCalibration.Nudges.TryGetValue(role, out var applied)) pos -= applied * 0.01f;
+            return true;
         }
 
         /// <summary>The pick, a drag or an offset changed.</summary>

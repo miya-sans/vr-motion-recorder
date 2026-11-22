@@ -1434,6 +1434,9 @@ namespace VRMR
                 Root = universe * _calRoot,
                 Scale = AvatarEyeHeight / Math.Max(0.05f, _prof.EyeHeight)
             };
+            if (_nudging)
+                foreach (var kv in _nudges)
+                    res.Nudges[kv.Key] = kv.Value;
             if (CalHead(out var head)) res.Devices["Head"] = universe * head;
             if (CalOvr(_ctrlL, out var l)) res.Devices["LeftHand"] = universe * l;
             if (CalOvr(_ctrlR, out var r)) res.Devices["RightHand"] = universe * r;

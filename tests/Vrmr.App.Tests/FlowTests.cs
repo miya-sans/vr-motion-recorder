@@ -195,17 +195,39 @@ namespace VRMR.App.Tests
                 Assert.True(takes.Inspector.NudgeRows.Single(r => r.Role == "LeftFoot").Selected);
                 Assert.NotNull(takes.CalibrationTool.Gizmo);
 
-                // a drag is one edit of this calibration
+                // a drag is one edit of this calibration; mirroring puts the right foot at the left one's mirror image
                 var tool = takes.CalibrationTool;
+                Assert.True(tool.Mirror);
                 tool.DragStarted();
-                tool.Dragged(new Vec3(0, 0.02f, 0), Quat.Identity, 0);
+                tool.Dragged(new Vec3(0.01f, 0.02f, 0.03f), Quat.Identity, 0);
+                Assert.True(presenter.CalibrationDevice("RightFoot", out var preview));
+                Assert.True(presenter.CalibrationDevice("LeftFoot", out var dragged));
+                Assert.InRange((preview - CalibrationTool.Mirrored(dragged)).Length, 0f, 0.001f);
                 tool.DragEnded();
                 await WaitSolved(s);
-                var nudge = s.Host.Session.Take.Edits.NudgesFor(presenter.ShownCalibration.Key)["LeftFoot"];
-                Assert.InRange(nudge.y, 1.99f, 2.01f);
+                var nudges = s.Host.Session.Take.Edits.NudgesFor(presenter.ShownCalibration.Key);
+                Assert.InRange(nudges["LeftFoot"].y, 1.99f, 2.01f);
+                Assert.True(nudges.ContainsKey("RightFoot"));
                 Assert.Equal(2.0, takes.Inspector.NudgeRows.Single(r => r.Role == "LeftFoot").Y, 1);
                 Assert.True(presenter.CalibrationDevice("LeftFoot", out var moved));
+                Assert.True(presenter.CalibrationDevice("RightFoot", out var mirrored));
                 Assert.InRange(moved.y - foot.y, 0.019f, 0.021f);
+                Assert.InRange((mirrored - CalibrationTool.Mirrored(moved)).Length, 0f, 0.002f);
+
+                // parallel views: from the front the avatar's left is on screen right; orbiting goes back to 3D
+                takes.SetView(VRMR.Render.ViewPreset.Front);
+                Assert.True(view.Camera.Orthographic);
+                Assert.True(view.Project(moved, out var left));
+                Assert.True(view.Project(mirrored, out var right));
+                Assert.True(left.X > right.X, "left foot on the right from the front");
+                Assert.InRange(Math.Abs(left.Y - right.Y), 0, 1.0);
+                var mid = view.TranslatePoint(new Point(view.Bounds.Width / 2, view.Bounds.Height * 0.15), s.Window)
+                    .Value;
+                s.Window.MouseDown(mid, MouseButton.Left);
+                s.Window.MouseMove(mid + new Point(40, 0));
+                s.Window.MouseUp(mid + new Point(40, 0), MouseButton.Left);
+                Assert.Equal((int)VRMR.Render.ViewPreset.Perspective, takes.ViewIndex);
+                Assert.False(view.Camera.Orthographic);
 
                 takes.UndoCommand.Execute(null);
                 await WaitSolved(s);

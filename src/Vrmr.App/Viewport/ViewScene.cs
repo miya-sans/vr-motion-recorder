@@ -175,6 +175,14 @@ namespace VRMR.App.Viewport
         /// <summary>Moves the camera so the avatar (or everything shown) fits.</summary>
         void FrameAll();
 
+        /// <summary>Perspective, or a parallel view from the front, side or top.</summary>
+        Render.ViewPreset View { get; }
+
+        void SetView(Render.ViewPreset view);
+
+        /// <summary>The view preset changed (picked, or left by orbiting).</summary>
+        event Action ViewChanged;
+
         /// <summary>Moves the camera so every device fits; false when there is none.</summary>
         bool FrameDevices();
 

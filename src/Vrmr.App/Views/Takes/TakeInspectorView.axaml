@@ -179,8 +179,11 @@
                           ToolTip.Tip="Show the calibration in the 3D view: the avatar's T-pose at the center, facing ahead, and the devices where they were against it. Move trackers here to edit this calibration. Playing turns it off." />
           </StackPanel>
           <StackPanel IsVisible="{Binding Workspace.ShowCalibrationPose}" Margin="{DynamicResource GapRow}">
-            <TextBlock Classes="note" Text="{Binding NudgeSummary}"
-                       IsVisible="{Binding NudgeSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="note" Text="{Binding NudgeSummary}" VerticalAlignment="Center" />
+              <c:ToggleChip Grid.Column="1" Content="Mirror" IsChecked="{Binding Workspace.MirrorTrackers}"
+                            ToolTip.Tip="Moving a left or right tracker puts its partner at the mirror image of where it ends up, across the avatar's middle" />
+            </Grid>
             <TextBlock Classes="note" Text="No body trackers in this calibration." IsVisible="{Binding NoNudgeRows}" />
             <ItemsControl ItemsSource="{Binding NudgeRows}">
               <ItemsControl.ItemTemplate>
