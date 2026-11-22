@@ -15,32 +15,15 @@ The app is a tool people use with a headset pushed up on their forehead, between
 
 ## Window layout
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ ● Record 00:00   [ Takes | Scene ]                    SteamVR ●  VRChat ●  Face ●   ⚙  ? │  top bar, 48 px
-├───────────┬──────────────────────────────────────────────────────────────┬───────────────┤
-│ Library   │                                                              │ Inspector     │
-│ search    │                         3D view                              │ (contextual,  │
-│ takes …   │   overlay text top-left, view chips bottom-left,             │  sections     │
-│           │   camera buttons top-right                                   │  that fold)   │
-│ 260 px    │                                                              │ 320 px        │
-│ folds     ├──────────────────────────────────────────────────────────────┤ folds         │
-│           │ transport: ⏮ ▶ ⏭  loop  speed   time            undo redo    │               │
-│           │ timeline (Takes) or tracks (Scene), resizable                │               │
-├───────────┴──────────────────────────────────────────────────────────────┴───────────────┤
-│ status: what is happening now · progress · last message                                  │  24 px
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Top bar.** The record button is the largest control in the window and shows the running time. The workspace switch (Takes | Scene) sits next to it. On the right, one pill per source (SteamVR, VRChat, face tracking) shows its state with a dot (grey off, amber waiting, green receiving); clicking a pill opens a popover with the details and the fix when something is missing (for example "VRChat's OSC is off: turn it on in the Action Menu").
-- **Library** (left). Search on top. Takes are listed newest first with name, date, length and small badges for what they contain (body, face, fingers, VRChat IK reference). The Scene workspace adds the scenes list above the takes; takes are dragged onto tracks.
-- **3D view** (centre). View chips switch Mesh, Skeleton, Devices, Headset, Playspace and Base stations. A "Live" button switches between the open take and what the devices do right now.
-- **Transport and timeline** (bottom). The same transport in both workspaces.
-- **Inspector** (right). Shows what is selected. In Takes: tabs **Take** (name and notes, body and avatar, calibration, trackers, placement, face) and **Export**. In Scene: **Selection** (strip, transition, keys), **Scene**, **Export**. With Live view on and no take: **Devices** (the SteamVR device list, battery, tracking).
-- **Settings** opens as a page over the workspace (not a tab next to per-take controls): Sources, Recording, Folders, Avatars (the avatar library), Calibration defaults, View, About.
+- **Top bar.** Settings and Help are on the left. The Takes | Scene switch appears when the Scene workspace is available. Source status pills sit on the right; each opens a popover with details and, when needed, a suggested fix.
+- **Library** (left). The Live toggle sits above the take library. Takes are listed newest first with name, date, length and badges for their contents. The Scene workspace adds the scenes list above the takes; takes are dragged onto tracks.
+- **3D view** (centre). The view shows the open take, live devices or the Scene workspace. When the library or inspector is hidden, a button at the top of the view brings it back (Ctrl+1 for the library, Ctrl+2 for the inspector).
+- **Transport and timeline** (bottom). In Takes, the transport changes with the mode: reviewing a take shows its playback controls; Live or recording shows Record, a recording countdown selector, Calibrate, a calibration countdown selector and the age of the last calibration. Calibration can use VRChat sync or a manual countdown. The Scene workspace has its own transport. The timeline can be resized or hidden with Ctrl+3; reopening it restores its previous height. In take review its timecode is shown with the frame number.
+- **Inspector** (right). Shows controls for the selected take or Scene item and has a hide button. In Takes it contains take details, calibration, trackers, placement, face and export controls; Live shows device status.
+- **Settings** opens as a page over the workspace: Sources, Recording, Folders, Avatars (the avatar library), Calibration defaults, View and About.
 - **First run.** A short guided setup: what was detected (SteamVR, VRChat, Blender, Unity projects), where to keep recordings, and the avatar to solve onto (import one, or use the built-in mannequin). Every step can be skipped and reopened later from Settings.
 
-Minimum window 1100 × 700. Below 1280 px wide the inspector overlays the view instead of pushing it.
+Minimum window 1100 × 700.
 
 ## Visual language
 

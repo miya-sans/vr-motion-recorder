@@ -21,7 +21,7 @@ The scale, the floor and the tracker offsets come from the same calibration, so 
 ## Quick guide
 
 1. **Calibrate in VRChat as usual** (Calibrate FBT, then both triggers), before or during the take. The app saves every VRChat calibration to its library, and a take uses the calibrations that were in effect while it was recorded.
-2. **Without a VRChat calibration,** hold a T-pose for about a second somewhere in the take (stand straight, look ahead, arms out), or use **Capture now**: after a 5-second countdown the current SteamVR poses are saved as a calibration.
+2. **For a live calibration,** choose **Sync with VRChat** in the Live transport to use detected VRChat calibrations automatically. To capture manually, choose a 1-, 3- or 5-second countdown and press **Calibrate** while standing in a T-pose (stand straight, look ahead, arms out). In a take's inspector, **Capture now** uses a fixed 5-second countdown to save the current SteamVR poses.
 3. **Change it later if you like.** In the take's inspector (Calibration section) you can pick another calibration from the library, the take's best T-pose or any moment of the take, and change every setting in the table below. Nothing is baked into the recording.
 
 ## How VRChat's calibration is detected

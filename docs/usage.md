@@ -2,8 +2,8 @@
 
 ## Record, review and export
 
-1. **Record.** Start SteamVR, open the app and check that your devices appear. Press the record button or **F9**, perform a short movement, then press again to stop. The recorder writes the take to disk as you move.
-2. **Review.** Open the take: the body is solved from the raw data and shown on your avatar. Scrub, trim with **I** and **O**, cut with **Del**. Change the calibration, the avatar or a setting, and the take solves again.
+1. **Record.** Start SteamVR, open the app and check that your devices appear. In Takes, click **Live** above the library to show the current device poses. Start recording with **Record** in the transport or **F9**, perform a short movement, then press again to stop. The recorder writes the take to disk as you move.
+2. **Review.** Open the take from the library: the body is solved from the raw data and shown on your avatar. Scrub, trim with **I** and **O**, cut with **Del**. Change the calibration, the avatar or a setting, and the take solves again.
 3. **Export.** Choose a folder and the formats: an FBX with your avatar, an armature-only FBX, Unity `.anim` clips.
 4. **Open it in Blender or Unity.**
    - Blender (4.2 to 5.3): install the [add-on](../integrations/blender/README.md) and use **Import VRMR Scene**, or import the FBX directly.
@@ -22,12 +22,17 @@ Two options are useful for trying things out; with `dotnet run`, put them after 
 
 ## Recording
 
-- Start recording with the record button, a global hotkey (F9 by default), or an avatar bool parameter (`VRMR/Record` by default) that you toggle from your avatar's menu. Recording can also follow the button of an in-world HUMR recorder.
+- Start recording with **Record** in the Live transport, a global hotkey (**F9** by default), or an avatar bool parameter (`VRMR/Record` by default) that you toggle from your avatar's menu. Recording can also follow the button of an in-world HUMR recorder.
+- The recording countdown selector beside **Record** offers 0, 1, 3 or 5 seconds; the same delay applies to the Record button and **F9**.
 - For VRChat OSC capture, the app can be started before or after VRChat. Enable OSC (Action Menu → Options → OSC → Enabled). If another program already uses port 9001 and VRChat was running first, switch OSC off and on once so VRChat finds the recorder through OSCQuery.
 
 ## The live view
 
-With SteamVR running, the 3D view can show what the devices do right now instead of a take: the headset, the controllers and every tracker with a drop line to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. **Live** sits next to the record button and is a mode of its own: it closes the open take, and the view then shows only the live state. Click a take in the library to open it and leave Live; click **Live** again to return to the last take. Recording also switches to Live.
+With SteamVR running, click **Live** above the take library to show what the devices do right now instead of a take: the headset, controllers and trackers with drop lines to the floor, each base station with its field of view, and the play area. A device that loses tracking stays at its last position, faded. The device list shows each device's role, model, battery and tracking state. Click a take in the library to leave Live and review it; click **Live** again to return to the live view. Recording also switches to Live.
+
+In Live, the transport contains **Record**, its countdown selector, **Calibrate**, a calibration selector and the age in minutes of the last successful calibration. Choose **Sync with VRChat** to use detected VRChat calibrations, or choose a 1-, 3- or 5-second countdown and press **Calibrate** to capture the current SteamVR poses manually. See [calibration.md](calibration.md) for details.
+
+During take review, the timecode and frame number appear above the timeline. Use the timeline button in the transport area (**Ctrl+3**) to hide or show it, and drag its divider to resize it; reopening it restores its previous height. The library and inspector can also be hidden or shown (**Ctrl+1** and **Ctrl+2**).
 
 ## Adjust a recorded take
 
