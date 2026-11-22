@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -126,11 +127,11 @@ namespace VRMR.Tests
             File.WriteAllText(Path.Combine(TestEnvironment.Root, "golden.txt"), sb.ToString());
         }
 
-        static BakedClip SolveWithNudge(Vec3 leftFoot)
+        static BakedClip SolveWithNudge(Vec3 leftFoot, string calibration)
         {
             BodySolverSetup.Register();
             var rec = SyntheticTake.Create();
-            rec.Edits.TrackerNudges["LeftFoot"] = leftFoot;
+            rec.Edits.TrackerNudges[calibration] = new Dictionary<string, Vec3> { ["LeftFoot"] = leftFoot };
             var cal = new CalibrationSettings
                 { Height = CalHeightMode.RealHeight, HeightValue = SyntheticTake.Height, FollowVrc = false };
             return PoseBuilder.Bake(rec, Mannequin.Profile(), new BakeOptions { Fps = 60, Calibration = cal });
@@ -140,7 +141,9 @@ namespace VRMR.Tests
         public void ANudgedTrackerMovesItsBoneTheOtherWayAndLeavesTheOthers()
         {
             var plain = Solved.Value;
-            var nudged = SolveWithNudge(new Vec3(0, -3, 0));
+            string key = EditList.CalibrationKey(null, SyntheticTake.CalibrationTime);
+            var nudged = SolveWithNudge(new Vec3(0, -3, 0), key);
+            Assert.Equal(key, nudged.Calibration.Pose.Key);
             float left = Bone(nudged, 1.0, HumanBones.LeftFoot).y - Bone(plain, 1.0, HumanBones.LeftFoot).y;
             float right = Bone(nudged, 1.0, HumanBones.RightFoot).y - Bone(plain, 1.0, HumanBones.RightFoot).y;
             Assert.InRange(left, 0.02f, 0.04f);
@@ -152,13 +155,30 @@ namespace VRMR.Tests
         }
 
         [Fact]
-        public void TrackerNudgesSurviveSavingTheEditList()
+        public void AnotherCalibrationsTrackerOffsetsDoNotApply()
+        {
+            var plain = Solved.Value;
+            var other = SolveWithNudge(new Vec3(0, -3, 0), EditList.CalibrationKey(null, 2.0));
+            float left = Bone(other, 1.0, HumanBones.LeftFoot).y - Bone(plain, 1.0, HumanBones.LeftFoot).y;
+            Assert.InRange(Math.Abs(left), 0f, 0.001f);
+        }
+
+        [Fact]
+        public void TrackerOffsetsSurviveSavingTheEditListPerCalibration()
         {
             var e = new EditList();
-            e.TrackerNudges["Hips"] = new Vec3(1.5f, -2f, 0.5f);
+            e.TrackerNudges["snapshot:a"] = new Dictionary<string, Vec3> { ["Hips"] = new Vec3(1.5f, -2f, 0.5f) };
             var back = EditList.FromJson(Json.ParseObject(Json.Serialize(e.ToJson())));
-            Assert.Equal(new Vec3(1.5f, -2f, 0.5f), back.TrackerNudges["Hips"]);
-            Assert.Single(back.TrackerNudges);
+            Assert.Equal(new Vec3(1.5f, -2f, 0.5f), back.NudgesFor("snapshot:a")["Hips"]);
+            Assert.Null(back.NudgesFor("snapshot:b"));
+        }
+
+        [Fact]
+        public void OlderTrackerOffsetsApplyToEveryCalibration()
+        {
+            var d = Json.ParseObject("{\"trackerNudges\": {\"LeftFoot\": [0, 2, 0]}}");
+            var e = EditList.FromJson(d);
+            Assert.Equal(new Vec3(0, 2, 0), e.NudgesFor("snapshot:any")["LeftFoot"]);
         }
     }
 }

@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using VRMR.App.Composition;
 using VRMR.App.Controls;
 using VRMR.App.Services;
+using VRMR.App.Viewport;
 
 namespace VRMR.App.ViewModels
 {
@@ -52,21 +53,37 @@ namespace VRMR.App.ViewModels
     public partial class TrackerNudgeRowViewModel : ObservableObject
     {
         readonly Action<string, Vec3> _changed;
+        readonly Action<string, bool> _picked;
         bool _syncing;
         [ObservableProperty] bool _moved;
+        [ObservableProperty] bool _selected;
         [ObservableProperty] double _x;
         [ObservableProperty] double _y;
         [ObservableProperty] double _z;
 
-        public TrackerNudgeRowViewModel(string role, Action<string, Vec3> changed)
+        public TrackerNudgeRowViewModel(string role, Action<string, Vec3> changed, Action<string, bool> picked)
         {
             Role = role;
             Label = TrackerService.RoleLabel(role);
             _changed = changed;
+            _picked = picked;
         }
 
         public string Role { get; }
         public string Label { get; }
+
+        /// <summary>Shows the pick in the view without picking again.</summary>
+        public void ShowSelected(bool on)
+        {
+            _syncing = true;
+            Selected = on;
+            _syncing = false;
+        }
+
+        partial void OnSelectedChanged(bool value)
+        {
+            if (!_syncing) _picked(Role, value);
+        }
 
         /// <summary>Shows a nudge from the edit list without writing it back.</summary>
         public void Show(Vec3 v)
@@ -220,6 +237,7 @@ namespace VRMR.App.ViewModels
             _session.EditsChanged += what => SyncEdits();
             _session.ClipChanged += SyncSolve;
             _session.SolveChanged += SyncSolveState;
+            workspace.CalibrationViewChanged += SyncNudgeRows;
             _session.DirtyChanged += () => { IsDirty = _session.Dirty; };
             _calibration.Changed += SyncCalibration;
             host.Avatars.Updated += () => host.Ui.Post(SyncAvatar);
@@ -642,7 +660,7 @@ namespace VRMR.App.ViewModels
                     HasVrcChanges = r.Edits.VrcChanges.Count > 0;
                 }
 
-                SyncNudges();
+                SyncNudgeRows();
 
                 var p = r?.Edits.Placement ?? Pose.Identity;
                 var euler = p.rot.ToEulerUnity();
@@ -791,44 +809,41 @@ namespace VRMR.App.ViewModels
                                 (warnings.Count > 0 ? "\n" + string.Join("\n", warnings) : "");
         }
 
-        /// <summary>One row per body tracker the calibration bound (kept when the set is unchanged, so typing isn't lost).</summary>
+        /// <summary>
+        ///     One row per body tracker of the calibration the view shows (kept when the set is unchanged, so typing isn't
+        ///     lost).
+        /// </summary>
         void SyncNudgeRows()
         {
-            var cal = _session.Clip?.Calibration?.Pose;
+            var cal = _host.TakePresenter.ShownCalibration;
             var roles = cal == null
                 ? new List<string>()
-                : Enum.GetNames(typeof(BodyRole))
-                    .Where(n => n != "Head" && n != "LeftHand" && n != "RightHand" && cal.Devices.ContainsKey(n) &&
-                                !cal.Unused.Contains(n))
-                    .ToList();
+                : Enum.GetNames(typeof(BodyRole)).Where(n => TakePresenter.IsBodyTracker(cal, n)).ToList();
             if (!roles.SequenceEqual(NudgeRows.Select(x => x.Role)))
             {
                 NudgeRows.Clear();
-                foreach (string role in roles) NudgeRows.Add(new TrackerNudgeRowViewModel(role, SetNudge));
+                foreach (string role in roles)
+                    NudgeRows.Add(new TrackerNudgeRowViewModel(role, SetNudge,
+                        (r, on) => _workspace.CalibrationTool.Select(on ? r : "")));
             }
 
             NoNudgeRows = NudgeRows.Count == 0;
-
-            SyncNudges();
-        }
-
-        void SyncNudges()
-        {
-            var nudges = _session.Take?.Edits.TrackerNudges;
+            var tool = _workspace.CalibrationTool;
+            int moved = 0;
             foreach (var row in NudgeRows)
-                row.Show(nudges != null && nudges.TryGetValue(row.Role, out var v) ? v : Vec3.Zero);
-            int moved = nudges?.Count ?? 0;
-            NudgeSummary = moved == 0 ? "" : moved == 1 ? "1 moved" : moved + " moved";
+            {
+                var v = tool.Nudge(row.Role);
+                row.Show(v);
+                row.ShowSelected(tool.Selected == row.Role);
+                if (v.SqrLength > 1e-6f) moved++;
+            }
+
+            NudgeSummary = moved == 0 ? "" : moved == 1 ? "1 tracker moved" : moved + " trackers moved";
         }
 
         void SetNudge(string role, Vec3 v)
         {
-            if (_syncing || _session.Take == null) return;
-            _session.Edit("trackerNudge", e =>
-            {
-                if (v.SqrLength < 1e-6f) e.TrackerNudges.Remove(role);
-                else e.TrackerNudges[role] = v;
-            });
+            if (!_syncing) _workspace.CalibrationTool.SetNudge(role, v);
         }
 
         /// <summary>A new solve arrived: results, automatic roles and found losses may have changed.</summary>

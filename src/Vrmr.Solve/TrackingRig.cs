@@ -154,9 +154,13 @@ namespace VRMR
         Pose _calRoot;
         bool _calRootOk;
 
-        // the calibration pose's heading, set while binding: the take's tracker nudges are in this frame
+        // the calibration pose's heading, set while binding: this calibration's tracker nudges are in this frame
         Quat _nudgeYaw;
         bool _nudging;
+        Dictionary<string, Vec3> _nudges;
+
+        /// <summary>Identifies this calibration in the take's edits (<see cref="EditList.TrackerNudges" />).</summary>
+        public string CalibrationKey => EditList.CalibrationKey(Snapshot, CalibrationTime);
 
         // foot tracker heights at the calibration moment (standing flat on the floor), for KeepFeetPlanted
         float _calFootL = float.NaN, _calFootR = float.NaN;
@@ -414,7 +418,7 @@ namespace VRMR
         /// </summary>
         Pose Nudged(BodyRole role, Pose p)
         {
-            if (!_nudging || !_rec.Edits.TrackerNudges.TryGetValue(role.ToString(), out var n)) return p;
+            if (!_nudging || _nudges == null || !_nudges.TryGetValue(role.ToString(), out var n)) return p;
             return new Pose(p.pos + _nudgeYaw * (n * 0.01f), p.rot);
         }
 
@@ -1357,7 +1361,7 @@ namespace VRMR
             {
                 Feed(solver, CalibrationTime);
                 foreach (var role in TrackerRoles)
-                    if (_rec.Edits.TrackerNudges.ContainsKey(role.ToString()) && _cal.UsesRole(role) &&
+                    if (_nudging && _nudges.ContainsKey(role.ToString()) && _cal.UsesRole(role) &&
                         Tracker(role, CalibrationTime, out var tp))
                         solver.SetDevice(role, Nudged(role, tp), true, HandSourceKind.Generic);
                 return;
@@ -1399,7 +1403,8 @@ namespace VRMR
             _calRootOk = false;
             bool hasHead = CalHead(out var h);
             _nudgeYaw = hasHead ? Quat.YawRotation(CalibrationHead(SolverEye(h)).rot.Yaw) : Quat.Identity;
-            _nudging = hasHead;
+            _nudges = _rec.Edits.NudgesFor(CalibrationKey);
+            _nudging = hasHead && _nudges != null;
             FeedCalibration(solver);
             if (hasHead)
             {
@@ -1425,6 +1430,7 @@ namespace VRMR
             var universe = Snapshot == null ? UniverseAt(CalibrationTime) : Pose.Identity;
             var res = new CalibrationPose
             {
+                Key = CalibrationKey,
                 Root = universe * _calRoot,
                 Scale = AvatarEyeHeight / Math.Max(0.05f, _prof.EyeHeight)
             };

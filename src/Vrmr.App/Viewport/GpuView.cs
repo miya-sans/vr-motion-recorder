@@ -319,9 +319,15 @@ namespace VRMR.App.Viewport
 
             public bool PointerPressed(ViewportControl view, in ViewPointer e)
             {
-                if (e.Button != MouseButton.Left || !Sync()) return false;
-                var part = _gizmo.Hit(view.Camera, e.Position);
-                if (part == GizmoPart.None) return false;
+                if (e.Button != MouseButton.Left || Tool == null) return false;
+                var part = Sync() ? _gizmo.Hit(view.Camera, e.Position) : GizmoPart.None;
+                if (part == GizmoPart.None)
+                {
+                    if (!Tool.Clicked(_view, new Point(e.Position.X, e.Position.Y))) return false;
+                    view.RequestFrame();
+                    return true;
+                }
+
                 _hot = part;
                 _gizmo.Begin(view.Camera, part, e.Position);
                 Tool.DragStarted();

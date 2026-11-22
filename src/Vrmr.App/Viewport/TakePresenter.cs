@@ -49,6 +49,33 @@ namespace VRMR.App.Viewport
         /// </summary>
         public bool CalibrationPose { get; set; }
 
+        /// <summary>The calibration pose the view shows (centered: the avatar's root at the origin, facing +Z), or null.</summary>
+        public CalibrationPose ShownCalibration { get; private set; }
+
+        /// <summary>The body tracker picked in the calibration view, or "".</summary>
+        public string SelectedTracker { get; set; } = "";
+
+        /// <summary>A drag of <see cref="SelectedTracker" /> not committed yet (view space, avatar metres).</summary>
+        public Vec3 DragOffset { get; set; }
+
+        /// <summary>A body tracker of the shown calibration that can be moved (bound, not a head or hand).</summary>
+        public static bool IsBodyTracker(CalibrationPose cal, string role)
+        {
+            return role != "Head" && role != "LeftHand" && role != "RightHand" && cal.Devices.ContainsKey(role) &&
+                   !cal.Unused.Contains(role);
+        }
+
+        /// <summary>Where a device of the shown calibration is drawn (drag included).</summary>
+        public bool CalibrationDevice(string role, out Vec3 pos)
+        {
+            pos = Vec3.Zero;
+            var cal = ShownCalibration;
+            if (cal == null || !cal.Devices.TryGetValue(role, out var p)) return false;
+            pos = cal.Root.Inverse.TransformPoint(p.pos);
+            if (role == SelectedTracker) pos += DragOffset;
+            return true;
+        }
+
         /// <summary>The segment's calibration pose at a clip frame, or null.</summary>
         static CalibrationPose CalibrationAt(BakedClip c, int f)
         {
@@ -90,14 +117,21 @@ namespace VRMR.App.Viewport
             Frame = f;
             LastFrame = c.Frames - 1;
             var calPose = CalibrationPose ? CalibrationAt(c, f) : null;
+            ShownCalibration = calPose;
             _face.Clear();
             scene.Markers.Clear();
-            if (calPose != null) ShowCalibration(scene, c, calPose);
-            else ShowFrame(scene, c, f);
+            if (calPose != null)
+            {
+                ShowCalibration(scene, c, calPose);
+                scene.Overlay = "Calibration pose";
+                scene.OverlayRight = "";
+                view.SceneChanged();
+                return true;
+            }
 
+            ShowFrame(scene, c, f);
             string roomNote = ShowRoom(view, c, r, f);
-            scene.Overlay = (calPose != null ? "Calibration pose" : BodySourceText(c.BodySource)) +
-                            (roomNote.Length > 0 ? "\n" + roomNote : "");
+            scene.Overlay = BodySourceText(c.BodySource) + (roomNote.Length > 0 ? "\n" + roomNote : "");
             scene.OverlayRight = "";
             var d = PlacementDelta();
             if (!IsIdentity(d)) scene.Transform(d);
@@ -105,21 +139,32 @@ namespace VRMR.App.Viewport
             return true;
         }
 
-        /// <summary>The avatar in its rest T-pose where the calibration bound it, and the devices at that moment.</summary>
+        /// <summary>
+        ///     The avatar in its rest T-pose at the origin facing +Z, and the devices at the calibration moment where they
+        ///     were against it.
+        /// </summary>
         void ShowCalibration(ViewScene scene, BakedClip c, CalibrationPose cal)
         {
             var p = c.Profile;
             for (int i = 0; i < p.Nodes.Count; i++)
             {
-                scene.NodePos[i] = cal.Root.TransformPoint(p.RestWorldPos[i] * cal.Scale);
-                scene.NodeRot[i] = (cal.Root.rot * p.RestWorldRot[i]).Normalized;
+                scene.NodePos[i] = p.RestWorldPos[i] * cal.Scale;
+                scene.NodeRot[i] = p.RestWorldRot[i];
             }
 
             scene.MeshScale = cal.Scale;
             scene.FaceWeights = _face;
             float size = c.Calibration.TrackScale > 0.05f ? c.Calibration.TrackScale : 1f;
+            var toView = cal.Root.Inverse;
             foreach (var kv in cal.Devices)
-                scene.Markers.Add(DeviceMarker(kv.Key, kv.Value, size, cal.Unused.Contains(kv.Key)));
+            {
+                var pose = toView * kv.Value;
+                bool selected = kv.Key == SelectedTracker;
+                if (selected) pose = new Pose(pose.pos + DragOffset, pose.rot);
+                var m = DeviceMarker(kv.Key, pose, size, cal.Unused.Contains(kv.Key));
+                if (selected) m.Tint = MarkerTint.Accent;
+                scene.Markers.Add(m);
+            }
         }
 
         static ViewMarker DeviceMarker(string role, Pose pose, float size, bool faded)

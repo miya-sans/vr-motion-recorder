@@ -133,13 +133,15 @@ After every solve the Calibration section shows the result:
 - how high the standing feet are above the floor;
 - how often and how far the hips were lowered to keep the feet planted.
 
-In the 3D view the controllers and trackers are drawn at the tracking scale, so you can see the hands holding the controllers. **Show** (next to *Find T-pose*) shows the calibration of the stretch at the playhead instead of the solved pose: the avatar's T-pose as the trackers were bound to it, and every device at that moment. Unused trackers are dimmed. Playing turns it off.
+In the 3D view the controllers and trackers are drawn at the tracking scale, so you can see the hands holding the controllers.
 
-**Tracker offsets** (in the Calibration section) move a body tracker against the avatar at the calibration moment, in avatar cm: right, up and forward of the calibration pose. The bone is then bound that much the other way, for the whole take. Use it when a calibration was made while not standing straight, or when a strap slipped; a better calibration moment (*At playhead*, *Find T-pose*) fixes every tracker at once and is usually the better choice. Things to know:
+**Show** (next to *Find T-pose*) shows the calibration of the stretch at the playhead instead of the solved pose: the avatar's T-pose at the center of the view, facing ahead, and every device where it was against the avatar at that moment. Unused trackers are dimmed. Playing turns it off.
+
+While it shows, each body tracker can be moved against the avatar, as an edit of that calibration: click a tracker in the view (or its gizmo button in the list) and drag the arrows, or type the offset (right, up, forward, in avatar cm). The bone is then bound that much the other way. Each calibration of a take keeps its own offsets; they are saved with the take. Use them when a calibration was made while not standing straight, or when a strap slipped; a better calibration moment (*At playhead*, *Find T-pose*) fixes every tracker at once and is usually the better choice. Things to know:
 
 - Feet are pinned to their trackers, so moving a foot tracker up lowers the foot against the floor. A foot only goes as low as its leg reaches: with straight legs at calibration, most of a downward move is lost.
 - Moving the hip tracker changes how far the legs reach.
-- The offsets apply to every calibration in the take, and the solve no longer matches VRChat's.
+- With offsets, the solve no longer matches VRChat's.
 
 ## Saving and loading
 

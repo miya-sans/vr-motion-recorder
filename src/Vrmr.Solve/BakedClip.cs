@@ -170,6 +170,9 @@ namespace VRMR
         /// <summary>Trackers the take has but the solve didn't use (switched off, or missing from the calibration).</summary>
         public readonly HashSet<string> Unused = new();
 
+        /// <summary>This calibration's key in the take's edits (<see cref="EditList.TrackerNudges" />).</summary>
+        public string Key = "";
+
         public Pose Root;
         public float Scale = 1f;
 

@@ -489,10 +489,31 @@ namespace VRMR
         public double FaceOffset; // seconds added to parameter timestamps
 
         /// <summary>
-        ///     Per body tracker (BodyRole name): where it is moved against the avatar at the calibration moment, in avatar cm
-        ///     (x right, y up, z forward of the calibration pose). Applies to every calibration of the take.
+        ///     Edits of the take's calibrations, by calibration key (see <see cref="CalibrationKey" />): per body tracker
+        ///     (BodyRole name), where it is moved against the avatar at that calibration moment, in avatar cm (x right, y up,
+        ///     z forward of the calibration pose). <see cref="AnyCalibration" /> holds offsets for every calibration.
         /// </summary>
-        public Dictionary<string, Vec3> TrackerNudges = new();
+        public Dictionary<string, Dictionary<string, Vec3>> TrackerNudges = new();
+
+        /// <summary>The <see cref="TrackerNudges" /> key for offsets that apply to every calibration (older files).</summary>
+        public const string AnyCalibration = "*";
+
+        /// <summary>Identifies one calibration of a take: a snapshot by its id, or a moment of the take.</summary>
+        public static string CalibrationKey(CalibrationSnapshot snapshot, double time)
+        {
+            if (snapshot != null)
+                return "snapshot:" + (snapshot.Id.Length > 0
+                    ? snapshot.Id
+                    : snapshot.CreatedUtc.Ticks.ToString(CultureInfo.InvariantCulture));
+            return "time:" + time.ToString("0.000", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>The tracker offsets of one calibration (its own, else the ones for every calibration), or null.</summary>
+        public Dictionary<string, Vec3> NudgesFor(string key)
+        {
+            return TrackerNudges.TryGetValue(key, out var own) ? own :
+                TrackerNudges.TryGetValue(AnyCalibration, out var any) ? any : null;
+        }
         public string FingerSource = "auto"; // auto | steamvr | gestures | none
 
         /// <summary>Keep VRChat's jumps (the avatar leaving the ground in VRChat's world) in the body; off by default (VrcJumps).</summary>
@@ -618,7 +639,8 @@ namespace VRMR
                 ["fingerSource"] = FingerSource, ["targetAvatar"] = TargetAvatar,
                 ["vrcChanges"] = VrcChanges.Select(c => (object)c.ToJson()).ToList(),
                 ["trackerGaps"] = TrackerGaps.Select(c => (object)c.ToJson()).ToList(),
-                ["trackerNudges"] = TrackerNudges.ToDictionary(k => k.Key, k => (object)Json.V3(k.Value))
+                ["trackerNudges"] = TrackerNudges.ToDictionary(c => c.Key,
+                    c => (object)c.Value.ToDictionary(k => k.Key, k => (object)Json.V3(k.Value)))
             };
         }
 
@@ -675,7 +697,16 @@ namespace VRMR
             var nudges = d.GetObj("trackerNudges");
             if (nudges != null)
                 foreach (var kv in nudges)
-                    e.TrackerNudges[kv.Key] = Json.ToV3(kv.Value);
+                {
+                    if (kv.Value is Dictionary<string, object> roles)
+                        e.TrackerNudges[kv.Key] = roles.ToDictionary(r => r.Key, r => Json.ToV3(r.Value));
+                    else // one offset per role for every calibration
+                    {
+                        if (!e.TrackerNudges.TryGetValue(AnyCalibration, out var any))
+                            e.TrackerNudges[AnyCalibration] = any = new Dictionary<string, Vec3>();
+                        any[kv.Key] = Json.ToV3(kv.Value);
+                    }
+                }
             return e;
         }
     }

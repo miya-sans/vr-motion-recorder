@@ -26,10 +26,10 @@ namespace VRMR.App.Tests
     public class FlowTests
     {
         /// <summary>The window on a scratch data folder with one made-up take, opened and solved.</summary>
-        static async Task<Session> OpenTake(double seconds = 4, double width = 1400)
+        static async Task<Session> OpenTake(double seconds = 4, double width = 1400, bool trackers = false)
         {
             var s = new Session { Data = new ScratchData() };
-            SyntheticTake.Save(s.Data.TakesDir, seconds, "Flow take");
+            SyntheticTake.Save(s.Data.TakesDir, seconds, "Flow take", trackers);
             s.Host = s.Data.NewHost(new AvaloniaUiDispatcher());
             s.Shell = new ShellViewModel(s.Host);
             s.Window = new MainWindow(s.Shell) { Width = width, Height = 860 };
@@ -158,6 +158,62 @@ namespace VRMR.App.Tests
                 Assert.InRange(onScreen.Y, 0, view.Bounds.Height);
                 s.Shell.Takes.SetGizmo(false);
                 Assert.Null(view.Tool);
+            });
+        }
+
+        [Fact]
+        public async Task TheCalibrationViewCentersTheTPoseAndItsGizmoMovesATracker()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake(trackers: true);
+                var takes = s.Shell.Takes;
+                var view = Assert.IsType<GpuView>(s.Window.Viewport);
+                var presenter = s.Host.TakePresenter;
+                takes.ShowCalibrationPose = true;
+                await HeadlessUi.SettleAsync(50);
+                Assert.Same(takes.CalibrationTool, ((IViewport)view).Tool);
+                Assert.Equal("Calibration pose", view.Scene.Overlay);
+                var cal = presenter.ShownCalibration;
+                Assert.NotNull(cal);
+
+                // the T-pose stands at the origin, facing ahead
+                var p = view.Scene.Profile;
+                var hips = view.Scene.NodePos[p.Human[HumanBones.Hips]];
+                Assert.InRange(Math.Abs(hips.x) + Math.Abs(hips.z), 0f, 0.05f);
+                Assert.True(view.Scene.NodePos[p.Human[HumanBones.LeftHand]].x < -0.3f, "left hand on the left");
+                var rows = takes.Inspector.NudgeRows.Select(r => r.Role).ToList();
+                Assert.Equal(new[] { "Hips", "LeftFoot", "RightFoot" }, rows);
+
+                // a click on the tracker picks it
+                Assert.True(presenter.CalibrationDevice("LeftFoot", out var foot));
+                Assert.True(view.Project(foot, out var onView));
+                var at = view.TranslatePoint(onView, s.Window).Value;
+                s.Window.MouseDown(at, MouseButton.Left);
+                s.Window.MouseUp(at, MouseButton.Left);
+                Assert.Equal("LeftFoot", takes.CalibrationTool.Selected);
+                Assert.True(takes.Inspector.NudgeRows.Single(r => r.Role == "LeftFoot").Selected);
+                Assert.NotNull(takes.CalibrationTool.Gizmo);
+
+                // a drag is one edit of this calibration
+                var tool = takes.CalibrationTool;
+                tool.DragStarted();
+                tool.Dragged(new Vec3(0, 0.02f, 0), Quat.Identity, 0);
+                tool.DragEnded();
+                await WaitSolved(s);
+                var nudge = s.Host.Session.Take.Edits.NudgesFor(presenter.ShownCalibration.Key)["LeftFoot"];
+                Assert.InRange(nudge.y, 1.99f, 2.01f);
+                Assert.Equal(2.0, takes.Inspector.NudgeRows.Single(r => r.Role == "LeftFoot").Y, 1);
+                Assert.True(presenter.CalibrationDevice("LeftFoot", out var moved));
+                Assert.InRange(moved.y - foot.y, 0.019f, 0.021f);
+
+                takes.UndoCommand.Execute(null);
+                await WaitSolved(s);
+                Assert.Null(s.Host.Session.Take.Edits.NudgesFor(presenter.ShownCalibration.Key));
+
+                takes.ShowCalibrationPose = false;
+                Assert.Null(((IViewport)view).Tool);
+                Assert.Equal("", takes.CalibrationTool.Selected);
             });
         }
 

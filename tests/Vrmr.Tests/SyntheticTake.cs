@@ -11,6 +11,9 @@ namespace VRMR.Tests
     public static class SyntheticTake
     {
         public const double Duration = 6.0;
+
+        /// <summary>When the puppet calibrates (seconds into the take), standing in the T-pose.</summary>
+        public const double CalibrationTime = 0.5;
         public const int Rate = 90;
 
         /// <summary>The puppet's standing height and where its devices sit, metres.</summary>
@@ -67,7 +70,7 @@ namespace VRMR.Tests
             var footR = Device(rec, "TRK-FOOT-R", 3, 0, "Synthetic Tracker", "");
 
             // calibrated while standing in the T-pose, as a user would
-            rec.Edits.CalibrationTime = 0.5;
+            rec.Edits.CalibrationTime = CalibrationTime;
 
             int samples = (int)(Duration * Rate);
             for (int i = 0; i <= samples; i++)

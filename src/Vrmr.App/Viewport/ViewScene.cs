@@ -135,6 +135,12 @@ namespace VRMR.App.Viewport
 
         /// <summary>A key pressed while the view has the tool; true when the tool used it.</summary>
         bool KeyDown(Avalonia.Input.Key key);
+
+        /// <summary>A left click in the view that missed the gizmo; true when the tool used it (no camera drag then).</summary>
+        bool Clicked(IViewport view, Point screen)
+        {
+            return false;
+        }
     }
 
     /// <summary>

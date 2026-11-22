@@ -176,35 +176,36 @@
             <Button Content="Find T-pose" Command="{Binding FindTPoseCommand}"
                     ToolTip.Tip="Calibrate at the best T-pose found in this take: arms out, looking ahead, holding still" />
             <c:ToggleChip Content="Show" IsChecked="{Binding Workspace.ShowCalibrationPose}"
-                          ToolTip.Tip="Show the calibration in the 3D view: the avatar's T-pose as the trackers were bound to it, and the devices at that moment. Playing turns it off." />
+                          ToolTip.Tip="Show the calibration in the 3D view: the avatar's T-pose at the center, facing ahead, and the devices where they were against it. Move trackers here to edit this calibration. Playing turns it off." />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding Workspace.ShowCalibrationPose}" Margin="{DynamicResource GapRow}">
+            <TextBlock Classes="note" Text="{Binding NudgeSummary}"
+                       IsVisible="{Binding NudgeSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="note" Text="No body trackers in this calibration." IsVisible="{Binding NoNudgeRows}" />
+            <ItemsControl ItemsSource="{Binding NudgeRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TrackerNudgeRowViewModel">
+                  <c:FieldRow Label="{Binding Label}" Unit="cm" CanReset="{Binding Moved}"
+                              ResetCommand="{Binding ResetCommand}"
+                              ToolTip.Tip="Where this tracker is moved against the avatar in this calibration: right, up, forward, in avatar cm. Up lowers the bone under the tracker; a foot only goes as low as its leg reaches.">
+                    <Grid ColumnDefinitions="Auto,4,*,4,*,4,*">
+                      <c:IconToggle Icon="{DynamicResource Icon.Gizmo}" IsChecked="{Binding Selected}"
+                                    ToolTip.Tip="Move it with the gizmo in the view (or click the tracker there)" />
+                      <c:NumberField Grid.Column="2" Value="{Binding X}" Step="0.5" Decimals="1" Minimum="-30"
+                                     Maximum="30" ToolTip.Tip="Right" />
+                      <c:NumberField Grid.Column="4" Value="{Binding Y}" Step="0.5" Decimals="1" Minimum="-30"
+                                     Maximum="30" ToolTip.Tip="Up" />
+                      <c:NumberField Grid.Column="6" Value="{Binding Z}" Step="0.5" Decimals="1" Minimum="-30"
+                                     Maximum="30" ToolTip.Tip="Forward" />
+                    </Grid>
+                  </c:FieldRow>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
 
           <takes:CalibrationSettingsView DataContext="{Binding Settings}" />
 
-          <c:Section Header="Tracker offsets" Level="2" IsExpanded="False" StateKey="take.cal.nudges"
-                     Summary="{Binding NudgeSummary}" SummaryTone="Accent"
-                     ToolTip.Tip="Moves a tracker against the avatar at calibration, in avatar cm, for a calibration made while not standing straight or a strap that slipped. Up moves the tracker up, so the bone sits lower under it: a foot can only go as low as its leg reaches. Applies to every calibration of this take and moves away from what VRChat did. Show the calibration pose to see it.">
-            <StackPanel>
-              <TextBlock Classes="note" Text="No body trackers were bound." IsVisible="{Binding NoNudgeRows}" />
-              <ItemsControl ItemsSource="{Binding NudgeRows}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:TrackerNudgeRowViewModel">
-                    <c:FieldRow Label="{Binding Label}" Unit="cm" CanReset="{Binding Moved}" ResetCommand="{Binding ResetCommand}"
-                                ToolTip.Tip="Right, up, forward of the calibration pose, in avatar cm">
-                      <Grid ColumnDefinitions="*,4,*,4,*">
-                        <c:NumberField Value="{Binding X}" Step="0.5" Decimals="1" Minimum="-30" Maximum="30"
-                                       ToolTip.Tip="Right" />
-                        <c:NumberField Grid.Column="2" Value="{Binding Y}" Step="0.5" Decimals="1" Minimum="-30"
-                                       Maximum="30" ToolTip.Tip="Up" />
-                        <c:NumberField Grid.Column="4" Value="{Binding Z}" Step="0.5" Decimals="1" Minimum="-30"
-                                       Maximum="30" ToolTip.Tip="Forward" />
-                      </Grid>
-                    </c:FieldRow>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </c:Section>
 
           <c:Section Header="VRChat's settings in this take" Level="2" IsExpanded="False" StateKey="take.cal.vrc"
                      Summary="{Binding VrcSettingsSummary}"

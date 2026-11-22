@@ -68,6 +68,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _timeText = "";
         [ObservableProperty] string _timeTip;
         IViewport _view;
+        CalibrationPose _shownCalibration;
 
         public TakesWorkspaceViewModel(AppHost host)
         {
@@ -77,6 +78,12 @@ namespace VRMR.App.ViewModels
             _settings = host.SettingsStore;
             Timeline = new TimelineViewModel(_session, _clock, host.Ui);
             PlacementTool = new PlacementTool(host.Placement, host.TakePresenter, _session, _clock);
+            CalibrationTool = new CalibrationTool(host.TakePresenter, _session);
+            CalibrationTool.Changed += () =>
+            {
+                Present();
+                CalibrationViewChanged?.Invoke();
+            };
             var s = _settings.Value;
             _showMesh = s.PreviewMesh;
             _showSkeleton = s.PreviewSkeleton;
@@ -138,6 +145,16 @@ namespace VRMR.App.ViewModels
 
         public TimelineViewModel Timeline { get; }
         public PlacementTool PlacementTool { get; }
+
+        /// <summary>Moves trackers against the avatar while the calibration pose shows.</summary>
+        public CalibrationTool CalibrationTool { get; }
+
+        /// <summary>The calibration view was switched, shows another calibration, or its pick changed.</summary>
+        public event Action CalibrationViewChanged;
+
+        /// <summary>The tool the view uses now: the tracker gizmo in the calibration view, else the placement gizmo when on.</summary>
+        IViewportTool CurrentTool =>
+            !_active ? null : ShowCalibrationPose ? CalibrationTool : PlacementTool.Active ? PlacementTool : null;
         public TakeInspectorViewModel Inspector { get; }
         public DevicesViewModel Devices { get; }
         public bool ShowTakeTab => InspectorTab == TakeTab;
@@ -194,7 +211,7 @@ namespace VRMR.App.ViewModels
             }
             else
             {
-                if (_view != null) _view.Tool = PlacementTool.Active ? PlacementTool : null;
+                if (_view != null) _view.Tool = CurrentTool;
                 Present();
                 UpdateAnimating();
             }
@@ -251,7 +268,12 @@ namespace VRMR.App.ViewModels
         partial void OnShowCalibrationPoseChanged(bool value)
         {
             _host.TakePresenter.CalibrationPose = value;
+            if (!value) CalibrationTool.Select("");
+            if (value && PlacementTool.Active) SetGizmo(false);
+            if (_view != null) _view.Tool = CurrentTool;
             Present();
+            if (value) _view?.FrameAll();
+            CalibrationViewChanged?.Invoke();
         }
 
         void SaveChip(string what, Action<Settings> change)
@@ -267,6 +289,13 @@ namespace VRMR.App.ViewModels
             bool recording = _host.Recording.IsRecording;
             bool shown = false;
             if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view, Timeline.PreviewTime);
+            var cal = _host.TakePresenter.ShownCalibration;
+            if (!ReferenceEquals(cal, _shownCalibration))
+            {
+                _shownCalibration = cal;
+                CalibrationViewChanged?.Invoke();
+            }
+
             FrameText = shown ? $"frame {_host.TakePresenter.Frame}/{_host.TakePresenter.LastFrame}" : "";
             if (!shown && (IsLive || recording))
             {
@@ -667,7 +696,7 @@ namespace VRMR.App.ViewModels
             PlacementTool.Active = on;
             if (_view != null)
             {
-                _view.Tool = on && _active ? PlacementTool : null;
+                _view.Tool = CurrentTool;
                 _view.SceneChanged();
             }
 
