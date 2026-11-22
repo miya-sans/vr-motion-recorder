@@ -236,6 +236,14 @@ namespace VRMR.App.Tests
                 takes.ShowCalibrationPose = false;
                 Assert.Null(((IViewport)view).Tool);
                 Assert.Equal("", takes.CalibrationTool.Selected);
+
+                // leaving the take for Live leaves the calibration view
+                takes.ShowCalibrationPose = true;
+                s.Host.Session.Close();
+                await HeadlessUi.SettleAsync(50);
+                Assert.False(takes.ShowCalibrationPose);
+                Assert.Null(presenter.ShownCalibration);
+                Assert.Null(((IViewport)view).Tool);
             });
         }
 

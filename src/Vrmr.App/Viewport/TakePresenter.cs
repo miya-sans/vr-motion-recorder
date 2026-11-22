@@ -17,6 +17,7 @@ namespace VRMR.App.Viewport
         readonly TakeSession _session;
         SteamVRRoom _room;
         Recording _roomOf;
+        bool _calibrationPose;
 
         public TakePresenter(TakeSession session, PlaybackClock clock, RoomService rooms)
         {
@@ -47,7 +48,15 @@ namespace VRMR.App.Viewport
         ///     Show the calibration moment of the segment at the playhead instead of the solved pose: the avatar's T-pose as
         ///     the trackers were bound to it, and the devices then.
         /// </summary>
-        public bool CalibrationPose { get; set; }
+        public bool CalibrationPose
+        {
+            get => _calibrationPose;
+            set
+            {
+                _calibrationPose = value;
+                if (!value) ShownCalibration = null;
+            }
+        }
 
         /// <summary>The calibration pose the view shows (centered: the avatar's root at the origin, facing +Z), or null.</summary>
         public CalibrationPose ShownCalibration { get; private set; }
@@ -93,6 +102,7 @@ namespace VRMR.App.Viewport
         {
             var c = _session.Clip;
             var r = _session.Take;
+            ShownCalibration = null;
             if (c == null || r == null || c.Profile == null) return false;
             var scene = view.Scene;
             if (scene.Profile != c.Profile) scene.SetProfile(c.Profile);

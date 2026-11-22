@@ -507,7 +507,7 @@ namespace VRMR.Render
             float extent = Math.Max(Math.Max(hi.x - lo.x, hi.z - lo.z), hi.y);
             Camera.Target = new Vec3(c.x, Math.Max(0.6f, c.y * 0.8f), c.z);
             Camera.Distance = MathX.Clamp(extent * 1.5f + 1.2f, 2.5f, 25f);
-            Camera.Pitch = Math.Max(Camera.Pitch, 20);
+            if (View == ViewPreset.Perspective) Camera.Pitch = Math.Max(Camera.Pitch, 20);
             Follow = false;
             OnCameraChanged();
             return true;
