@@ -311,12 +311,6 @@ namespace VRMR.App.ViewModels
             if (_view == null || !_active) return;
             bool recording = _host.Recording.IsRecording;
             bool shown = false;
-            if ((IsLive || recording) && ShowCalibrationPose)
-            {
-                ShowCalibrationPose = false; // presents again
-                return;
-            }
-
             if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view, Timeline.PreviewTime);
             var cal = _host.TakePresenter.ShownCalibration;
             if (!ReferenceEquals(cal, _shownCalibration))
@@ -461,11 +455,11 @@ namespace VRMR.App.ViewModels
             HasTake = take != null;
             if (take?.FilePath != null) _lastTakePath = take.FilePath;
             OnPropertyChanged(nameof(IsLive));
+            ShowCalibrationPose = false;
             if (take == null)
             {
                 _clock.Playing = false;
                 if (PlacementTool.Active) SetGizmo(false);
-                ShowCalibrationPose = false;
                 if (_host.CaptureOn) InspectorTab = DevicesTab;
             }
             else if (InspectorTab == DevicesTab) InspectorTab = TakeTab;
