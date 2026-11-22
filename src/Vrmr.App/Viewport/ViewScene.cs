@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Avalonia;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace VRMR.App.Viewport
 {
@@ -37,7 +38,7 @@ namespace VRMR.App.Viewport
     ///     Presenters fill it (from a baked clip, the live devices or a scene) and then call
     ///     <see cref="IViewport.SceneChanged" />.
     /// </summary>
-    public sealed class ViewScene
+    public sealed partial class ViewScene : ObservableObject
     {
         public readonly List<ViewMarker> Markers = new();
 
@@ -53,7 +54,8 @@ namespace VRMR.App.Viewport
         public Quat[] NodeRot = Array.Empty<Quat>();
 
         /// <summary>Text in the view's top-left and top-right corners.</summary>
-        public string Overlay = "", OverlayRight = "";
+        [ObservableProperty] string _overlay = "";
+        [ObservableProperty] string _overlayRight = "";
 
         /// <summary>The play area's four corners on the floor, or null.</summary>
         public Vec3[] PlayArea;

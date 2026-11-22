@@ -103,7 +103,10 @@ namespace VRMR.App.Services
         readonly SettingsStore _settings;
         readonly StatusService _status;
         readonly IUiDispatcher _ui;
+        IDisposable _countdown;
         IDisposable _humrPoll;
+
+        public int CountdownSeconds { get; private set; }
 
         public RecordingController(Recorder recorder, SettingsStore settings, LiveService live, TakeSession session,
             TakeLibrary library,
@@ -118,7 +121,7 @@ namespace VRMR.App.Services
             _ui = ui;
             _hotkey = hotkey;
             if (!_live.CaptureOn) return;
-            _recorder.RecordTriggerToggled += () => _ui.Post(Toggle);
+            _recorder.RecordTriggerToggled += () => _ui.Post(ToggleImmediate);
             _recorder.HumrTakeStarted += t => _ui.Post(() =>
             {
                 WatchInWorldTake();
@@ -152,6 +155,7 @@ namespace VRMR.App.Services
         public void Dispose()
         {
             _humrPoll?.Dispose();
+            _countdown?.Dispose();
             _hotkey?.Dispose();
         }
 
@@ -182,12 +186,47 @@ namespace VRMR.App.Services
 
         public void Toggle()
         {
+            if (_countdown != null)
+            {
+                ClearCountdown();
+                return;
+            }
+
+            int delay = _settings.Value.RecordCountdownSeconds;
+            if (IsRecording || delay == 0 || !_live.CaptureOn)
+            {
+                ToggleImmediate();
+                return;
+            }
+
+            CountdownSeconds = delay;
+            _countdown = _ui.Every(TimeSpan.FromSeconds(1), () =>
+            {
+                CountdownSeconds--;
+                if (CountdownSeconds == 0) Start();
+                else StateChanged?.Invoke();
+            });
+            StateChanged?.Invoke();
+        }
+
+        void ClearCountdown()
+        {
+            if (_countdown == null) return;
+            _countdown.Dispose();
+            _countdown = null;
+            CountdownSeconds = 0;
+            StateChanged?.Invoke();
+        }
+
+        void ToggleImmediate()
+        {
             if (IsRecording) Stop();
             else Start();
         }
 
         public void Start()
         {
+            ClearCountdown();
             if (IsRecording) return;
             if (!_live.CaptureOn)
             {

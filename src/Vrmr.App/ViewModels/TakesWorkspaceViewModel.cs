@@ -18,7 +18,7 @@ namespace VRMR.App.ViewModels
     public partial class TakesWorkspaceViewModel : ObservableObject, IGestureSource
     {
         /// <summary>The inspector's tabs.</summary>
-        public const int TakeTab = 0, ExportTab = 1, DevicesTab = 2;
+        public const int DevicesTab = 0, TakeTab = 1, ExportTab = 2;
 
         readonly PlaybackClock _clock;
         readonly AppHost _host;
@@ -31,6 +31,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _emptyTitle = "";
         bool _framed, _active = true;
         [ObservableProperty] bool _hasBaseStations;
+        [ObservableProperty] string _frameText = "";
         [ObservableProperty] bool _hasHeadset;
         [ObservableProperty] bool _hasPlayArea;
         [ObservableProperty] bool _hasSelection;
@@ -96,6 +97,8 @@ namespace VRMR.App.ViewModels
                 IsPlaying = _clock.Playing;
                 UpdateAnimating();
             };
+            Timeline.PreviewChanged += Present;
+            _session.PreviewClipReady += Present;
             Timeline.SelectionChanged += () => HasSelection = Timeline.HasSelection;
             host.Recording.StateChanged += OnRecordingChanged;
             host.Recording.Stopped += rec =>
@@ -176,6 +179,7 @@ namespace VRMR.App.ViewModels
             _active = active;
             if (!active)
             {
+                Timeline.Preview(null);
                 _clock.Playing = false;
                 if (_view != null)
                 {
@@ -251,7 +255,8 @@ namespace VRMR.App.ViewModels
             if (_view == null || !_active) return;
             bool recording = _host.Recording.IsRecording;
             bool shown = false;
-            if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view);
+            if (!IsLive && !recording) shown = _host.TakePresenter.Show(_view, Timeline.PreviewTime);
+            FrameText = shown ? $"frame {_host.TakePresenter.Frame}/{_host.TakePresenter.LastFrame}" : "";
             if (!shown && (IsLive || recording))
             {
                 _host.LivePresenter.Show(_view);
@@ -261,7 +266,7 @@ namespace VRMR.App.ViewModels
             if (!shown)
             {
                 _view.Scene.Overlay = "";
-                _view.Scene.OverlayRight = _session.Take?.Name ?? "";
+                _view.Scene.OverlayRight = "";
                 _view.SceneChanged();
             }
 

@@ -44,6 +44,7 @@ namespace VRMR.App.Services
         volatile float _progress;
         int _progressPosted;
         bool _restoring;
+        CancellationTokenSource _previewCancel;
         CancellationTokenSource _solveCancel;
 
         public TakeSession(SettingsStore settings, AvatarLibrary avatars, IUiDispatcher ui, StatusService status,
@@ -93,6 +94,7 @@ namespace VRMR.App.Services
         public void Dispose()
         {
             _settings.Changed -= OnSettingsChanged;
+            ClearPreviewClip();
             CancelSolve();
             _solveSoon.Dispose();
             CompleteWaiters(false);
@@ -160,6 +162,7 @@ namespace VRMR.App.Services
             CancelSolve();
             _solveSoon.Cancel();
             CompleteWaiters(false);
+            ClearPreviewClip();
             Take = rec;
             Clip = null;
             Dirty = false;
@@ -490,6 +493,55 @@ namespace VRMR.App.Services
             thread.Start();
         }
 
+        /// <summary>Untrimmed poses for a timeline drag that reaches outside the solved clip.</summary>
+        public BakedClip PreviewClip { get; private set; }
+
+        public event Action PreviewClipReady;
+
+        public void RequestPreviewClip()
+        {
+            var rec = Take;
+            var target = Clip?.Profile;
+            if (rec == null || target == null || _previewCancel != null) return;
+            var cancel = _previewCancel = new CancellationTokenSource();
+            var token = cancel.Token;
+            var options = MakeBakeOptions();
+            options.SourceRange = [0, rec.Duration];
+            Task.Run(() =>
+            {
+                BakedClip preview;
+                try
+                {
+                    lock (TakeCache.SolveLock)
+                    lock (rec.Sync)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        preview = PoseBuilder.Bake(rec, target, options, _ => token.ThrowIfCancellationRequested());
+                    }
+                }
+                catch (OperationCanceledException) { return; }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("Timeline pose preview: " + ex.Message);
+                    return;
+                }
+
+                _ui.Post(() =>
+                {
+                    if (_previewCancel != cancel) return;
+                    PreviewClip = preview;
+                    PreviewClipReady?.Invoke();
+                });
+            });
+        }
+
+        public void ClearPreviewClip()
+        {
+            _previewCancel?.Cancel();
+            _previewCancel = null;
+            PreviewClip = null;
+        }
+
         void ReportProgress(float f, int run)
         {
             _progress = f;
@@ -507,6 +559,7 @@ namespace VRMR.App.Services
             SolveMilliseconds = ms;
             if (clip != null)
             {
+                ClearPreviewClip();
                 Clip = clip;
                 _solvedVersion = version;
                 bool current = version == _editVersion;

@@ -27,6 +27,8 @@ namespace VRMR
         public string BlenderPath = "";
 
         public CalibrationSettings CalibrationDefaults = new(); // used by clips without their own calibration settings
+        public int CalibrationCountdownSeconds = 5; // 0 follows VRChat
+        public int RecordCountdownSeconds;
         public bool CaptureFingers = true; // SteamVR Skeletal Input (Index finger tracking)
 
         /// <summary>Library entry used for avatars that match nothing ("" = the most used one, else the built-in mannequin).</summary>
@@ -201,6 +203,10 @@ namespace VRMR
             OpenVRRate = d.GetInt("openVRRate", OpenVRRate);
             EnableHumr = d.GetBool("enableHumr", EnableHumr);
             FollowHumrTakes = d.GetBool("followHumrTakes", FollowHumrTakes);
+            int calibrationDelay = d.GetInt("calibrationCountdownSeconds", 5);
+            CalibrationCountdownSeconds = calibrationDelay is 0 or 1 or 3 or 5 ? calibrationDelay : 5;
+            int recordDelay = d.GetInt("recordCountdownSeconds", 0);
+            RecordCountdownSeconds = recordDelay is 1 or 3 or 5 ? recordDelay : 0;
             HotkeyRecord = d.GetStr("hotkeyRecord", HotkeyRecord);
             RecordTriggerParam = d.GetStr("recordTriggerParam", RecordTriggerParam);
             PreviewWhileRecording = d.GetBool("previewWhileRecording", PreviewWhileRecording);
@@ -286,6 +292,8 @@ namespace VRMR
             d["openVRRate"] = OpenVRRate;
             d["enableHumr"] = EnableHumr;
             d["followHumrTakes"] = FollowHumrTakes;
+            d["calibrationCountdownSeconds"] = CalibrationCountdownSeconds;
+            d["recordCountdownSeconds"] = RecordCountdownSeconds;
             d["hotkeyRecord"] = HotkeyRecord;
             d["recordTriggerParam"] = RecordTriggerParam;
             d["previewWhileRecording"] = PreviewWhileRecording;

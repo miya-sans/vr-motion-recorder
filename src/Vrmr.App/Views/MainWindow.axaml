@@ -16,17 +16,13 @@
     <!-- ============================================================ top bar -->
     <Border Grid.Row="0" Classes="panel" Height="{DynamicResource TopBarHeight}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource HairlineBottom}">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="12,0">
-        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-          <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
-                        Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
-                        Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}"
-                        ToolTip.Tip="{Binding RecordTip}" MinWidth="116" VerticalAlignment="Center"
-                        FontFeatures="{DynamicResource TabularFigures}" />
-          <c:IconToggle x:Name="LiveButton" Icon="{DynamicResource Icon.Live}" Content="Live"
-                        IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}"
-                        IsEnabled="{Binding !IsRecording}"
-                        ToolTip.Tip="Live: closes the open take and shows what SteamVR and VRChat send right now. Click a take to leave it, or Live again to go back to the last take." />
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="12,0">
+        <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <c:IconToggle x:Name="SettingsToggle" Classes="settings" Icon="{DynamicResource Icon.Settings}"
+                        IsChecked="{Binding SettingsOpen, Mode=TwoWay}" AutomationProperties.Name="Settings"
+                        ToolTip.Tip="Settings (Ctrl+,)" />
+          <c:IconButton Icon="{DynamicResource Icon.Help}" Command="{Binding ToggleHelpCommand}"
+                        ToolTip.Tip="Keyboard shortcuts and help (F1)" />
         </StackPanel>
         <c:SegmentedControl Grid.Column="1" x:Name="WorkspaceSwitch" IsVisible="{Binding SceneAvailable}"
                             SelectedIndex="{Binding WorkspaceIndex}" Margin="16,0,0,0" VerticalAlignment="Center"
@@ -64,12 +60,6 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" Margin="12,0,0,0" VerticalAlignment="Center">
-          <c:IconButton Icon="{DynamicResource Icon.Settings}" Command="{Binding OpenSettingsCommand}"
-                        ToolTip.Tip="Settings (Ctrl+,)" />
-          <c:IconButton Icon="{DynamicResource Icon.Help}" Command="{Binding ToggleHelpCommand}"
-                        ToolTip.Tip="Keyboard shortcuts and help (F1)" />
-        </StackPanel>
       </Grid>
     </Border>
 
@@ -77,42 +67,95 @@
     <Grid Grid.Row="1" x:Name="MainGrid" ColumnDefinitions="260,Auto,*,Auto,320">
       <!-- library -->
       <Border Grid.Column="0" x:Name="LibraryHost" Classes="panel" IsVisible="{Binding LibraryOpen}">
-        <v:LibraryPanel DataContext="{Binding Library}" />
+        <DockPanel>
+          <c:IconToggle DockPanel.Dock="Top" x:Name="LiveButton" Classes="liveMode" Margin="12,8,12,0"
+                        HorizontalAlignment="Stretch" Icon="{DynamicResource Icon.Live}" Content="Live"
+                        IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}" IsEnabled="{Binding !IsRecording}"
+                        ToolTip.Tip="Show live devices. Select a take to review it, or click Live again to return to the last take." />
+          <v:LibraryPanel DataContext="{Binding Library}" />
+        </DockPanel>
       </Border>
       <GridSplitter Grid.Column="1" x:Name="LibrarySplitter" Width="1" ResizeDirection="Columns"
                     IsVisible="{Binding LibraryOpen}" />
 
       <!-- centre: view, transport, timeline -->
-      <Grid Grid.Column="2" x:Name="CentreGrid" RowDefinitions="*,Auto,Auto,168">
-        <Panel Grid.Row="0" x:Name="ViewHost" ClipToBounds="True">
-          <vp:GpuView x:Name="View" />
-          <!-- Takes: overlay controls of the 3D view -->
-          <Panel IsVisible="{Binding IsTakes}">
-            <takes:ViewOverlay DataContext="{Binding Takes}" />
-          </Panel>
-          <scene:SceneWorkspaceView x:Name="SceneView" IsVisible="{Binding IsScene}" />
-          <!-- panel fold buttons -->
-          <c:IconButton Icon="{DynamicResource Icon.PanelLeft}" Command="{Binding ToggleLibraryCommand}"
-                        ToolTip.Tip="Show or hide the library (Ctrl+1)"
-                        HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8" />
-          <c:IconButton Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}"
-                        ToolTip.Tip="Show or hide the inspector (Ctrl+2)"
-                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" />
-          <v:ToastHost VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16" />
-        </Panel>
-        <Border Grid.Row="1" Classes="panel" BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="{DynamicResource HairlineTop}">
-          <Panel>
+      <Grid Grid.Column="2" x:Name="CentreGrid" RowDefinitions="*,Auto,168">
+        <Grid RowDefinitions="*,Auto">
+          <Panel Grid.Row="0" x:Name="ViewHost" ClipToBounds="True">
+            <vp:GpuView x:Name="View" />
+            <!-- Takes: overlay controls of the 3D view -->
             <Panel IsVisible="{Binding IsTakes}">
-              <takes:TransportBar DataContext="{Binding Takes}" />
+              <takes:ViewOverlay DataContext="{Binding Takes}" />
             </Panel>
-            <ContentControl x:Name="SceneTransportHost" IsVisible="{Binding IsScene}" />
+            <scene:SceneWorkspaceView x:Name="SceneView" IsVisible="{Binding IsScene}" />
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Top" Margin="8">
+              <c:IconButton Icon="{DynamicResource Icon.PanelLeft}" Command="{Binding ToggleLibraryCommand}"
+                            IsVisible="{Binding !LibraryOpen}" ToolTip.Tip="Show library (Ctrl+1)"
+                            VerticalAlignment="Top" Margin="0,0,6,0" />
+              <TextBlock Grid.Column="1" x:Name="ViewStatus" Text="{Binding #View.Scene.Overlay}" Classes="secondary"
+                         IsHitTestVisible="False" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="2" Text="{Binding #View.Scene.OverlayRight}" Classes="secondary"
+                         MaxWidth="240" TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
+              <c:IconButton Grid.Column="3" Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}"
+                            IsVisible="{Binding !InspectorOpen}" ToolTip.Tip="Show inspector (Ctrl+2)"
+                            VerticalAlignment="Top" Margin="6,0,0,0" />
+            </Grid>
+            <v:ToastHost VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16" />
           </Panel>
-        </Border>
-        <GridSplitter Grid.Row="2" x:Name="TimelineSplitter" Height="1" ResizeDirection="Rows"
+          <Border Grid.Row="1" Classes="panel" BorderBrush="{DynamicResource BorderBrush}"
+                  BorderThickness="{DynamicResource HairlineTop}">
+            <Grid ColumnDefinitions="*,Auto">
+              <Panel IsVisible="{Binding IsTakes}" ClipToBounds="True">
+                <Panel IsVisible="{Binding !ShowLiveTransport}">
+                  <takes:TransportBar DataContext="{Binding Takes}" />
+                </Panel>
+                <Grid IsVisible="{Binding ShowLiveTransport}" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto"
+                      HorizontalAlignment="Left" Height="40" Margin="8,0">
+                  <c:IconButton x:Name="RecordButton" Classes="record" Classes.recording="{Binding IsRecording}"
+                                Icon="{DynamicResource Icon.RecordSolid}" IconFilled="True"
+                                Content="{Binding RecordText}" Command="{Binding ToggleRecordCommand}"
+                                ToolTip.Tip="{Binding RecordTip}" MinWidth="100" VerticalAlignment="Center"
+                                FontFeatures="{DynamicResource TabularFigures}" />
+                  <ComboBox x:Name="RecordDelay" Grid.Column="1" SelectedIndex="{Binding RecordDelayIndex}" VerticalAlignment="Center"
+                            ToolTip.Tip="Recording countdown" AutomationProperties.Name="Recording countdown">
+                    <ComboBoxItem>0 s</ComboBoxItem>
+                    <ComboBoxItem>1 s</ComboBoxItem>
+                    <ComboBoxItem>3 s</ComboBoxItem>
+                    <ComboBoxItem>5 s</ComboBoxItem>
+                  </ComboBox>
+                  <Button Grid.Column="2" Command="{Binding CalibrateLiveCommand}" IsEnabled="{Binding CanCalibrate}"
+                          Margin="8,0,0,0" MaxWidth="155" VerticalAlignment="Center" ToolTip.Tip="{Binding LiveCalibrationText}">
+                    <TextBlock Text="{Binding LiveCalibrationText}" TextTrimming="CharacterEllipsis" />
+                  </Button>
+                  <ComboBox x:Name="CalibrationDelay" Grid.Column="3" SelectedIndex="{Binding CalibrationDelayIndex}" VerticalAlignment="Center"
+                            IsEnabled="{Binding CanSetCalibrationDelay}" ToolTip.Tip="Calibration countdown"
+                            AutomationProperties.Name="Calibration countdown">
+                    <ComboBoxItem>Sync with VRChat</ComboBoxItem>
+                    <ComboBoxItem>1 s</ComboBoxItem>
+                    <ComboBoxItem>3 s</ComboBoxItem>
+                    <ComboBoxItem>5 s</ComboBoxItem>
+                  </ComboBox>
+                  <TextBlock Grid.Column="4" Text="{Binding CalibrationAge}" Classes="secondary tabular"
+                             Margin="8,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Minutes since last calibration" />
+                </Grid>
+              </Panel>
+              <ContentControl x:Name="SceneTransportHost" IsVisible="{Binding IsScene}" ClipToBounds="True" />
+              <c:IconButton Grid.Column="1" x:Name="TimelineToggle" Icon="{DynamicResource Icon.PanelBottom}"
+                            Command="{Binding ToggleTimelineCommand}" ToolTip.Tip="{Binding TimelineTip}"
+                            AutomationProperties.Name="{Binding TimelineTip}" VerticalAlignment="Center" Margin="4,0" />
+            </Grid>
+          </Border>
+        </Grid>
+        <GridSplitter Grid.Row="1" x:Name="TimelineSplitter" Height="4" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                       IsVisible="{Binding TimelineOpen}" />
-        <Panel Grid.Row="3" x:Name="TimelineHost" IsVisible="{Binding TimelineOpen}">
-          <c:TimelineControl x:Name="Timeline" Model="{Binding Takes.Timeline}" IsVisible="{Binding IsTakes}" />
+        <Panel Grid.Row="2" x:Name="TimelineHost" IsVisible="{Binding TimelineOpen}">
+          <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsTakes}">
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="12,2" IsVisible="{Binding Takes.HasTake}">
+              <TextBlock Text="{Binding Takes.TimeText}" Classes="secondary tabular" ToolTip.Tip="{Binding Takes.TimeTip}" />
+              <TextBlock x:Name="FrameCounter" Text="{Binding Takes.FrameText}" Classes="secondary tabular" />
+            </StackPanel>
+            <c:TimelineControl Grid.Row="1" x:Name="Timeline" Model="{Binding Takes.Timeline}" />
+          </Grid>
           <ContentControl x:Name="SceneTimelineHost" IsVisible="{Binding IsScene}" />
         </Panel>
       </Grid>
@@ -125,7 +168,9 @@
           <Panel IsVisible="{Binding IsTakes}">
             <takes:TakesInspector x:Name="TakesInspectorView" DataContext="{Binding Takes}" />
           </Panel>
-          <ContentControl x:Name="SceneInspectorHost" IsVisible="{Binding IsScene}" />
+          <ContentControl x:Name="SceneInspectorHost" IsVisible="{Binding IsScene}" Margin="0,36,0,0" />
+          <c:IconButton Icon="{DynamicResource Icon.PanelRight}" Command="{Binding ToggleInspectorCommand}"
+                        ToolTip.Tip="Hide inspector (Ctrl+2)" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4" />
         </Panel>
       </Border>
 

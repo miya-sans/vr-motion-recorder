@@ -38,7 +38,7 @@ namespace VRMR
 
         readonly ManualResetEventSlim _stopSignal = new(false);
         readonly Thread _thread;
-        public bool Enabled = true;
+        public volatile bool Enabled;
         string _reloadHow = "";
         double _reloadT = -1, _ikInitT = -1;
         int _ringStart, _ringCount;
@@ -48,8 +48,9 @@ namespace VRMR
         double _worldT = -1;
 
         public CalibrationWatcher(Func<OpenVRSource> ovr, Func<string> avatarId, Func<string> avatarName,
-            Func<float> avatarEye, CalibrationLibrary library)
+            Func<float> avatarEye, CalibrationLibrary library, bool enabled = true)
         {
+            Enabled = enabled;
             _library = library;
             _ovr = ovr;
             _avatarId = avatarId;
@@ -123,6 +124,7 @@ namespace VRMR
         /// <summary>"Measure Human Avatar Avatar isRemeasure:True": the confirm, unless it belongs to the IK set-up itself.</summary>
         public void OnRemeasure(double t)
         {
+            if (!Enabled) return;
             double reload, ik;
             lock (_lock)
             {
@@ -400,7 +402,7 @@ namespace VRMR
             return s;
         }
 
-        void Save(CalibrationSnapshot s)
+        void Save(CalibrationSnapshot s, bool throwOnFailure = false)
         {
             try
             {
@@ -414,6 +416,7 @@ namespace VRMR
             {
                 Status = "save failed: " + ex.Message;
                 AppLog.Warn("Calibration snapshot: " + ex.Message);
+                if (throwOnFailure) throw;
             }
         }
 
@@ -424,7 +427,7 @@ namespace VRMR
             if (o == null || !o.Connected) throw new InvalidOperationException("SteamVR is not connected");
             var s = FromDevices(o.Snapshot(), DateTime.UtcNow, "manual", detail, VrcSettings.Read());
             if (s == null) throw new InvalidOperationException("The headset has no pose");
-            Save(s);
+            Save(s, true);
             return s;
         }
 

@@ -92,6 +92,9 @@ namespace VRMR.App.Services
             RefreshLibrary();
         }
 
+        /// <summary>Timestamp of the newest saved live calibration.</summary>
+        public DateTime? LastCalibrationUtc { get; private set; }
+
         /// <summary>Seconds left of a capture countdown, or 0.</summary>
         public int CaptureCountdown { get; private set; }
 
@@ -254,6 +257,7 @@ namespace VRMR.App.Services
                 {
                     if (run != _libraryRun) return;
                     _library = list;
+                    LastCalibrationUtc = list.FirstOrDefault(s => s.Source is "manual" or "vrchat")?.CreatedUtc;
                     Changed?.Invoke();
                 });
             });
@@ -518,18 +522,17 @@ namespace VRMR.App.Services
         {
             if (!_live.CaptureOn) return "Live sources are off in this session.";
             if (_live.Recorder.Calib == null)
-                return
-                    "Saving calibrations is switched off. Turn on \"Save every VRChat calibration\" under Settings → Recording.";
+                return "Live calibration is unavailable.";
             if (!_live.SteamVrConnected)
                 return "SteamVR is not connected. Start SteamVR and switch on your trackers first.";
             return null;
         }
 
         /// <summary>
-        ///     After a five second countdown, saves the devices' poses as a calibration: stand straight, look ahead, arms
+        ///     After the countdown, saves the devices' poses as a calibration: stand straight, look ahead, arms
         ///     out.
         /// </summary>
-        public void CaptureNow()
+        public void CaptureNow(int seconds = 5)
         {
             if (_countdown != null) return;
             string problem = CaptureProblem();
@@ -539,7 +542,7 @@ namespace VRMR.App.Services
                 return;
             }
 
-            CaptureCountdown = 5;
+            CaptureCountdown = seconds;
             Changed?.Invoke();
             _countdown = _ui.Every(TimeSpan.FromSeconds(1), () =>
             {

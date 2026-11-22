@@ -66,10 +66,21 @@ namespace VRMR.App.Tests
                 using var s = await OpenTake();
                 var takes = s.Shell.Takes;
                 var library = s.Shell.Library;
+                var record = s.Window.FindControl<Button>("RecordButton");
+                var recordDelay = s.Window.FindControl<ComboBox>("RecordDelay");
+                var calibrationDelay = s.Window.FindControl<ComboBox>("CalibrationDelay");
+                Assert.False(record.IsEffectivelyVisible);
 
                 await takes.ToggleLiveCommand.ExecuteAsync(null);
                 Assert.True(takes.IsLive);
                 Assert.Null(s.Host.Session.Take);
+                Assert.True(record.IsEffectivelyVisible);
+                Assert.Equal(0, recordDelay.SelectedIndex);
+                Assert.Equal(3, calibrationDelay.SelectedIndex);
+                recordDelay.SelectedIndex = 2;
+                calibrationDelay.SelectedIndex = 0;
+                Assert.Equal(3, s.Host.Settings.RecordCountdownSeconds);
+                Assert.Equal("Live sources off", s.Shell.LiveCalibrationText);
                 Assert.False(takes.HasTake);
                 Assert.Null(library.Selected);
                 Assert.Null(s.Window.Viewport.Scene.Profile); // nothing of the take stays in the view
@@ -121,7 +132,7 @@ namespace VRMR.App.Tests
                 Assert.Same(scene.Profile, actor.Profile);
                 Assert.Equal(scene.NodePos, actor.NodePos);
                 Assert.Equal(scene.Markers.Count, view.Frame.Markers.Count);
-                Assert.Contains("frame", view.Frame.Overlay.ToString());
+                Assert.Equal(0, view.Frame.Overlay.Length);
 
                 // the avatar's mesh arrives from a background load (here the built-in mannequin's) and the frame is refilled with it
                 Assert.True(
@@ -438,6 +449,159 @@ namespace VRMR.App.Tests
                 HeadlessUi.Capture(s.Window, "flow-no-matches");
                 s.Shell.Library.ClearSearchCommand.Execute(null);
                 Assert.Single(s.Shell.Library.Items);
+            });
+        }
+
+        [Fact]
+        public async Task ReviewShowsFramesBesideTheTimecodeAndKeepsStatusClearOfTheFoldout()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake(width: 1100);
+                var live = s.Window.FindControl<VRMR.App.Controls.IconToggle>("LiveButton");
+                var library = s.Window.FindControl<Border>("LibraryHost");
+                Assert.Equal(library.Bounds.Width - live.Margin.Left - live.Margin.Right, live.Bounds.Width);
+                Assert.True(live.TryFindResource("AccentBrush", live.ActualThemeVariant, out object accent));
+                Assert.Equal(accent, live.BorderBrush);
+
+                var take = s.Host.Session.Take;
+                var clip = s.Host.Session.Clip;
+                var counter = s.Window.FindControl<TextBlock>("FrameCounter");
+                s.Host.Clock.Seek(1, take.Duration);
+                int frame = clip.FrameAt(take.Edits.SourceToEdited(1, take.Duration));
+                Assert.Equal($"frame {frame}/{clip.Frames - 1}", counter.Text);
+                Assert.Empty(s.Window.Viewport.Scene.OverlayRight);
+                var status = s.Window.FindControl<TextBlock>("ViewStatus");
+                Assert.Contains("IK solve", status.Text);
+                Assert.DoesNotContain("frame ", status.Text);
+
+                s.Shell.LibraryOpen = false;
+                await HeadlessUi.SettleAsync(20);
+                var buttons = VisualExtensions.GetVisualDescendants(s.Window).OfType<Button>();
+                var reopen = Assert.Single(buttons, b => Equals(ToolTip.GetTip(b), "Show library (Ctrl+1)"));
+                var right = reopen.TranslatePoint(new Point(reopen.Bounds.Width, 0), s.Window).Value;
+                Assert.True(status.TranslatePoint(default, s.Window).Value.X > right.X);
+            });
+        }
+
+        [Fact]
+        public async Task SettingsToggleOpensAndClosesThePageAndReflectsEscape()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var toggle = s.Window.FindControl<VRMR.App.Controls.IconToggle>("SettingsToggle");
+                var page = s.Window.FindControl<ContentControl>("PageHost");
+                var centre = new Point(toggle.Bounds.Width / 2, toggle.Bounds.Height / 2);
+                var point = toggle.TranslatePoint(centre, s.Window).Value;
+
+                void Click()
+                {
+                    s.Window.MouseDown(point, MouseButton.Left);
+                    s.Window.MouseUp(point, MouseButton.Left);
+                }
+
+                Assert.False(toggle.IsChecked);
+                Click();
+                Assert.True(page.IsVisible);
+                Assert.True(toggle.IsChecked);
+                Assert.True(toggle.TryFindResource("AccentBrush", toggle.ActualThemeVariant, out object accent));
+                Assert.Equal(accent, toggle.BorderBrush);
+                Click();
+                Assert.False(page.IsVisible);
+                Assert.False(toggle.IsChecked);
+                Assert.NotEqual(accent, toggle.BorderBrush);
+
+                s.Shell.OpenSettingsCommand.Execute(null);
+                Assert.True(toggle.IsChecked);
+                s.Window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                Assert.False(toggle.IsChecked);
+                Assert.False(page.IsVisible);
+            });
+        }
+
+        [Fact]
+        public async Task SidePanelButtonsReopenBothPanelsAndDevicesIsTheFirstTab()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake(width: 1100);
+                async Task Click(string tip)
+                {
+                    var buttons = VisualExtensions.GetVisualDescendants(s.Window).OfType<Button>();
+                    var button = Assert.Single(buttons, b => b.IsEffectivelyVisible && Equals(ToolTip.GetTip(b), tip));
+                    var centre = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
+                    var point = button.TranslatePoint(centre, s.Window).Value;
+                    s.Window.MouseDown(point, MouseButton.Left);
+                    s.Window.MouseUp(point, MouseButton.Left);
+                    await HeadlessUi.SettleAsync(20);
+                }
+
+                await Click("Hide library (Ctrl+1)");
+                await Click("Hide inspector (Ctrl+2)");
+                Assert.False(s.Shell.LibraryOpen);
+                Assert.False(s.Shell.InspectorOpen);
+                await Click("Show library (Ctrl+1)");
+                await Click("Show inspector (Ctrl+2)");
+                Assert.True(s.Shell.LibraryOpen);
+                Assert.True(s.Shell.InspectorOpen);
+
+                var inspector = s.Window.FindControl<UserControl>("TakesInspectorView");
+                var tabs = inspector.FindControl<ListBox>("Tabs");
+                Assert.Equal(["Devices", "Take", "Export"], tabs.Items.Cast<ListBoxItem>().Select(t => (string)t.Content));
+                tabs.SelectedIndex = 0;
+                Assert.True(s.Shell.Takes.ShowDevicesTab);
+                tabs.SelectedIndex = 1;
+                Assert.True(s.Shell.Takes.ShowTakeTab);
+                tabs.SelectedIndex = 2;
+                Assert.True(s.Shell.Takes.ShowExportTab);
+            });
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task TimelineButtonAndShortcutRestoreTheResizedTimeline(bool scene)
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake(width: 1100);
+                s.Shell.SceneAvailable = true;
+                s.Shell.WorkspaceIndex = scene ? 1 : 0;
+                await HeadlessUi.SettleAsync(20);
+                var splitter = s.Window.FindControl<GridSplitter>("TimelineSplitter");
+                var button = s.Window.FindControl<Button>("TimelineToggle");
+                var timeline = s.Window.FindControl<Panel>("TimelineHost");
+                double original = timeline.Bounds.Height;
+                var start = splitter.TranslatePoint(new Point(30, splitter.Bounds.Height / 2), s.Window).Value;
+                s.Window.MouseDown(start, MouseButton.Left);
+                s.Window.MouseMove(start.WithY(start.Y - 40));
+                await HeadlessUi.SettleAsync(20);
+                s.Window.MouseUp(start.WithY(start.Y - 40), MouseButton.Left);
+                await HeadlessUi.SettleAsync(30);
+                double resized = timeline.Bounds.Height;
+                Assert.True(resized > original);
+
+                async Task Click()
+                {
+                    var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), s.Window).Value;
+                    s.Window.MouseDown(point, MouseButton.Left);
+                    s.Window.MouseUp(point, MouseButton.Left);
+                    await HeadlessUi.SettleAsync(20);
+                }
+
+                await Click();
+                Assert.False(s.Shell.TimelineOpen);
+                Assert.Equal("Show timeline (Ctrl+3)", ToolTip.GetTip(button));
+                s.Window.KeyPress(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
+                await HeadlessUi.SettleAsync(20);
+                Assert.Equal(resized, timeline.Bounds.Height);
+                s.Window.KeyPress(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
+                await HeadlessUi.SettleAsync(20);
+                await Click();
+                Assert.True(s.Shell.TimelineOpen);
+                Assert.Equal(resized, timeline.Bounds.Height);
+                Assert.Equal("Hide timeline (Ctrl+3)", ToolTip.GetTip(button));
             });
         }
 

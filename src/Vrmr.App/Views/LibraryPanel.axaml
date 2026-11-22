@@ -6,9 +6,12 @@
              x:DataType="vm:LibraryViewModel">
   <!-- The library: search on top, takes newest first with what they contain, actions at the bottom. -->
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="{DynamicResource PadPanel}">
-    <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource GapRowSmall}" MinHeight="{DynamicResource ControlHeight}">
+    <Grid ColumnDefinitions="*,Auto,Auto" Margin="{DynamicResource GapRowSmall}" MinHeight="{DynamicResource ControlHeight}">
       <TextBlock Text="Takes" Classes="title" VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Text="{Binding CountText}" Classes="caption" VerticalAlignment="Center" />
+      <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.PanelLeft}" Margin="6,0,0,0"
+                    Command="{Binding $parent[Window].((vm:ShellViewModel)DataContext).ToggleLibraryCommand}"
+                    ToolTip.Tip="Hide library (Ctrl+1)" />
     </Grid>
     <TextBox Grid.Row="1" x:Name="SearchBox" Text="{Binding Search}" PlaceholderText="Search name, avatar or world"
              Margin="{DynamicResource GapRow}"

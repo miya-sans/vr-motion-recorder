@@ -27,6 +27,7 @@ namespace VRMR.App.Viewport
 
         /// <summary>The frame last shown (for the overlay and the transport).</summary>
         public int Frame { get; private set; }
+        public int LastFrame { get; private set; }
 
         /// <summary>What the view adds to the last solve: the take's placement now relative to the one it was solved with.</summary>
         public Pose PlacementDelta()
@@ -43,7 +44,7 @@ namespace VRMR.App.Viewport
         }
 
         /// <summary>Fills the view with the take at the playhead. Returns false when there is nothing solved to show.</summary>
-        public bool Show(IViewport view)
+        public bool Show(IViewport view, double? previewTime = null)
         {
             var c = _session.Clip;
             var r = _session.Take;
@@ -51,8 +52,25 @@ namespace VRMR.App.Viewport
             var scene = view.Scene;
             if (scene.Profile != c.Profile) scene.SetProfile(c.Profile);
             scene.PlayArea = null; // the live play area doesn't apply to a replay; the take's own follows below
-            double te = r.Edits.SourceToEdited(_clock.Playhead, r.Duration);
-            int f = Frame = c.FrameAt(te);
+            int f;
+            if (previewTime is double time)
+            {
+                f = NearestSourceFrame(c, time);
+                if (Math.Abs(c.SourceTime[f] - time) > 1 / c.Fps)
+                {
+                    _session.RequestPreviewClip();
+                    if (_session.PreviewClip != null)
+                    {
+                        c = _session.PreviewClip;
+                        f = NearestSourceFrame(c, time);
+                    }
+                }
+            }
+            else if (!_session.ClipIsCurrent) f = NearestSourceFrame(c, _clock.Playhead);
+            else f = c.FrameAt(r.Edits.SourceToEdited(_clock.Playhead, r.Duration));
+
+            Frame = f;
+            LastFrame = c.Frames - 1;
             c.EvaluateNodes(f, scene.NodePos, scene.NodeRot);
             scene.MeshScale = c.ScaleAt(f);
             _face.Clear();
@@ -81,13 +99,23 @@ namespace VRMR.App.Viewport
             }
 
             string roomNote = ShowRoom(view, c, r, f);
-            scene.Overlay = $"{BodySourceText(c.BodySource)}   frame {f}/{Math.Max(0, c.Frames - 1)}" +
-                            (roomNote.Length > 0 ? "\n" + roomNote : "");
-            scene.OverlayRight = r.Name ?? "";
+            scene.Overlay = BodySourceText(c.BodySource) + (roomNote.Length > 0 ? "\n" + roomNote : "");
+            scene.OverlayRight = "";
             var d = PlacementDelta();
             if (!IsIdentity(d)) scene.Transform(d);
             view.SceneChanged();
             return true;
+        }
+
+        static int NearestSourceFrame(BakedClip clip, double time)
+        {
+            var samples = clip.SourceTime;
+            int index = Array.BinarySearch(samples, time);
+            if (index >= 0) return index;
+            int next = ~index;
+            if (next == 0) return 0;
+            if (next == samples.Length) return next - 1;
+            return time - samples[next - 1] <= samples[next] - time ? next - 1 : next;
         }
 
         /// <summary>The body source in the user's words.</summary>

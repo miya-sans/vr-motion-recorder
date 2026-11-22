@@ -57,8 +57,6 @@
                     ToolTip.Tip="Use the pose at the playhead as the T-pose the trackers are bound to" />
     </StackPanel>
     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-      <TextBlock x:Name="TimeLabel" Text="{Binding TimeText}" Classes="secondary tabular" VerticalAlignment="Center"
-                 Margin="0,0,10,0" ToolTip.Tip="{Binding TimeTip}" />
       <c:IconButton Icon="{DynamicResource Icon.Undo}" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"
                     ToolTip.Tip="Undo the last edit of this take (Ctrl+Z)" />
       <c:IconButton Icon="{DynamicResource Icon.Redo}" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"

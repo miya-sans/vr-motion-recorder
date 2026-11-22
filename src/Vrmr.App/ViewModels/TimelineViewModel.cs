@@ -193,6 +193,17 @@ namespace VRMR.App.ViewModels
         public TimelineData Data { get; private set; }
         public double Duration => Take != null ? Math.Max(0.01, Take.Duration) : 1;
         public double Playhead => _clock.Playhead;
+        public double? PreviewTime { get; private set; }
+        public event Action PreviewChanged;
+
+        public void Preview(double? time)
+        {
+            double? next = time.HasValue ? Clamp(time.Value) : null;
+            if (PreviewTime == next) return;
+            PreviewTime = next;
+            if (!next.HasValue) _session.ClearPreviewClip();
+            PreviewChanged?.Invoke();
+        }
         public double TrimIn => Take?.Edits.TrimIn ?? 0;
 
         /// <summary>The out point in seconds (the take's end when it is not trimmed).</summary>
@@ -227,6 +238,7 @@ namespace VRMR.App.ViewModels
         void OnTakeChanged()
         {
             SelectionStart = SelectionEnd = -1;
+            PreviewTime = null;
             Data = null;
             _clock.Playing = false;
             _clock.Playhead = Take?.Edits.TrimIn ?? 0;
@@ -346,6 +358,7 @@ namespace VRMR.App.ViewModels
         {
             double tout = TrimOut;
             _session.Edit("trimIn", e => e.TrimIn = Math.Min(Clamp(t), tout - 0.05), false);
+            Preview(TrimIn);
         }
 
         public void DragTrimOut(double t)
@@ -356,6 +369,7 @@ namespace VRMR.App.ViewModels
                 e.TrimOut = Math.Max(Clamp(t), tin + 0.05);
                 if (e.TrimOut >= dur - 1e-3) e.TrimOut = -1;
             }, false);
+            Preview(TrimOut);
         }
 
         public void EndTrimDrag()

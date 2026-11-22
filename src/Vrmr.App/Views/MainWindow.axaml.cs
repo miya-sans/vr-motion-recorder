@@ -45,6 +45,10 @@ namespace VRMR.App.Views
             DataContext = shell;
             Section.StateStore = shell.Host.UiState;
             NumberField.SetGestureSource(InspectorHost, shell.Takes);
+            ViewHost.SizeChanged += (_, e) =>
+            {
+                if (_narrow) InspectorHost.MaxHeight = e.NewSize.Height;
+            };
             RestorePlacement();
             ApplyPanelSizes();
             shell.PropertyChanged += (o, e) =>
@@ -64,7 +68,7 @@ namespace VRMR.App.Views
             };
             TimelineSplitter.DragCompleted += (o, e) =>
             {
-                if (_shell.TimelineOpen) _shell.TimelineHeight = CentreGrid.RowDefinitions[3].ActualHeight;
+                if (_shell.TimelineOpen) _shell.TimelineHeight = CentreGrid.RowDefinitions[2].ActualHeight;
             };
             View.Meshes = shell.Host.Meshes;
             View.HiddenMeshes = () => shell.Host.AvatarService.HiddenMeshes;
@@ -106,6 +110,8 @@ namespace VRMR.App.Views
             // narrow windows: the inspector lies over the right edge of the view
             Grid.SetColumn(InspectorHost, _narrow ? 2 : 4);
             InspectorHost.HorizontalAlignment = _narrow ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+            InspectorHost.VerticalAlignment = _narrow ? VerticalAlignment.Top : VerticalAlignment.Stretch;
+            InspectorHost.MaxHeight = _narrow ? ViewHost.Bounds.Height : double.PositiveInfinity;
             InspectorHost.Width = _narrow ? Math.Max(280, _shell.InspectorWidth) : double.NaN;
             InspectorHost.BorderThickness = _narrow ? new Thickness(1, 0, 0, 0) : default;
             InspectorHost.BorderBrush = this.TryFindResource("BorderBrush", ActualThemeVariant, out object b)
@@ -113,10 +119,10 @@ namespace VRMR.App.Views
                 : null;
             InspectorSplitter.IsVisible = side;
             var rows = CentreGrid.RowDefinitions;
-            rows[3].Height = _shell.TimelineOpen
+            rows[2].Height = _shell.TimelineOpen
                 ? new GridLength(Math.Max(96, _shell.TimelineHeight))
                 : new GridLength(0);
-            rows[3].MinHeight = _shell.TimelineOpen ? 96 : 0;
+            rows[2].MinHeight = _shell.TimelineOpen ? 96 : 0;
         }
 
         protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -281,7 +287,7 @@ namespace VRMR.App.Views
                         e.Handled = true;
                         return;
                     case Key.D3:
-                        _shell.TimelineOpen = !_shell.TimelineOpen;
+                        _shell.ToggleTimelineCommand.Execute(null);
                         e.Handled = true;
                         return;
                 }

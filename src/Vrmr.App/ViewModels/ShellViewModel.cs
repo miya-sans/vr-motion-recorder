@@ -74,6 +74,9 @@ namespace VRMR.App.ViewModels
     /// </summary>
     public partial class ShellViewModel : ObservableObject
     {
+        static readonly int[] CountdownSeconds = [0, 1, 3, 5];
+
+        [ObservableProperty] string _calibrationAge = "—";
         [ObservableProperty] bool _hasProgress;
         [ObservableProperty] bool _helpOpen;
         [ObservableProperty] bool _inspectorOpen;
@@ -81,14 +84,16 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _isRecording;
         [ObservableProperty] bool _libraryOpen;
         [ObservableProperty] double _libraryWidth;
+        [ObservableProperty] string _liveCalibrationText = "Calibrate";
         [ObservableProperty] bool _progressIndeterminate;
         [ObservableProperty] string _progressText = "";
         [ObservableProperty] double _progressValue;
         [ObservableProperty] string _recordText = "Record";
-        IDisposable _recordTimer, _sourceTimer;
+        IDisposable _recordTimer;
         [ObservableProperty] string _recordTip = "";
         bool _sceneAvailable = AppFeatures.SceneWorkspace;
         [ObservableProperty] bool _settingsOpen;
+        readonly IDisposable _sourceTimer;
         [ObservableProperty] StatusKind _statusKind;
         [ObservableProperty] string _statusText = "";
         [ObservableProperty] double _timelineHeight;
@@ -118,6 +123,11 @@ namespace VRMR.App.ViewModels
             _inspectorWidth = ui.GetNumber("panel.inspector.width", 320);
             _timelineHeight = ui.GetNumber("panel.timeline.height", 168);
 
+            Takes.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(Takes.IsLive)) OnPropertyChanged(nameof(ShowLiveTransport));
+            };
+            host.Calibration.Changed += UpdateCalibration;
             host.Recording.StateChanged += UpdateRecord;
             host.Status.Changed += UpdateStatus;
             host.Status.ToastRaised += ShowToast;
@@ -128,11 +138,74 @@ namespace VRMR.App.ViewModels
             UpdateRecord();
             UpdateStatus();
             UpdateSources();
-            if (host.CaptureOn) _sourceTimer = host.Ui.Every(TimeSpan.FromSeconds(1), UpdateSources);
+            _sourceTimer = host.CaptureOn
+                ? host.Ui.Every(TimeSpan.FromSeconds(1), UpdateSources)
+                : host.Ui.Every(TimeSpan.FromMinutes(1), UpdateCalibration);
             host.Session.TakeChanged += () => host.UiState.Set("lastTake", host.Session.Take?.FilePath ?? "");
         }
 
         public AppHost Host { get; }
+
+        public bool ShowLiveTransport => Takes.IsLive || Host.Recording.CountdownSeconds > 0 || IsRecording;
+        public string TimelineTip => TimelineOpen ? "Hide timeline (Ctrl+3)" : "Show timeline (Ctrl+3)";
+        public bool CanCalibrate => CalibrationDelayIndex > 0 && Host.Calibration.CaptureCountdown == 0;
+        public bool CanSetCalibrationDelay => Host.Calibration.CaptureCountdown == 0;
+
+        public int RecordDelayIndex
+        {
+            get => Array.IndexOf(CountdownSeconds, Host.Settings.RecordCountdownSeconds);
+            set
+            {
+                if (value < 0 || value >= CountdownSeconds.Length || value == RecordDelayIndex) return;
+                Host.SettingsStore.Update(nameof(Settings.RecordCountdownSeconds),
+                    s => s.RecordCountdownSeconds = CountdownSeconds[value]);
+                OnPropertyChanged();
+            }
+        }
+
+        public int CalibrationDelayIndex
+        {
+            get => Array.IndexOf(CountdownSeconds, Host.Settings.CalibrationCountdownSeconds);
+            set
+            {
+                if (value < 0 || value >= CountdownSeconds.Length || value == CalibrationDelayIndex) return;
+                Host.SettingsStore.Update(nameof(Settings.CalibrationCountdownSeconds),
+                    s => s.CalibrationCountdownSeconds = CountdownSeconds[value]);
+                OnPropertyChanged();
+                UpdateCalibration();
+            }
+        }
+
+        [RelayCommand]
+        void CalibrateLive()
+        {
+            if (CanCalibrate) Host.Calibration.CaptureNow(Host.Settings.CalibrationCountdownSeconds);
+        }
+
+        void UpdateCalibration()
+        {
+            var calibration = Host.Calibration;
+            OnPropertyChanged(nameof(CanCalibrate));
+            OnPropertyChanged(nameof(CanSetCalibrationDelay));
+            LiveCalibrationText = calibration.CaptureCountdown > 0 ? $"Calibrate {calibration.CaptureCountdown} s" :
+                CalibrationDelayIndex > 0 ? "Calibrate" : CalibrationSyncStatus();
+            CalibrationAge = CalibrationAgeText(calibration.LastCalibrationUtc, DateTime.UtcNow);
+        }
+
+        internal static string CalibrationAgeText(DateTime? timestamp, DateTime now)
+        {
+            return timestamp.HasValue ? $"{Math.Max(0, (long)(now - timestamp.Value).TotalMinutes)} min" : "—";
+        }
+
+        string CalibrationSyncStatus()
+        {
+            if (!Host.CaptureOn) return "Live sources off";
+            if (!Host.Settings.WatchCalibrations) return "Watcher disabled";
+            var watcher = Host.Recorder.Calib;
+            if (watcher == null || Host.Recorder.Log == null) return "Watcher unavailable";
+            if (!Host.Live.SteamVrConnected) return "SteamVR offline";
+            return watcher.Status;
+        }
 
         public LibraryViewModel Library { get; }
         public TakesWorkspaceViewModel Takes { get; }
@@ -208,6 +281,7 @@ namespace VRMR.App.ViewModels
 
         partial void OnTimelineOpenChanged(bool value)
         {
+            OnPropertyChanged(nameof(TimelineTip));
             Host.UiState.Set("panel.timeline", value);
         }
 
@@ -238,6 +312,7 @@ namespace VRMR.App.ViewModels
         {
             var rec = Host.Recording;
             IsRecording = rec.IsRecording;
+            OnPropertyChanged(nameof(ShowLiveTransport));
             string hotkey = Host.Settings.HotkeyRecord;
             RecordTip = !Host.CaptureOn
                 ? "Recording is off in this session (started with --no-capture)."
@@ -260,7 +335,8 @@ namespace VRMR.App.ViewModels
         void UpdateRecordText()
         {
             var rec = Host.Recording;
-            string text = rec.IsRecording ? "Stop  " + TimeText.Format(rec.Elapsed, false) : "Record";
+            string text = rec.IsRecording ? "Stop  " + TimeText.Format(rec.Elapsed, false) :
+                rec.CountdownSeconds > 0 ? $"Record {rec.CountdownSeconds} s" : "Record";
             if (text != RecordText) RecordText = text;
         }
 
@@ -268,6 +344,7 @@ namespace VRMR.App.ViewModels
 
         void UpdateSources()
         {
+            UpdateCalibration();
             var states = SourceStatus.Read(Host.Live);
             for (int i = Sources.Count - 1; i >= 0; i--)
                 if (!states.Any(s => s.Id == Sources[i].Id))

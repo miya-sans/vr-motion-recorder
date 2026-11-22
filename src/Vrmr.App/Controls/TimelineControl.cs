@@ -137,18 +137,20 @@ namespace VRMR.App.Controls
                 {
                     _drag = Drag.TrimIn;
                     m.BeginTrimDrag();
+                    m.Preview(m.TrimIn);
                 }
                 else if (Math.Abs(p.X - X(m.TrimOut)) < HandleGrab)
                 {
                     _drag = Drag.TrimOut;
                     m.BeginTrimDrag();
+                    m.Preview(m.TrimOut);
                 }
                 else if ((e.KeyModifiers & KeyModifiers.Shift) != 0 || p.Y > RulerHeight + 4)
                 {
                     _drag = Drag.Select;
-                    _selectStart = T(p.X);
+                    _selectStart = Math.Clamp(T(p.X), 0, m.Duration);
                     m.SetSelection(_selectStart, _selectStart);
-                    if (p.Y <= RulerHeight + 4) m.Scrub(_selectStart);
+                    m.Preview(_selectStart);
                 }
                 else
                 {
@@ -187,7 +189,11 @@ namespace VRMR.App.Controls
             switch (_drag)
             {
                 case Drag.Scrub: m.Scrub(t); break;
-                case Drag.Select: m.SetSelection(_selectStart, t); break;
+                case Drag.Select:
+                    t = Math.Clamp(t, 0, m.Duration);
+                    m.SetSelection(_selectStart, t);
+                    m.Preview(t);
+                    break;
                 case Drag.TrimIn: m.DragTrimIn(t); break;
                 case Drag.TrimOut: m.DragTrimOut(t); break;
                 case Drag.Pan: m.Pan((p.X - _lastX) / Math.Max(1, Right - Left) * (m.ViewEnd - m.ViewStart)); break;
@@ -204,6 +210,7 @@ namespace VRMR.App.Controls
             _drag = Drag.None;
             e.Pointer.Capture(null);
             if (m?.Take == null) return;
+            m.Preview(null);
             var p = e.GetPosition(this);
             if (drag == Drag.TrimIn || drag == Drag.TrimOut) m.EndTrimDrag();
             else if (drag == Drag.Select && !m.HasSelection)
@@ -227,6 +234,7 @@ namespace VRMR.App.Controls
         protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
         {
             base.OnPointerCaptureLost(e);
+            Model?.Preview(null);
             if (_drag == Drag.TrimIn || _drag == Drag.TrimOut) Model?.EndTrimDrag();
             _drag = Drag.None;
         }

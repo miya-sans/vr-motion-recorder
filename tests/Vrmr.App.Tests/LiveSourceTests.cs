@@ -323,6 +323,105 @@ namespace VRMR.App.Tests
             Assert.Contains("Ctrl+Shift+R", rig.Shell.RecordTip);
         }
 
+        [Theory]
+        [InlineData(1, 1)]
+        [InlineData(2, 3)]
+        [InlineData(3, 5)]
+        public void HotkeyAndButtonShareTheRecordingCountdown(int index, int seconds)
+        {
+            using var rig = new Rig();
+            rig.Shell.RecordDelayIndex = index;
+            rig.Shell.ToggleRecordCommand.Execute(null);
+            Assert.Equal($"Record {seconds} s", rig.Shell.RecordText);
+            rig.Hotkey.Pressed();
+            rig.Ui.RunPosted();
+            rig.Ui.Advance(seconds + 1);
+            Assert.False(rig.Shell.IsRecording);
+            Assert.Equal("Record", rig.Shell.RecordText);
+
+            rig.Hotkey.Pressed();
+            rig.Ui.RunPosted();
+            for (int i = 0; i < seconds; i++)
+            {
+                Assert.False(rig.Shell.IsRecording);
+                rig.Ui.Advance(1);
+            }
+
+            Assert.True(rig.Shell.IsRecording);
+            rig.Shell.ToggleRecordCommand.Execute(null);
+            Assert.False(rig.Shell.IsRecording);
+        }
+
+        [Theory]
+        [InlineData(1, 1)]
+        [InlineData(2, 3)]
+        [InlineData(3, 5)]
+        public void ManualCalibrationUsesItsOwnSavedDelay(int index, int seconds)
+        {
+            using var rig = new Rig(s => s["watchCalibrations"] = false);
+            rig.Shell.RecordDelayIndex = 2;
+            rig.Shell.CalibrationDelayIndex = 0;
+            Assert.Equal("Watcher disabled", rig.Shell.LiveCalibrationText);
+            Assert.False(rig.Shell.CanCalibrate);
+            rig.Shell.CalibrationDelayIndex = index;
+            rig.Host.SettingsStore.Flush();
+            var settings = Settings.Load(rig.Host.Options.Paths);
+            Assert.Equal(3, settings.RecordCountdownSeconds);
+            Assert.Equal(seconds, settings.CalibrationCountdownSeconds);
+            rig.Shell.CalibrateLiveCommand.Execute(null);
+            Assert.Equal("—", rig.Shell.CalibrationAge);
+            rig.AttachSteamVr();
+            rig.Feed();
+            rig.Shell.CalibrateLiveCommand.Execute(null);
+            for (int i = seconds; i > 0; i--)
+            {
+                Assert.Equal($"Calibrate {i} s", rig.Shell.LiveCalibrationText);
+                Assert.Equal("—", rig.Shell.CalibrationAge);
+                rig.Ui.Advance(1);
+            }
+
+            Assert.True(rig.WaitFor(() => rig.Shell.CalibrationAge == "0 min"));
+            var saved = Assert.Single(rig.Host.Recorder.Calibrations.List());
+            Assert.Equal("0 min", ShellViewModel.CalibrationAgeText(saved.CreatedUtc, saved.CreatedUtc.AddSeconds(59)));
+            Assert.Equal("1 min", ShellViewModel.CalibrationAgeText(saved.CreatedUtc, saved.CreatedUtc.AddMinutes(1)));
+        }
+
+        [Fact]
+        public void LiveAgeRestoresTheLastVrchatCalibrationAndSurvivesFailedCapture()
+        {
+            using var data = new ScratchData();
+            var ui = new ManualDispatcher();
+            var library = new CalibrationLibrary(data.Options.Paths);
+            var timestamp = DateTime.UtcNow.AddMinutes(-4);
+            var snapshot = new CalibrationSnapshot { CreatedUtc = timestamp, Source = "vrchat" };
+            snapshot.Devices.Add(new CalibrationSnapshot.Device { Class = 1, Serial = "SIM-HMD" });
+            library.Save(snapshot);
+            var fromTake = snapshot.Clone();
+            fromTake.Id = "";
+            fromTake.Source = "take";
+            fromTake.CreatedUtc = DateTime.UtcNow;
+            library.Save(fromTake);
+            using var host = data.NewHost(ui);
+            var shell = new ShellViewModel(host);
+            Assert.True(ui.WaitFor(() => shell.CalibrationAge == "4 min"));
+            shell.CalibrateLiveCommand.Execute(null);
+            Assert.Equal("4 min", shell.CalibrationAge);
+        }
+
+        [Fact]
+        public void SyncDisplaysTheWatcherStatusWithoutManualCapture()
+        {
+            using var rig = new Rig();
+            rig.Shell.CalibrationDelayIndex = 0;
+            Assert.Equal("SteamVR offline", rig.Shell.LiveCalibrationText);
+            rig.AttachSteamVr();
+            rig.Feed();
+            rig.Ui.Advance(1);
+            Assert.Equal(rig.Host.Recorder.Calib.Status, rig.Shell.LiveCalibrationText);
+            Assert.False(rig.Shell.CanCalibrate);
+            Assert.Equal(0, rig.Host.Calibration.CaptureCountdown);
+        }
+
         [Fact]
         public void AHotkeyThatIsTakenIsSaidSoOnTheRecordButton()
         {

@@ -144,12 +144,9 @@ namespace VRMR
                 Log = new VrcLogTailer { OnHumr = OnHumr, OnEvent = OnLogEvent };
             }
 
-            if (_settings.WatchCalibrations)
-            {
-                Calib = new CalibrationWatcher(() => OpenVR, () => AvatarId, () => AvatarName,
-                    () => AvatarEyeHeight, Calibrations);
-                Calib.Captured += s => AddEvent("calibration", s.Id);
-            }
+            Calib = new CalibrationWatcher(() => OpenVR, () => AvatarId, () => AvatarName,
+                () => AvatarEyeHeight, Calibrations, _settings.WatchCalibrations);
+            Calib.Captured += s => AddEvent("calibration", s.Id);
 
             new Thread(() =>
             {

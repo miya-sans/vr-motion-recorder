@@ -115,8 +115,6 @@ namespace VRMR.App.Viewport
                     FovLeft = m.FovL, FovRight = m.FovR, FovTop = m.FovT, FovBottom = m.FovB
                 });
             if (s.PlayArea != null) f.PlayArea.AddRange(s.PlayArea);
-            f.Overlay.Append(s.Overlay);
-            f.OverlayRight.Append(s.OverlayRight);
             f.Recording = o.Recording;
             Submit(f);
         }
