@@ -98,6 +98,7 @@ Everything you change about a take, and nothing else:
 | `calibrationSnapshot`                           | A copy of the calibration snapshot the take is linked to, so the take stays self-contained.                                                        |
 | `vrcChanges`                                    | VRChat setting changes added by hand.                                                                                                              |
 | `trackerGaps`                                   | Tracking-loss marks you added or switched off.                                                                                                     |
+| `trackerNudges`                                 | Per body tracker (`Hips`, `LeftFoot`, ...): where it is moved against the avatar at calibration, avatar cm (right, up, forward).                   |
 | `bodySource`                                    | `auto`, `ik` (the solve) or `humr` (VRChat's own IK).                                                                                              |
 | `fingerSource`                                  | `auto`, `steamvr`, `gestures` or `none`.                                                                                                           |
 | `locomotion`, `jumps`                           | Include VRChat's locomotion, and VRChat's jumps.                                                                                                   |

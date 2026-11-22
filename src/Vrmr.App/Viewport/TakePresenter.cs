@@ -43,6 +43,24 @@ namespace VRMR.App.Viewport
             return p.pos.SqrLength < 1e-12f && Math.Abs(Math.Abs(p.rot.w) - 1) < 1e-7f;
         }
 
+        /// <summary>
+        ///     Show the calibration moment of the segment at the playhead instead of the solved pose: the avatar's T-pose as
+        ///     the trackers were bound to it, and the devices then.
+        /// </summary>
+        public bool CalibrationPose { get; set; }
+
+        /// <summary>The segment's calibration pose at a clip frame, or null.</summary>
+        static CalibrationPose CalibrationAt(BakedClip c, int f)
+        {
+            var cal = c.Calibration;
+            if (cal == null) return null;
+            var seg = cal.FrameSegment != null && f >= 0 && f < cal.FrameSegment.Length &&
+                      cal.FrameSegment[f] >= 0 && cal.FrameSegment[f] < cal.Segments.Count
+                ? cal.Segments[cal.FrameSegment[f]]
+                : cal;
+            return seg.Pose;
+        }
+
         /// <summary>Fills the view with the take at the playhead. Returns false when there is nothing solved to show.</summary>
         public bool Show(IViewport view, double? previewTime = null)
         {
@@ -71,12 +89,62 @@ namespace VRMR.App.Viewport
 
             Frame = f;
             LastFrame = c.Frames - 1;
+            var calPose = CalibrationPose ? CalibrationAt(c, f) : null;
+            _face.Clear();
+            scene.Markers.Clear();
+            if (calPose != null) ShowCalibration(scene, c, calPose);
+            else ShowFrame(scene, c, f);
+
+            string roomNote = ShowRoom(view, c, r, f);
+            scene.Overlay = (calPose != null ? "Calibration pose" : BodySourceText(c.BodySource)) +
+                            (roomNote.Length > 0 ? "\n" + roomNote : "");
+            scene.OverlayRight = "";
+            var d = PlacementDelta();
+            if (!IsIdentity(d)) scene.Transform(d);
+            view.SceneChanged();
+            return true;
+        }
+
+        /// <summary>The avatar in its rest T-pose where the calibration bound it, and the devices at that moment.</summary>
+        void ShowCalibration(ViewScene scene, BakedClip c, CalibrationPose cal)
+        {
+            var p = c.Profile;
+            for (int i = 0; i < p.Nodes.Count; i++)
+            {
+                scene.NodePos[i] = cal.Root.TransformPoint(p.RestWorldPos[i] * cal.Scale);
+                scene.NodeRot[i] = (cal.Root.rot * p.RestWorldRot[i]).Normalized;
+            }
+
+            scene.MeshScale = cal.Scale;
+            scene.FaceWeights = _face;
+            float size = c.Calibration.TrackScale > 0.05f ? c.Calibration.TrackScale : 1f;
+            foreach (var kv in cal.Devices)
+                scene.Markers.Add(DeviceMarker(kv.Key, kv.Value, size, cal.Unused.Contains(kv.Key)));
+        }
+
+        static ViewMarker DeviceMarker(string role, Pose pose, float size, bool faded)
+        {
+            bool hand = role == "LeftHand" || role == "RightHand", head = role == "Head";
+            return new ViewMarker
+            {
+                Pose = pose,
+                Size = size,
+                NoDropLine = true,
+                Faded = faded,
+                Tint = head ? MarkerTint.Head :
+                    role == "LeftHand" ? MarkerTint.Left :
+                    role == "RightHand" ? MarkerTint.Right : MarkerTint.Tracker,
+                Kind = head ? MarkerKind.Headset : hand ? MarkerKind.Controller : MarkerKind.Tracker
+            };
+        }
+
+        /// <summary>The solved pose, face, camera and devices at clip frame f.</summary>
+        void ShowFrame(ViewScene scene, BakedClip c, int f)
+        {
             c.EvaluateNodes(f, scene.NodePos, scene.NodeRot);
             scene.MeshScale = c.ScaleAt(f);
-            _face.Clear();
             foreach (var kv in c.Face) _face[kv.Key] = kv.Value[f];
             scene.FaceWeights = _face;
-            scene.Markers.Clear();
             if (c.Camera != null && c.CameraValid[f])
                 scene.Markers.Add(new ViewMarker
                 {
@@ -85,26 +153,8 @@ namespace VRMR.App.Viewport
             // devices as small models at the tracking scale (like VRChat, where the controllers shrink with the avatar)
             float size = c.Calibration != null && c.Calibration.TrackScale > 0.05f ? c.Calibration.TrackScale : 1f;
             foreach (var kv in c.Trackers)
-            {
-                if (!c.TrackerValid[kv.Key][f]) continue;
-                bool hand = kv.Key == "LeftHand" || kv.Key == "RightHand", head = kv.Key == "Head";
-                scene.Markers.Add(new ViewMarker
-                {
-                    Pose = kv.Value[f], Size = size, NoDropLine = true,
-                    Tint = head ? MarkerTint.Head :
-                        kv.Key == "LeftHand" ? MarkerTint.Left :
-                        kv.Key == "RightHand" ? MarkerTint.Right : MarkerTint.Tracker,
-                    Kind = head ? MarkerKind.Headset : hand ? MarkerKind.Controller : MarkerKind.Tracker
-                });
-            }
-
-            string roomNote = ShowRoom(view, c, r, f);
-            scene.Overlay = BodySourceText(c.BodySource) + (roomNote.Length > 0 ? "\n" + roomNote : "");
-            scene.OverlayRight = "";
-            var d = PlacementDelta();
-            if (!IsIdentity(d)) scene.Transform(d);
-            view.SceneChanged();
-            return true;
+                if (c.TrackerValid[kv.Key][f])
+                    scene.Markers.Add(DeviceMarker(kv.Key, kv.Value[f], size, false));
         }
 
         static int NearestSourceFrame(BakedClip clip, double time)

@@ -487,6 +487,12 @@ namespace VRMR
 
         public List<double[]> Cuts = new();
         public double FaceOffset; // seconds added to parameter timestamps
+
+        /// <summary>
+        ///     Per body tracker (BodyRole name): where it is moved against the avatar at the calibration moment, in avatar cm
+        ///     (x right, y up, z forward of the calibration pose). Applies to every calibration of the take.
+        /// </summary>
+        public Dictionary<string, Vec3> TrackerNudges = new();
         public string FingerSource = "auto"; // auto | steamvr | gestures | none
 
         /// <summary>Keep VRChat's jumps (the avatar leaving the ground in VRChat's world) in the body; off by default (VrcJumps).</summary>
@@ -611,7 +617,8 @@ namespace VRMR
                 ["calibrationSnapshot"] = Snapshot?.ToJson(),
                 ["fingerSource"] = FingerSource, ["targetAvatar"] = TargetAvatar,
                 ["vrcChanges"] = VrcChanges.Select(c => (object)c.ToJson()).ToList(),
-                ["trackerGaps"] = TrackerGaps.Select(c => (object)c.ToJson()).ToList()
+                ["trackerGaps"] = TrackerGaps.Select(c => (object)c.ToJson()).ToList(),
+                ["trackerNudges"] = TrackerNudges.ToDictionary(k => k.Key, k => (object)Json.V3(k.Value))
             };
         }
 
@@ -665,6 +672,10 @@ namespace VRMR
             foreach (object c in d.GetList("trackerGaps") ?? new List<object>())
                 if (c is Dictionary<string, object> cd)
                     e.TrackerGaps.Add(TrackerGapMark.FromJson(cd));
+            var nudges = d.GetObj("trackerNudges");
+            if (nudges != null)
+                foreach (var kv in nudges)
+                    e.TrackerNudges[kv.Key] = Json.ToV3(kv.Value);
             return e;
         }
     }

@@ -158,6 +158,28 @@ namespace VRMR
         }
     }
 
+    /// <summary>
+    ///     The calibration moment as the solve bound it: the avatar's rest T-pose at <see cref="Root" /> (world = Root * rest *
+    ///     Scale) and the devices then, in the clip's space.
+    /// </summary>
+    public sealed class CalibrationPose
+    {
+        /// <summary>Device poses by role name (Head, LeftHand, Hips, LeftFoot, ...).</summary>
+        public readonly Dictionary<string, Pose> Devices = new();
+
+        /// <summary>Trackers the take has but the solve didn't use (switched off, or missing from the calibration).</summary>
+        public readonly HashSet<string> Unused = new();
+
+        public Pose Root;
+        public float Scale = 1f;
+
+        public void Transform(Pose p)
+        {
+            Root = p * Root;
+            foreach (string k in Devices.Keys.ToList()) Devices[k] = p * Devices[k];
+        }
+    }
+
     /// <summary>Outcome of a VRChat-style calibration for one solve (shown in the Clip page).</summary>
     public sealed class CalibrationResult
     {
@@ -198,6 +220,9 @@ namespace VRMR
 
         public double Time, DetectedTPose = -1;
         public float TrackScale, RealEyeHeight, AvatarEyeHeight;
+
+        /// <summary>The calibration moment as it was bound, for the view; null when nothing was bound.</summary>
+        public CalibrationPose Pose;
 
         public string Summary()
         {

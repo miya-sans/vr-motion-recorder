@@ -150,6 +150,14 @@ namespace VRMR
 
         Bind _bHips, _bFootL, _bFootR;
 
+        // the avatar's T-pose root at the calibration moment (solver space), as BindTargets placed it
+        Pose _calRoot;
+        bool _calRootOk;
+
+        // the calibration pose's heading, set while binding: the take's tracker nudges are in this frame
+        Quat _nudgeYaw;
+        bool _nudging;
+
         // foot tracker heights at the calibration moment (standing flat on the floor), for KeepFeetPlanted
         float _calFootL = float.NaN, _calFootR = float.NaN;
         float _calHeadY = float.NaN;
@@ -394,7 +402,20 @@ namespace VRMR
                 raw = Jumps.Total(CalibrationTime).Inverse * raw; // same continuous space as SampleOvr
             p = OvrToCentered(raw);
             if (_vrcSpace) p = Fusion(Snapshot != null ? _rec.Edits.OriginTime : CalibrationTime) * p;
+            foreach (var kv in _trackers)
+                if (kv.Value == s)
+                    p = Nudged(kv.Key, p);
             return true;
+        }
+
+        /// <summary>
+        ///     A body tracker at the calibration moment moved by the take's nudge (avatar cm in the calibration pose's frame),
+        ///     so the bone is bound that much the other way. Unchanged outside the binding.
+        /// </summary>
+        Pose Nudged(BodyRole role, Pose p)
+        {
+            if (!_nudging || !_rec.Edits.TrackerNudges.TryGetValue(role.ToString(), out var n)) return p;
+            return new Pose(p.pos + _nudgeYaw * (n * 0.01f), p.rot);
         }
 
         /// <summary>The head at the calibration moment in solver space.</summary>
@@ -1120,6 +1141,8 @@ namespace VRMR
             var yaw = Quat.YawRotation(calHead.rot.Yaw);
             var eyeLocal = new Vec3(0, AvatarEyeHeight, _prof.ViewPoint.z * s);
             var root = calHead.pos - yaw * eyeLocal;
+            _calRoot = new Pose(root, yaw);
+            _calRootOk = true;
 
             Bind B(BodyRole role, int bone)
             {
@@ -1333,6 +1356,10 @@ namespace VRMR
             if (Snapshot == null)
             {
                 Feed(solver, CalibrationTime);
+                foreach (var role in TrackerRoles)
+                    if (_rec.Edits.TrackerNudges.ContainsKey(role.ToString()) && _cal.UsesRole(role) &&
+                        Tracker(role, CalibrationTime, out var tp))
+                        solver.SetDevice(role, Nudged(role, tp), true, HandSourceKind.Generic);
                 return;
             }
 
@@ -1363,13 +1390,18 @@ namespace VRMR
         /// </summary>
         public void Calibrate(IBodySolver solver)
         {
+            _nudging = false; // the standing foot heights are the real ones
             _calFootL = _calFootR = float.NaN;
             if (_trackers.TryGetValue(BodyRole.LeftFoot, out var ls) && CalOvr(ls, out var lp)) _calFootL = lp.pos.y;
             if (_trackers.TryGetValue(BodyRole.RightFoot, out var rs) && CalOvr(rs, out var rp)) _calFootR = rp.pos.y;
             _feetFirst = false; // bind at the raw tracker poses
-            FeedCalibration(solver);
             _calHeadY = float.NaN;
-            if (CalHead(out var h))
+            _calRootOk = false;
+            bool hasHead = CalHead(out var h);
+            _nudgeYaw = hasHead ? Quat.YawRotation(CalibrationHead(SolverEye(h)).rot.Yaw) : Quat.Identity;
+            _nudging = hasHead;
+            FeedCalibration(solver);
+            if (hasHead)
             {
                 var ch = CalibrationHead(SolverEye(h));
                 _calHeadY = ch.pos.y;
@@ -1381,6 +1413,32 @@ namespace VRMR
             _feetFirst = _cal.KeepFeetPlanted && _cal.UseFeet;
             MaxFeetDrop = SumFeetDrop = 0;
             FeetDropFrames = FeetDropActive = 0;
+        }
+
+        /// <summary>
+        ///     The calibration moment as it was bound: the avatar's T-pose root and every device then, in the clip's space
+        ///     before placement. Null before <see cref="Calibrate" /> or without a head.
+        /// </summary>
+        public CalibrationPose CalibrationPose()
+        {
+            if (!_calRootOk) return null;
+            var universe = Snapshot == null ? UniverseAt(CalibrationTime) : Pose.Identity;
+            var res = new CalibrationPose
+            {
+                Root = universe * _calRoot,
+                Scale = AvatarEyeHeight / Math.Max(0.05f, _prof.EyeHeight)
+            };
+            if (CalHead(out var head)) res.Devices["Head"] = universe * head;
+            if (CalOvr(_ctrlL, out var l)) res.Devices["LeftHand"] = universe * l;
+            if (CalOvr(_ctrlR, out var r)) res.Devices["RightHand"] = universe * r;
+            foreach (var kv in _trackers)
+                if (CalOvr(kv.Value, out var p))
+                {
+                    res.Devices[kv.Key.ToString()] = universe * p;
+                    if (!HasTracker(kv.Key)) res.Unused.Add(kv.Key.ToString());
+                }
+
+            return res;
         }
 
         public Dictionary<string, Tuple<Pose[], bool[]>> TrackerTracks(double[] times)

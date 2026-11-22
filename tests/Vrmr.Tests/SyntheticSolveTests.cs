@@ -125,5 +125,40 @@ namespace VRMR.Tests
             Directory.CreateDirectory(TestEnvironment.Root);
             File.WriteAllText(Path.Combine(TestEnvironment.Root, "golden.txt"), sb.ToString());
         }
+
+        static BakedClip SolveWithNudge(Vec3 leftFoot)
+        {
+            BodySolverSetup.Register();
+            var rec = SyntheticTake.Create();
+            rec.Edits.TrackerNudges["LeftFoot"] = leftFoot;
+            var cal = new CalibrationSettings
+                { Height = CalHeightMode.RealHeight, HeightValue = SyntheticTake.Height, FollowVrc = false };
+            return PoseBuilder.Bake(rec, Mannequin.Profile(), new BakeOptions { Fps = 60, Calibration = cal });
+        }
+
+        [Fact]
+        public void ANudgedTrackerMovesItsBoneTheOtherWayAndLeavesTheOthers()
+        {
+            var plain = Solved.Value;
+            var nudged = SolveWithNudge(new Vec3(0, -3, 0));
+            float left = Bone(nudged, 1.0, HumanBones.LeftFoot).y - Bone(plain, 1.0, HumanBones.LeftFoot).y;
+            float right = Bone(nudged, 1.0, HumanBones.RightFoot).y - Bone(plain, 1.0, HumanBones.RightFoot).y;
+            Assert.InRange(left, 0.02f, 0.04f);
+            Assert.InRange(Math.Abs(right), 0f, 0.005f);
+            var moved = nudged.Calibration.Pose.Devices["LeftFoot"].pos -
+                        plain.Calibration.Pose.Devices["LeftFoot"].pos;
+            Assert.InRange(moved.y, -0.031f, -0.029f);
+            Assert.InRange(Math.Abs(moved.x) + Math.Abs(moved.z), 0f, 0.001f);
+        }
+
+        [Fact]
+        public void TrackerNudgesSurviveSavingTheEditList()
+        {
+            var e = new EditList();
+            e.TrackerNudges["Hips"] = new Vec3(1.5f, -2f, 0.5f);
+            var back = EditList.FromJson(Json.ParseObject(Json.Serialize(e.ToJson())));
+            Assert.Equal(new Vec3(1.5f, -2f, 0.5f), back.TrackerNudges["Hips"]);
+            Assert.Single(back.TrackerNudges);
+        }
     }
 }

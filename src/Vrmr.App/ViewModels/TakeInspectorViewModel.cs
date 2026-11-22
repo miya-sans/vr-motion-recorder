@@ -46,6 +46,69 @@ namespace VRMR.App.ViewModels
     }
 
     /// <summary>
+    ///     One body tracker's nudge in the Calibration section: where it is moved against the avatar at the calibration
+    ///     moment, in avatar cm (right, up, forward).
+    /// </summary>
+    public partial class TrackerNudgeRowViewModel : ObservableObject
+    {
+        readonly Action<string, Vec3> _changed;
+        bool _syncing;
+        [ObservableProperty] bool _moved;
+        [ObservableProperty] double _x;
+        [ObservableProperty] double _y;
+        [ObservableProperty] double _z;
+
+        public TrackerNudgeRowViewModel(string role, Action<string, Vec3> changed)
+        {
+            Role = role;
+            Label = TrackerService.RoleLabel(role);
+            _changed = changed;
+        }
+
+        public string Role { get; }
+        public string Label { get; }
+
+        /// <summary>Shows a nudge from the edit list without writing it back.</summary>
+        public void Show(Vec3 v)
+        {
+            _syncing = true;
+            X = Math.Round(v.x, 1);
+            Y = Math.Round(v.y, 1);
+            Z = Math.Round(v.z, 1);
+            Moved = X != 0 || Y != 0 || Z != 0;
+            _syncing = false;
+        }
+
+        partial void OnXChanged(double value)
+        {
+            Commit();
+        }
+
+        partial void OnYChanged(double value)
+        {
+            Commit();
+        }
+
+        partial void OnZChanged(double value)
+        {
+            Commit();
+        }
+
+        void Commit()
+        {
+            Moved = X != 0 || Y != 0 || Z != 0;
+            if (!_syncing) _changed(Role, new Vec3((float)X, (float)Y, (float)Z));
+        }
+
+        [RelayCommand]
+        void Reset()
+        {
+            Show(Vec3.Zero);
+            Commit();
+        }
+    }
+
+    /// <summary>
     ///     The Take tab of the inspector: everything that belongs to the open take. Name and notes, the body and the avatar
     ///     it is solved onto, tracker roles and tracking-loss repairs, placement, calibration, fingers and face.
     /// </summary>
@@ -88,6 +151,8 @@ namespace VRMR.App.ViewModels
 
         [ObservableProperty] bool _hasTake;
         [ObservableProperty] bool _hasVrcChanges;
+        [ObservableProperty] bool _noNudgeRows = true;
+        [ObservableProperty] string _nudgeSummary = "";
         [ObservableProperty] string _infoLine = "";
         [ObservableProperty] bool _isDirty;
         [ObservableProperty] bool _jumps;
@@ -140,6 +205,8 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _watchText = "";
         IDisposable _watchTimer;
 
+        public TakesWorkspaceViewModel Workspace => _workspace;
+
         public TakeInspectorViewModel(AppHost host, TakesWorkspaceViewModel workspace)
         {
             _host = host;
@@ -182,6 +249,9 @@ namespace VRMR.App.ViewModels
         // ------------------------------------------------------------------------------------------ trackers and tracking loss
 
         public ObservableCollection<TrackerRowViewModel> TrackerRows { get; } = new();
+
+        /// <summary>The body trackers the calibration bound, with their nudges.</summary>
+        public ObservableCollection<TrackerNudgeRowViewModel> NudgeRows { get; } = new();
         public ObservableCollection<TrackerLossInfo> Losses { get; } = new();
         public ObservableCollection<string> MarkTrackers { get; } = new();
 
@@ -572,6 +642,8 @@ namespace VRMR.App.ViewModels
                     HasVrcChanges = r.Edits.VrcChanges.Count > 0;
                 }
 
+                SyncNudges();
+
                 var p = r?.Edits.Placement ?? Pose.Identity;
                 var euler = p.rot.ToEulerUnity();
                 MoveX = Math.Round(p.pos.x * 100, 1);
@@ -719,6 +791,46 @@ namespace VRMR.App.ViewModels
                                 (warnings.Count > 0 ? "\n" + string.Join("\n", warnings) : "");
         }
 
+        /// <summary>One row per body tracker the calibration bound (kept when the set is unchanged, so typing isn't lost).</summary>
+        void SyncNudgeRows()
+        {
+            var cal = _session.Clip?.Calibration?.Pose;
+            var roles = cal == null
+                ? new List<string>()
+                : Enum.GetNames(typeof(BodyRole))
+                    .Where(n => n != "Head" && n != "LeftHand" && n != "RightHand" && cal.Devices.ContainsKey(n) &&
+                                !cal.Unused.Contains(n))
+                    .ToList();
+            if (!roles.SequenceEqual(NudgeRows.Select(x => x.Role)))
+            {
+                NudgeRows.Clear();
+                foreach (string role in roles) NudgeRows.Add(new TrackerNudgeRowViewModel(role, SetNudge));
+            }
+
+            NoNudgeRows = NudgeRows.Count == 0;
+
+            SyncNudges();
+        }
+
+        void SyncNudges()
+        {
+            var nudges = _session.Take?.Edits.TrackerNudges;
+            foreach (var row in NudgeRows)
+                row.Show(nudges != null && nudges.TryGetValue(row.Role, out var v) ? v : Vec3.Zero);
+            int moved = nudges?.Count ?? 0;
+            NudgeSummary = moved == 0 ? "" : moved == 1 ? "1 moved" : moved + " moved";
+        }
+
+        void SetNudge(string role, Vec3 v)
+        {
+            if (_syncing || _session.Take == null) return;
+            _session.Edit("trackerNudge", e =>
+            {
+                if (v.SqrLength < 1e-6f) e.TrackerNudges.Remove(role);
+                else e.TrackerNudges[role] = v;
+            });
+        }
+
         /// <summary>A new solve arrived: results, automatic roles and found losses may have changed.</summary>
         void SyncSolve()
         {
@@ -740,6 +852,7 @@ namespace VRMR.App.ViewModels
                 ? clip.Warnings.Count + (clip.Warnings.Count == 1 ? " solver note" : " solver notes")
                 : "";
             SyncTrackers();
+            SyncNudgeRows();
             Settings.Sync();
             SyncCalibrationResult();
             SyncAvatar();

@@ -246,6 +246,9 @@ namespace VRMR
             if (clip.Room != null)
                 for (int f = 0; f < clip.Room.Length; f++)
                     clip.Room[f] = P * clip.Room[f];
+            if (clip.Calibration != null)
+                foreach (var seg in clip.Calibration.Segments)
+                    seg.Pose?.Transform(P);
             clip.HumrOrigin = clip.HumrOrigin * P.Inverse; // VRChat world -> placed clip
             clip.Placement = P * clip.Placement;
         }
@@ -732,7 +735,8 @@ namespace VRMR
                     PoseText = rig.CalibrationPoseText,
                     ScaleText = rig.ScaleText, TrackScale = rig.TrackScale, RealEyeHeight = rig.RealEyeHeight,
                     AvatarEyeHeight = rig.AvatarEyeHeight,
-                    Settings = pl.Settings.Clone(), Start = pl.Start, End = pl.End
+                    Settings = pl.Settings.Clone(), Start = pl.Start, End = pl.End,
+                    Pose = rig.CalibrationPose()
                 };
                 foreach (BodyRole r in Enum.GetValues(typeof(BodyRole)))
                     if (rig.HasTracker(r))

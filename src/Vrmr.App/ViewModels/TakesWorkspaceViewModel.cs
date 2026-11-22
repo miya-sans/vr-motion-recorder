@@ -51,6 +51,10 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _loop = true;
         List<double[]> _segments = new();
         [ObservableProperty] bool _showBaseStations;
+
+        /// <summary>The view shows the calibration pose of the segment at the playhead instead of the solved pose.</summary>
+        [ObservableProperty] bool _showCalibrationPose;
+
         [ObservableProperty] bool _showDevices;
         [ObservableProperty] bool _showEmpty;
         [ObservableProperty] bool _showHeadset;
@@ -95,6 +99,7 @@ namespace VRMR.App.ViewModels
             _clock.StateChanged += () =>
             {
                 IsPlaying = _clock.Playing;
+                if (IsPlaying) ShowCalibrationPose = false;
                 UpdateAnimating();
             };
             Timeline.PreviewChanged += Present;
@@ -240,6 +245,12 @@ namespace VRMR.App.ViewModels
         partial void OnShowBaseStationsChanged(bool value)
         {
             SaveChip(nameof(Settings.ShowBaseStations), s => s.ShowBaseStations = value);
+            Present();
+        }
+
+        partial void OnShowCalibrationPoseChanged(bool value)
+        {
+            _host.TakePresenter.CalibrationPose = value;
             Present();
         }
 
