@@ -28,6 +28,7 @@
       <ComboBox ItemsSource="{Binding MeasureModes}" SelectedIndex="{Binding MeasureIndex}" />
     </c:FieldRow>
     <CheckBox Content="Follow VRChat's spine and measurement" IsChecked="{Binding FollowVrc}"
+              IsEnabled="{Binding RecordingOptionsEnabled}"
               Margin="{DynamicResource GapRowSmall}"
               ToolTip.Tip="Use the spine mode and measurement VRChat had while recording, and switch when they changed during the take, as VRChat did. Spine and Measure above then only apply to takes without that information." />
     <c:FieldRow Label="Trackers"
@@ -57,6 +58,7 @@
         <CheckBox Content="Steps without foot trackers" IsChecked="{Binding ProceduralFeet}"
                   ToolTip.Tip="Makes the feet step by themselves when the take has no foot trackers. Tracked feet always follow their trackers." />
         <CheckBox Content="Follow VRChat's avatar scaling" IsChecked="{Binding FollowAvatarScale}"
+                  IsEnabled="{Binding RecordingOptionsEnabled}"
                   Margin="{DynamicResource GapRowSmall}"
                   ToolTip.Tip="Off: the avatar keeps its own size even when you resized it in VRChat during the take. On: the body follows those size changes." />
         <c:FieldRow Label="Avatar scale" CanReset="{Binding AvatarScaleChanged}"

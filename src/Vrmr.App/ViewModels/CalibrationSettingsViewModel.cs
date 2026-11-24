@@ -43,6 +43,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _keepFeetPlanted;
         [ObservableProperty] int _measureIndex;
         [ObservableProperty] bool _proceduralFeet;
+        [ObservableProperty] bool _recordingOptionsEnabled = true;
         [ObservableProperty] bool _shoulderTracking;
         [ObservableProperty] int _spineIndex;
         bool _syncing;
@@ -107,7 +108,7 @@ namespace VRMR.App.ViewModels
                 {
                     var res = _defaultsOnly ? null : _clip()?.Calibration;
                     HeightReadout = res != null ? res.RealEyeHeight.ToString("0.000", inv) + " m eye height" :
-                        _defaultsOnly ? "measured in each take" : "after the solve";
+                        _defaultsOnly || !RecordingOptionsEnabled ? "measured at calibration" : "after the solve";
                 }
                 else if (c.Height == CalHeightMode.VRChat)
                 {

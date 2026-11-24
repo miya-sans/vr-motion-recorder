@@ -12,11 +12,12 @@
 
       <!-- ============================================================ the take -->
       <TextBox x:Name="NameBox" Text="{Binding Name}" FontWeight="SemiBold"
+               IsEnabled="{Binding HasTake}" PlaceholderText="No take selected"
                ToolTip.Tip="The take's name: shown in the library and used for the exported files (F2)" />
       <TextBlock Text="{Binding InfoLine}" Classes="secondary" Margin="2,6,0,0" TextWrapping="Wrap" />
       <TextBlock Text="{Binding SolveLine}" Classes="caption tabular" Classes.warning="{Binding SolveWarning}"
                  Margin="2,2,0,8" TextWrapping="Wrap" />
-      <Grid ColumnDefinitions="*,8,Auto" Margin="{DynamicResource GapRow}">
+      <Grid ColumnDefinitions="*,8,Auto" Margin="{DynamicResource GapRow}" IsEnabled="{Binding HasTake}">
         <Button x:Name="SaveButton" Classes.accent="{Binding IsDirty}" Content="Save" Command="{Binding SaveCommand}"
                 HorizontalAlignment="Stretch"
                 ToolTip.Tip="Save the edits into the take (Ctrl+S). The recorded data itself is never changed. Edits are also saved when you open another take." />
@@ -25,7 +26,7 @@
       </Grid>
       <c:Section Header="Details" Level="2" IsExpanded="False" StateKey="take.details"
                  Summary="{Binding DetailsSummary}" SummaryTone="Warning">
-        <StackPanel>
+        <StackPanel IsEnabled="{Binding HasTake}">
           <SelectableTextBlock Text="{Binding DetailText}" Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap" LineHeight="18" />
           <SelectableTextBlock Text="{Binding SolverNotes}" Foreground="{DynamicResource TextFaintBrush}"
@@ -36,7 +37,7 @@
 
       <!-- ============================================================ body -->
       <c:Section Header="Body" StateKey="take.body">
-        <StackPanel>
+        <StackPanel IsEnabled="{Binding HasTake}">
           <c:FieldRow Label="Avatar"
                       ToolTip.Tip="The avatar the take is solved onto. Any humanoid in your library works: the recorded data is solved again for it. Automatic is the base model of the avatar the take was recorded with.">
             <ComboBox ItemsSource="{Binding AvatarChoices}" SelectedIndex="{Binding AvatarIndex}" />
@@ -122,7 +123,7 @@
       <c:Section Header="Placement" StateKey="take.placement" Summary="{Binding PlacementSummary}"
                  SummaryTone="{Binding PlacementTone}"
                  ToolTip.Tip="Moves and turns the whole take (body, camera, devices) after the solve; the solve itself does not change. The view and every export use it. Scenes place their strips themselves.">
-        <StackPanel>
+        <StackPanel IsEnabled="{Binding HasTake}">
           <c:FieldRow Label="Move" Unit="cm"
                       ToolTip.Tip="Where the take is moved to: X, Y (up), Z (forward) in centimetres">
             <Grid ColumnDefinitions="*,4,*,4,*">
@@ -160,9 +161,9 @@
       <!-- ============================================================ calibration -->
       <c:Section Header="Calibration" StateKey="take.calibration" Summary="{Binding CalibrationSummary}"
                  SummaryTone="{Binding CalibrationTone}"
-                 ToolTip.Tip="Like VRChat: the headset and controllers need no calibration. Body trackers are bound to the avatar's T-pose at one moment. Every VRChat calibration is saved to a library, and new takes use the latest one that fits. The recorded data is kept, so every change here solves again without recording again.">
+                 ToolTip.Tip="Body trackers are bound to the avatar in a T-pose. With no take selected, these settings edit the live calibration defaults.">
         <StackPanel>
-          <c:FieldRow Label="From" ToolTip.Tip="{Binding SourceTip}">
+          <c:FieldRow Label="From" ToolTip.Tip="{Binding SourceTip}" IsEnabled="{Binding HasTake}">
             <ComboBox ItemsSource="{Binding Sources}" SelectedIndex="{Binding SourceIndex}" />
           </c:FieldRow>
           <TextBlock Text="{Binding SourceNote}" Classes="note" Classes.warning="{Binding SourceWarning}"
@@ -170,7 +171,8 @@
                      IsVisible="{Binding SourceNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <TextBlock Text="{Binding CalibrationPose}" Classes="note" Classes.warning="{Binding CalibrationPoseWarning}"
                      IsVisible="{Binding CalibrationPose, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}">
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}"
+                      IsEnabled="{Binding HasTake}">
             <Button Content="At playhead" Command="{Binding CalibrateAtPlayheadCommand}"
                     ToolTip.Tip="Calibrate at the playhead: move it to a moment where you stand in a T-pose" />
             <Button Content="Find T-pose" Command="{Binding FindTPoseCommand}"
@@ -178,7 +180,8 @@
             <c:ToggleChip Content="Show" IsChecked="{Binding Workspace.ShowCalibrationPose}"
                           ToolTip.Tip="Show the calibration in the 3D view: the avatar's T-pose at the center, facing ahead, and the devices where they were against it. Move trackers here to edit this calibration. Playing turns it off." />
           </StackPanel>
-          <StackPanel IsVisible="{Binding Workspace.ShowCalibrationPose}" Margin="{DynamicResource GapRow}">
+          <StackPanel IsVisible="{Binding Workspace.ShowCalibrationPose}" IsEnabled="{Binding HasTake}"
+                      Margin="{DynamicResource GapRow}">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Classes="note" Text="{Binding NudgeSummary}" VerticalAlignment="Center" />
               <c:ToggleChip Grid.Column="1" Content="Mirror" IsChecked="{Binding Workspace.MirrorTrackers}"
@@ -213,7 +216,7 @@
           <c:Section Header="VRChat's settings in this take" Level="2" IsExpanded="False" StateKey="take.cal.vrc"
                      Summary="{Binding VrcSettingsSummary}"
                      ToolTip.Tip="VRChat's spine mode and measurement while recording, and where they changed. For takes recorded before the app logged them, add a change at the playhead.">
-            <StackPanel>
+            <StackPanel IsEnabled="{Binding HasTake}">
               <TextBlock Classes="note" Text="{Binding VrcSettingsText}" />
               <Grid ColumnDefinitions="*,8,Auto">
                 <ComboBox ItemsSource="{Binding VrcChangeKinds}" SelectedIndex="{Binding VrcChangeKind}" />
@@ -229,12 +232,12 @@
             <StackPanel>
               <TextBlock Classes="note" Text="{Binding SettingsOwner}" />
               <StackPanel Orientation="Horizontal" Spacing="8" Margin="{DynamicResource GapRow}">
-                <Button Content="Make these the defaults" Command="{Binding MakeDefaultCommand}"
+                <Button Content="Make these the defaults" Command="{Binding MakeDefaultCommand}" IsEnabled="{Binding HasTake}"
                         ToolTip.Tip="Every take without settings of its own then uses these" />
                 <Button Content="Use the defaults" Command="{Binding UseDefaultsCommand}"
                         IsEnabled="{Binding TakeHasOwnSettings}" ToolTip.Tip="Drop this take's own settings" />
               </StackPanel>
-              <c:FieldRow Label="Preset" ToolTip.Tip="Named calibration settings you can load into any take">
+              <c:FieldRow Label="Preset" ToolTip.Tip="Named calibration settings you can load into the take or the defaults">
                 <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
                           PlaceholderText="No preset picked" />
               </c:FieldRow>
@@ -258,8 +261,9 @@
                          Text="Calibrations saved from VRChat, from takes, or captured here. Pick one under From to use it." />
               <WrapPanel>
                 <Button Content="{Binding CaptureLabel}" Command="{Binding CaptureNowCommand}" Margin="0,0,8,8"
-                        ToolTip.Tip="Saves where your devices are after a 5 second countdown: stand straight, look ahead, arms out. For when you do not calibrate in VRChat." />
+                        ToolTip.Tip="Capture the live device poses after a countdown. Stand straight, look ahead, and hold your arms out." />
                 <Button Content="Save this take's" Command="{Binding SaveTakeCalibrationCommand}" Margin="0,0,8,8"
+                        IsEnabled="{Binding HasTake}"
                         ToolTip.Tip="Saves the calibration this take uses to the library, so other takes can use it" />
                 <Button Content="Delete picked" Command="{Binding DeleteSourceCommand}"
                         IsEnabled="{Binding CanDeleteSource}" Margin="0,0,8,8"
@@ -272,6 +276,7 @@
 
           <c:Section Header="Result" Level="2" IsExpanded="False" StateKey="take.cal.result">
             <SelectableTextBlock Text="{Binding CalibrationResult}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                 IsEnabled="{Binding HasTake}"
                                  FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap" LineHeight="18" />
           </c:Section>
         </StackPanel>
@@ -279,7 +284,7 @@
 
       <!-- ============================================================ fingers and face -->
       <c:Section Header="Fingers and face" StateKey="take.face">
-        <StackPanel>
+        <StackPanel IsEnabled="{Binding HasTake}">
           <c:FieldRow Label="Fingers"
                       ToolTip.Tip="Automatic uses SteamVR finger tracking when the take has it, else VRChat's hand gestures.">
             <ComboBox ItemsSource="{Binding FingerSources}" SelectedIndex="{Binding FingerSourceIndex}" />
@@ -299,7 +304,7 @@
 
       <!-- ============================================================ notes -->
       <c:Section Header="Notes" StateKey="take.notes" IsExpanded="False" Summary="{Binding NotesSummary}">
-        <TextBox Text="{Binding Notes}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+        <TextBox Text="{Binding Notes}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" IsEnabled="{Binding HasTake}"
                  VerticalContentAlignment="Top" PlaceholderText="Anything worth remembering about this take" />
       </c:Section>
     </StackPanel>

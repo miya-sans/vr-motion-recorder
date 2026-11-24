@@ -510,6 +510,50 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
+        public async Task TakeInspectorKeepsLiveCalibrationAvailableAfterClosingTheTake()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var takes = s.Shell.Takes;
+                takes.InspectorTab = TakesWorkspaceViewModel.TakeTab;
+                var inspector = s.Window.FindControl<UserControl>("TakesInspectorView");
+                var view = inspector.FindControl<UserControl>("TakeView");
+                var sections = VisualExtensions.GetVisualDescendants(view).OfType<Section>();
+                Assert.Single(sections, section => Equals(section.Header, "Calibration")).IsExpanded = true;
+                Assert.Single(sections, section => Equals(section.Header, "Calibration library")).IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+
+                var buttons = VisualExtensions.GetVisualDescendants(view).OfType<Button>();
+                var save = view.FindControl<Button>("SaveButton");
+                var atPlayhead = Assert.Single(buttons, button => Equals(button.Content, "At playhead"));
+                var capture = Assert.Single(buttons, button => Equals(button.Content, "Capture now"));
+                Assert.True(atPlayhead.IsEffectivelyEnabled);
+
+                s.Host.Session.Close();
+                await HeadlessUi.SettleAsync();
+
+                Assert.True(view.IsEffectivelyVisible);
+                Assert.True(save.IsEffectivelyVisible);
+                Assert.False(save.IsEffectivelyEnabled);
+                Assert.True(atPlayhead.IsEffectivelyVisible);
+                Assert.False(atPlayhead.IsEffectivelyEnabled);
+                Assert.True(capture.IsEffectivelyVisible);
+                Assert.True(capture.IsEffectivelyEnabled);
+                var combos = VisualExtensions.GetVisualDescendants(view).OfType<ComboBox>();
+                var spine = Assert.Single(combos, combo => ReferenceEquals(combo.ItemsSource, takes.Inspector.Settings.SpineModes));
+                Assert.True(spine.IsEffectivelyEnabled);
+                spine.SelectedIndex = (int)CalLock.Both;
+                Assert.Equal(CalLock.Both, s.Host.Settings.CalibrationDefaults.Lock);
+
+                await s.Host.Session.OpenAsync(s.Shell.Library.Items[0].Path);
+                await WaitSolved(s);
+                Assert.True(atPlayhead.IsEffectivelyEnabled);
+                Assert.Null(s.Host.Session.Take.Edits.Calib);
+            });
+        }
+
+        [Fact]
         public async Task OriginTurnsAndPlacementFieldsMoveTheTake()
         {
             await HeadlessUi.RunAsync(async () =>

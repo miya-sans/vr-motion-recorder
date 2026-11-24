@@ -656,10 +656,10 @@ namespace VRMR.App.ViewModels
                     FingerSourceIndex = Math.Max(0, Array.IndexOf(FingerSourceIds, r.Edits.FingerSource));
                     FaceOffset = r.Edits.FaceOffset;
                     FaceOffsetChanged = Math.Abs(r.Edits.FaceOffset) > 1e-6;
-                    HasMarks = r.Edits.TrackerGaps.Count > 0;
-                    HasVrcChanges = r.Edits.VrcChanges.Count > 0;
                 }
 
+                HasMarks = r?.Edits.TrackerGaps.Count > 0;
+                HasVrcChanges = r?.Edits.VrcChanges.Count > 0;
                 SyncNudgeRows();
 
                 var p = r?.Edits.Placement ?? Pose.Identity;
@@ -767,6 +767,7 @@ namespace VRMR.App.ViewModels
             finally { _syncing = false; }
 
             DescribeSource();
+            Settings.RecordingOptionsEnabled = HasTake;
             Settings.Sync();
             SyncCalibrationResult();
         }

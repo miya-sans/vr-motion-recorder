@@ -11,16 +11,13 @@
             Padding="44,8,8,8">
       <c:SegmentedControl x:Name="Tabs" SelectedIndex="{Binding InspectorTab}">
         <ListBoxItem ToolTip.Tip="What SteamVR and VRChat send right now">Devices</ListBoxItem>
-        <ListBoxItem ToolTip.Tip="The open take: body, placement, calibration, face">Take</ListBoxItem>
+        <ListBoxItem ToolTip.Tip="Take settings and live calibration">Take</ListBoxItem>
         <ListBoxItem ToolTip.Tip="Write the open take as FBX or Unity animation">Export</ListBoxItem>
       </c:SegmentedControl>
     </Border>
     <Panel Grid.Row="1">
       <Panel IsVisible="{Binding ShowTakeTab}">
-        <takes:TakeInspectorView x:Name="TakeView" DataContext="{Binding Inspector}" IsVisible="{Binding HasTake}" />
-        <c:EmptyState Icon="{DynamicResource Icon.Take}"
-                      Text="Pick a take in the library to see and change its settings here."
-                      IsVisible="{Binding !HasTake}" />
+        <takes:TakeInspectorView x:Name="TakeView" DataContext="{Binding Inspector}" />
       </Panel>
       <Panel IsVisible="{Binding ShowExportTab}">
         <ContentControl x:Name="ExportHost" IsVisible="{Binding HasTake}" />

@@ -460,7 +460,7 @@ namespace VRMR.App.ViewModels
             {
                 _clock.Playing = false;
                 if (PlacementTool.Active) SetGizmo(false);
-                if (_host.CaptureOn) InspectorTab = DevicesTab;
+                if (_host.CaptureOn && InspectorTab == ExportTab) InspectorTab = DevicesTab;
             }
             else if (InspectorTab == DevicesTab) InspectorTab = TakeTab;
             _framed = false;
