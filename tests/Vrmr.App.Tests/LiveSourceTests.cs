@@ -83,6 +83,33 @@ namespace VRMR.App.Tests
         // ------------------------------------------------------------------------------------------ live view and Devices panel
 
         [Fact]
+        public void TheLiveAvatarFollowsTheHeadsetInRestPoseThenSolvesAfterCalibration()
+        {
+            using var rig = new Rig();
+            rig.AttachSteamVr();
+            rig.Feed();
+            rig.Host.LivePresenter.Show(rig.View);
+            var scene = rig.View.Scene;
+            var profile = scene.Profile;
+            Assert.NotNull(profile);
+            int head = profile.Human[HumanBones.Head];
+            var headset = Assert.Single(scene.Markers, m => m.Kind == MarkerKind.Headset).Pose;
+            Assert.True((scene.NodePos[head] + profile.ViewPoint - profile.RestWorldPos[head] - headset.pos)
+                .Length < 0.001f);
+
+            rig.Host.Recorder.Calib.CaptureNow("test T-pose");
+            var devices = Rig.Devices(0);
+            devices[0].Pos += new Vec3(0.25f, -0.25f, 0);
+            rig.SteamVr.Feed(devices, Rig.PlayArea, Clock.Now);
+            Assert.True(rig.WaitFor(() =>
+            {
+                rig.Host.LivePresenter.Show(rig.View);
+                return scene.Overlay.Contains("IK solve");
+            }));
+            Assert.True(scene.NodePos[head].x > 0.1f);
+        }
+
+        [Fact]
         public void TheLiveViewAndTheDevicesPanelShowTheDevices()
         {
             using var rig = new Rig();

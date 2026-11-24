@@ -55,8 +55,9 @@ namespace VRMR.App.Composition
             Rooms = new RoomService(paths.RoomFile);
             Session = new TakeSession(SettingsStore, Avatars, ui, Status);
             Clock = new PlaybackClock();
+            Session.PreviewSourceTime = () => Clock.Playhead;
             TakePresenter = new TakePresenter(Session, Clock, Rooms);
-            LivePresenter = new LivePresenter(Live);
+            LivePresenter = new LivePresenter(Live) { Ik = new LiveIkPreview(Recorder.Calibrations, SettingsStore) };
             Placement = new PlacementService(Session, TakePresenter, Clock);
             // replaying the face sends OSC to VRChat: only offered when the live sources run
             FaceReplay = new FaceReplayService(!CaptureOn

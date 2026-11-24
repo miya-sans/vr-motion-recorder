@@ -105,7 +105,6 @@ namespace VRMR.App.Viewport
             ShownCalibration = null;
             if (c == null || r == null || c.Profile == null) return false;
             var scene = view.Scene;
-            if (scene.Profile != c.Profile) scene.SetProfile(c.Profile);
             scene.PlayArea = null; // the live play area doesn't apply to a replay; the take's own follows below
             int f;
             if (previewTime is double time)
@@ -126,6 +125,15 @@ namespace VRMR.App.Viewport
 
             Frame = f;
             LastFrame = c.Frames - 1;
+            var playheadClip = _session.PlayheadClip;
+            if (previewTime == null && playheadClip != null &&
+                Math.Abs(playheadClip.SourceTime[0] - _clock.Playhead) < 0.5 / playheadClip.Fps)
+            {
+                c = playheadClip;
+                f = 0;
+            }
+
+            if (scene.Profile != c.Profile) scene.SetProfile(c.Profile);
             var calPose = CalibrationPose ? CalibrationAt(c, f) : null;
             ShownCalibration = calPose;
             _face.Clear();

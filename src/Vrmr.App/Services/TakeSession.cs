@@ -91,6 +91,9 @@ namespace VRMR.App.Services
 
         public EditHistory History { get; }
 
+        internal BakedClip PlayheadClip { get; private set; }
+        internal Func<double> PreviewSourceTime { get; set; }
+
         public void Dispose()
         {
             _settings.Changed -= OnSettingsChanged;
@@ -445,6 +448,7 @@ namespace VRMR.App.Services
         {
             _solveCancel?.Cancel();
             _solveCancel = null;
+            PlayheadClip = null;
         }
 
         void StartSolve()
@@ -456,6 +460,10 @@ namespace VRMR.App.Services
             var token = cancel.Token;
             int run = ++_solveRun, version = _editVersion;
             var options = MakeBakeOptions();
+            bool previewIk = Clip != null && (Clip.BodySource == "ik" || rec.Edits.BodySource == "ik" ||
+                rec.Edits.BodySource == "auto" && (rec.HasOpenVR || rec.HasVrcPoses));
+            double? playhead = previewIk ? PreviewSourceTime?.Invoke() : null;
+            if (playhead.HasValue) playhead = Math.Clamp(playhead.Value, 0, rec.Duration);
             Solve = SolveState.Solving;
             _progress = 0;
             SolveError = null;
@@ -469,15 +477,21 @@ namespace VRMR.App.Services
                 {
                     var target = _avatars.TargetFor(rec, out _);
                     lock (TakeCache.SolveLock)
-                    lock (rec.Sync)
                     {
-                        token.ThrowIfCancellationRequested();
-                        sw.Restart();
-                        clip = PoseBuilder.Bake(rec, target, options, f =>
+                        lock (rec.Sync)
                         {
                             token.ThrowIfCancellationRequested();
-                            ReportProgress(f, run);
-                        });
+                            sw.Restart();
+                            if (playhead is double time)
+                                BakePlayhead(rec, target, options, time, version, token);
+
+                            token.ThrowIfCancellationRequested();
+                            clip = PoseBuilder.Bake(rec, target, options, f =>
+                            {
+                                token.ThrowIfCancellationRequested();
+                                ReportProgress(f, run);
+                            });
+                        }
                     }
                 }
                 catch (OperationCanceledException) { return; }
@@ -488,9 +502,36 @@ namespace VRMR.App.Services
                 }
 
                 long ms = sw.ElapsedMilliseconds;
-                _ui.Post(() => FinishSolve(rec, run, version, clip, error, ms));
+                _ui.Post(() =>
+                {
+                    if (!token.IsCancellationRequested) FinishSolve(rec, run, version, clip, error, ms);
+                });
             }) { IsBackground = true, Name = "take solve", Priority = ThreadPriority.BelowNormal };
             thread.Start();
+        }
+
+        void BakePlayhead(Recording rec, AvatarProfile target, BakeOptions options, double time, int version,
+            CancellationToken token)
+        {
+            options.SourceRange = [time, time];
+            try
+            {
+                var preview = PoseBuilder.Bake(rec, target, options, _ => token.ThrowIfCancellationRequested());
+                _ui.Post(() =>
+                {
+                    if (token.IsCancellationRequested || version != _editVersion) return;
+                    PlayheadClip = preview;
+                    PreviewClipReady?.Invoke();
+                });
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                AppLog.Warn("Playhead solve: " + ex.Message);
+            }
+            finally
+            {
+                options.SourceRange = null;
+            }
         }
 
         /// <summary>Untrimmed poses for a timeline drag that reaches outside the solved clip.</summary>
@@ -556,6 +597,7 @@ namespace VRMR.App.Services
         void FinishSolve(Recording rec, int run, int version, BakedClip clip, string error, long ms)
         {
             if (run != _solveRun || Take != rec) return; // a newer solve or another take took over
+            PlayheadClip = null;
             SolveMilliseconds = ms;
             if (clip != null)
             {

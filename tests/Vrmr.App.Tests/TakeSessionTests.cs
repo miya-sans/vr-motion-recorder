@@ -77,6 +77,38 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
+        public void AnIkEditPublishesThePlayheadBeforeReplacingTheTimeline()
+        {
+            var (data, ui, host) = Start();
+            using (data)
+            using (host)
+            {
+                var session = host.Session;
+                session.Show(SyntheticTake.Create());
+                WaitSolved(ui, session);
+                var previous = session.Clip;
+                host.Clock.Playhead = 1.25;
+                BakedClip preview = null;
+                BakedClip timelineAtPreview = null;
+                session.PreviewClipReady += () =>
+                {
+                    preview = session.PlayheadClip;
+                    timelineAtPreview = session.Clip;
+                };
+
+                session.Edit("bodySource", edits => edits.BodySource = "ik");
+                WaitSolved(ui, session);
+
+                Assert.NotNull(preview);
+                Assert.Equal("ik", preview.BodySource);
+                Assert.Equal(1.25, preview.SourceTime[0]);
+                Assert.Same(previous, timelineAtPreview);
+                Assert.NotSame(previous, session.Clip);
+                Assert.Null(session.PlayheadClip);
+            }
+        }
+
+        [Fact]
         public void UndoAndRedoRestoreTheEditsAndSolveAgain()
         {
             var (data, ui, host) = Start();

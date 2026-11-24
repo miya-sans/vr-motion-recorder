@@ -4,8 +4,7 @@ using VRMR.App.Services;
 namespace VRMR.App.Viewport
 {
     /// <summary>
-    ///     Shows what SteamVR and VRChat send right now: the devices, the play area, VRChat's head, wrists and camera, and
-    ///     VRChat's own IK avatar while recording in a HUMR world. Nothing is recorded by showing it.
+    ///     Shows the live avatar, tracked devices, play area and VRChat poses.
     /// </summary>
     public sealed class LivePresenter
     {
@@ -18,6 +17,8 @@ namespace VRMR.App.Viewport
         double _vrcRead = -100;
 
         public LivePresenter(LiveService live) { _live = live; }
+
+        internal LiveIkPreview Ik { get; init; }
 
         /// <summary>Fills the view with the live state only.</summary>
         public void Show(IViewport view)
@@ -35,12 +36,15 @@ namespace VRMR.App.Viewport
             scene.Markers.Clear();
             var ov = rec.OpenVR;
             bool connected = ov != null && ov.Connected;
+            var devices = connected ? ov.Devices() : null;
+            OpenVRSource.Device headset = null;
             scene.PlayArea = connected ? ov.PlayArea : null;
             int shown = 0;
             if (connected)
-                foreach (var d in ov.Devices())
+                foreach (var d in devices)
                 {
                     if (!d.HasPose) continue; // never tracked yet: listed in the Devices panel only
+                    if (d.Class == 1 && d.Valid) headset = d;
                     scene.Markers.Add(new ViewMarker
                     {
                         Pose = new Pose(d.Pos, d.Rot), Faded = !d.Valid, Size = 1,
@@ -88,7 +92,16 @@ namespace VRMR.App.Viewport
             string info = "";
             var cur = rec.Current;
             var prof = _profile ?? cur?.Profile;
-            if (cur != null && cur.Humr.Count > 0 && prof != null)
+            if (headset != null && prof != null)
+            {
+                bool frame = scene.Profile != prof;
+                if (frame) scene.SetProfile(prof);
+                if (Ik?.Show(scene, prof, ov, devices, now) == true) info = "IK solve";
+                else ShowRest(scene, prof, headset);
+                scene.FaceWeights = _live.FaceValues();
+                if (frame) view.FrameAll();
+            }
+            else if (cur != null && cur.Humr.Count > 0 && prof != null)
             {
                 if (scene.Profile != prof) scene.SetProfile(prof);
                 Vec3 hips;
@@ -138,11 +151,24 @@ namespace VRMR.App.Viewport
             string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
             string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :
                 !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
-                "SteamVR: " + DeviceText.Summary(ov.Devices());
+                "SteamVR: " + DeviceText.Summary(devices);
             if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";
             scene.Overlay = head + (info.Length > 0 ? "\n" + info : "") + "\n" + steamVr;
             scene.OverlayRight = _live.WornAvatar;
             view.SceneChanged();
+        }
+
+        static void ShowRest(ViewScene scene, AvatarProfile profile, OpenVRSource.Device headset)
+        {
+            var yaw = Quat.YawRotation(headset.Rot.Yaw);
+            var origin = headset.Pos - yaw * profile.ViewPoint;
+            for (int i = 0; i < scene.NodePos.Length; i++)
+            {
+                scene.NodePos[i] = origin + yaw * profile.RestWorldPos[i];
+                scene.NodeRot[i] = yaw * profile.RestWorldRot[i];
+            }
+
+            scene.MeshScale = profile.Scale;
         }
     }
 }
