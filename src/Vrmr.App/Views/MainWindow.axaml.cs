@@ -239,7 +239,8 @@ namespace VRMR.App.Views
                 return;
             }
 
-            if (e.Key == Key.Escape && _shell.CloseTopPage())
+            if (e.Key == Key.Escape && FocusManager?.GetFocusedElement() is not NumberField { IsReadOnly: false } &&
+                _shell.CloseTopPage())
             {
                 e.Handled = true;
                 return;

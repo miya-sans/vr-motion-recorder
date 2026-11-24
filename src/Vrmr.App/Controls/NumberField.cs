@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 
 namespace VRMR.App.Controls
 {
@@ -50,9 +52,11 @@ namespace VRMR.App.Controls
             AvaloniaProperty.RegisterAttached<NumberField, Control, IGestureSource>("GestureSource", inherits: true);
 
         IDisposable _gesture;
+        TopLevel _pointerRoot;
         Point _pressPoint;
+        IPointer _pressedPointer;
         double _pressValue;
-        bool _pressed, _scrubbing, _editing, _syncing;
+        bool _canCancelScrub, _scrubbing, _editing, _syncing;
 
         static NumberField()
         {
@@ -127,23 +131,53 @@ namespace VRMR.App.Controls
         {
             v = Math.Max(Minimum, Math.Min(Maximum, v));
             double scale = Math.Pow(10, Math.Max(0, Decimals));
-            v = Math.Round(v * scale) / scale;
+            ApplyUserValue(Math.Round(v * scale) / scale);
+        }
+
+        void ApplyUserValue(double v)
+        {
             if (v == Value) return;
             SetCurrentValue(ValueProperty, v);
             ValueEdited?.Invoke(this, EventArgs.Empty);
         }
 
-        void Commit()
+        void EndEdit(bool commit)
         {
             if (!_editing) return;
             _editing = false;
-            if (TryParse(Text, out double v)) SetFromUser(v);
+            if (commit && TryParse(Text, out double v)) SetFromUser(v);
             ShowValue();
             Cursor = new Cursor(StandardCursorType.SizeWestEast);
         }
 
+        void FinishInput(bool commit)
+        {
+            if (!commit && _canCancelScrub) ApplyUserValue(_pressValue);
+            _canCancelScrub = false;
+            var pointer = _pressedPointer;
+            EndPress();
+            pointer?.Capture(null);
+            EndEdit(commit);
+            if (IsFocused) _pointerRoot?.FocusManager?.Focus(null);
+        }
+
+        void OnRootPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (!IsReadOnly && e.Source is Visual source && source != this && !this.IsVisualAncestorOf(source))
+                FinishInput(commit: true);
+        }
+
+        void EndPress()
+        {
+            _pressedPointer = null;
+            _scrubbing = false;
+            _gesture?.Dispose();
+            _gesture = null;
+        }
+
         void BeginEdit()
         {
+            _canCancelScrub = false;
             _editing = true;
             _syncing = true;
             try { Text = Format(Value, false); }
@@ -166,7 +200,8 @@ namespace VRMR.App.Controls
                 return;
             }
 
-            _pressed = true;
+            _pressedPointer = e.Pointer;
+            _canCancelScrub = false;
             _scrubbing = false;
             _pressPoint = e.GetPosition(this);
             _pressValue = Value;
@@ -176,7 +211,7 @@ namespace VRMR.App.Controls
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
-            if (!_pressed)
+            if (e.Pointer != _pressedPointer)
             {
                 base.OnPointerMoved(e);
                 return;
@@ -187,6 +222,7 @@ namespace VRMR.App.Controls
             {
                 if (Math.Abs(dx) < DragThreshold) return;
                 _scrubbing = true;
+                _canCancelScrub = true;
                 _gesture = GetGestureSource(this)?.BeginGesture();
             }
 
@@ -196,50 +232,48 @@ namespace VRMR.App.Controls
 
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
-            if (!_pressed)
+            if (e.Pointer != _pressedPointer)
             {
                 base.OnPointerReleased(e);
                 return;
             }
 
-            _pressed = false;
-            e.Pointer.Capture(null);
-            if (_scrubbing)
+            bool click = !_scrubbing;
+            EndPress();
+            if (click)
             {
-                _scrubbing = false;
-                _gesture?.Dispose();
-                _gesture = null;
-            }
-            else
-            {
-                Focus();
+                Focus(NavigationMethod.Pointer);
                 BeginEdit();
-            } // a click without a drag: type the value
+            }
 
+            e.Pointer.Capture(null);
             e.Handled = true;
         }
 
         protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
         {
             base.OnPointerCaptureLost(e);
-            _pressed = false;
-            if (_scrubbing)
-            {
-                _scrubbing = false;
-                _gesture?.Dispose();
-                _gesture = null;
-            }
+            if (e.Pointer == _pressedPointer) EndPress();
         }
 
         protected override void OnGotFocus(FocusChangedEventArgs e)
         {
             base.OnGotFocus(e);
-            if (!_editing && !_pressed && !IsReadOnly) BeginEdit(); // keyboard focus: ready to type
+            if (e.Source != this) return;
+
+            _pointerRoot = TopLevel.GetTopLevel(this);
+            _pointerRoot?.AddHandler(PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel,
+                handledEventsToo: true);
+            if (e.NavigationMethod != NavigationMethod.Pointer && !_editing && _pressedPointer == null && !IsReadOnly)
+                BeginEdit();
         }
 
         protected override void OnLostFocus(FocusChangedEventArgs e)
         {
-            Commit();
+            _canCancelScrub = false;
+            _pointerRoot?.RemoveHandler(PointerPressedEvent, OnRootPointerPressed);
+            _pointerRoot = null;
+            EndEdit(commit: true);
             base.OnLostFocus(e);
         }
 
@@ -247,22 +281,11 @@ namespace VRMR.App.Controls
         {
             switch (e.Key)
             {
-                case Key.Enter:
-                    Commit();
-                    BeginEdit();
+                case Key.Enter when !IsReadOnly:
+                case Key.Escape when !IsReadOnly:
+                    FinishInput(commit: e.Key == Key.Enter);
                     e.Handled = true;
                     return;
-                case Key.Escape:
-                    if (_editing)
-                    {
-                        _editing = false;
-                        ShowValue();
-                        BeginEdit();
-                        e.Handled = true;
-                        return;
-                    }
-
-                    break;
                 case Key.Up:
                 case Key.Down:
                     if (IsReadOnly) break;

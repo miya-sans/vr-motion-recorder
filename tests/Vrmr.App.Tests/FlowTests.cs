@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using VRMR.App.Composition;
+using VRMR.App.Controls;
 using VRMR.App.Platform;
 using VRMR.App.Services;
 using VRMR.App.ViewModels;
@@ -56,6 +57,66 @@ namespace VRMR.App.Tests
             double left = 96, right = tl.Bounds.Width - 10;
             double x = left + (time - m.ViewStart) / (m.ViewEnd - m.ViewStart) * (right - left);
             return tl.TranslatePoint(new Point(x, y), s.Window).Value;
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SmoothingReleasesFocusOnBlankClickAndFinishesDragsWithKeys(bool releaseBeforeKey)
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var field = VisualExtensions.GetVisualDescendants(s.Window).OfType<NumberField>()
+                    .First(f => f.IsEffectivelyVisible && f.Step == 0.05);
+                var start = field.TranslatePoint(new Point(2, field.Bounds.Height / 2), s.Window).Value;
+                var blank = start + new Point(field.Bounds.Width + 40, 0);
+                var end = start + new Point(12, 0);
+
+                s.Window.MouseDown(start, MouseButton.Left);
+                s.Window.MouseUp(start, MouseButton.Left);
+                s.Window.KeyTextInput("0.40");
+                Assert.True(field.IsFocused);
+                Assert.Equal("0.40", field.Text);
+                s.Window.MouseDown(blank, MouseButton.Left);
+                s.Window.MouseUp(blank, MouseButton.Left);
+                Assert.False(field.IsFocused);
+                Assert.Equal(0.40, field.Value);
+
+                var left = start - new Point(6, 0);
+                s.Window.MouseDown(start, MouseButton.Left);
+                s.Window.MouseMove(left);
+                s.Window.MouseUp(left, MouseButton.Left);
+                Assert.True(field.IsFocused);
+                Assert.Equal(0.30, field.Value);
+                s.Window.MouseDown(blank, MouseButton.Left);
+                s.Window.MouseUp(blank, MouseButton.Left);
+                Assert.False(field.IsFocused);
+                Assert.Equal(0.30, field.Value);
+
+                foreach (var key in new[] { Key.Enter, Key.Escape })
+                {
+                    double before = field.Value;
+                    s.Window.MouseDown(start, MouseButton.Left);
+                    s.Window.MouseMove(end);
+                    Assert.True(field.IsFocused);
+                    Assert.True(field.Value > before);
+                    double dragged = field.Value;
+                    if (releaseBeforeKey) s.Window.MouseUp(end, MouseButton.Left);
+
+                    s.Window.KeyPress(key, RawInputModifiers.None, PhysicalKey.None, null);
+                    Assert.False(field.IsFocused);
+                    if (!releaseBeforeKey)
+                    {
+                        s.Window.MouseMove(end + new Point(12, 0));
+                        s.Window.MouseUp(end, MouseButton.Left);
+                    }
+
+                    double expected = key == Key.Escape ? before : dragged;
+                    Assert.Equal(expected, field.Value);
+                    Assert.Equal(expected, s.Shell.Takes.Inspector.Smoothing);
+                }
+            });
         }
 
         [Fact]
