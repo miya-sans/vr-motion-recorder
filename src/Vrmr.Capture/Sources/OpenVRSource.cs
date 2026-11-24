@@ -70,7 +70,7 @@ namespace VRMR
         readonly object _snapLock = new();
         readonly ManualResetEventSlim _stopSignal = new(false);
         readonly Thread _thread;
-        public bool CaptureFingers = true;
+        public volatile bool CaptureFingers = true;
 
         public volatile bool Connected;
         public string InputStatus = "off";
@@ -336,7 +336,7 @@ namespace VRMR
             if (!LoadApi()) return false;
             int err = 0;
             // never start SteamVR: a utility app (needed for skeletal input) only connects to an already running vrserver
-            bool utility = UseUtilityApp && CaptureFingers;
+            bool utility = UseUtilityApp;
             if (!SteamVRRunning())
             {
                 SetStatus("Waiting for SteamVR");
@@ -387,7 +387,7 @@ namespace VRMR
             SetStatus("Connected");
             AppLog.Info("SteamVR connected (" + (utility ? "utility" : "background") + " app)");
             _inputOk = false;
-            if (CaptureFingers) InitInput();
+            InitInput();
             return true;
         }
 
@@ -574,7 +574,7 @@ namespace VRMR
                 _sets[0] = new ActiveActionSet { set = _actionSet };
                 if (_updateActions(_sets, ActionSetSize, 1) != 0) return;
                 int active = 0, invalid = 0;
-                for (int side = 0; side < 2; side++)
+                for (int side = 0; CaptureFingers && side < 2; side++)
                 {
                     ulong h = side == 0 ? _skelL : _skelR;
                     var ad = new SkeletalActionData();

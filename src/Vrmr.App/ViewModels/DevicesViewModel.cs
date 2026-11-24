@@ -95,27 +95,38 @@ namespace VRMR.App.ViewModels
         List<AvatarEntry> _baseModels = new();
         [ObservableProperty] string _connections = "";
         [ObservableProperty] string _connectionsSummary = "";
-        [ObservableProperty] string _deviceStatus = "";
         [ObservableProperty] string _devicesSummary = "";
+        [ObservableProperty] string _faceDiagnostics = "";
+        [ObservableProperty] bool _fingerTracking;
         [ObservableProperty] bool _hasBaseModels;
-        [ObservableProperty] bool _noFace = true;
-        [ObservableProperty] string _playArea = "";
+        [ObservableProperty] bool _legacyPort;
+        [ObservableProperty] string _steamVrDiagnostics = "";
+        [ObservableProperty] bool _steamVrOn;
         bool _syncing;
         IDisposable _timer;
-
-        [ObservableProperty] string _wearing = "";
-        [ObservableProperty] string _wearingNote = "";
-        [ObservableProperty] bool _wearingWarning;
 
         public DevicesViewModel(AppHost host)
         {
             _host = host;
             _live = host.Live;
             CaptureOn = host.CaptureOn;
+            _steamVrOn = host.Settings.EnableOpenVR;
+            _fingerTracking = host.Settings.CaptureFingers;
+            _legacyPort = host.Settings.ListenLegacyPort;
             host.Avatars.Updated += () => host.Ui.Post(() => Refresh(true));
             Refresh(true);
         }
 
+        public StatusRowViewModel AvatarStatus { get; } = new();
+        public StatusRowViewModel SteamVr { get; } = new();
+        public StatusRowViewModel Tracking { get; } = new();
+        public StatusRowViewModel PlayArea { get; } = new();
+        public StatusRowViewModel Fingers { get; } = new();
+        public StatusRowViewModel FaceStatus { get; } = new();
+        public StatusRowViewModel Discovery { get; } = new();
+        public StatusRowViewModel Osc { get; } = new();
+        public StatusRowViewModel LegacyPortStatus { get; } = new();
+        public string LegacyPortLabel => $"Receive fallback OSC on UDP {_host.Settings.LegacyPort}";
         public bool CaptureOn { get; }
         public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
         public ObservableCollection<FaceValueViewModel> Face { get; } = new();
@@ -134,6 +145,27 @@ namespace VRMR.App.ViewModels
                 _timer?.Dispose();
                 _timer = null;
             }
+        }
+
+        partial void OnSteamVrOnChanged(bool value)
+        {
+            _host.SettingsStore.Update(nameof(Settings.EnableOpenVR), s => s.EnableOpenVR = value);
+            _host.Recorder.ApplyTrackingSettings();
+            Refresh(false);
+        }
+
+        partial void OnFingerTrackingChanged(bool value)
+        {
+            _host.SettingsStore.Update(nameof(Settings.CaptureFingers), s => s.CaptureFingers = value);
+            _host.Recorder.ApplyTrackingSettings();
+            Refresh(false);
+        }
+
+        partial void OnLegacyPortChanged(bool value)
+        {
+            _host.SettingsStore.Update(nameof(Settings.ListenLegacyPort), s => s.ListenLegacyPort = value);
+            if (CaptureOn) _host.Recorder.ApplyOscFallbackSetting();
+            RefreshConnections(_host.Recorder);
         }
 
         partial void OnBaseModelIndexChanged(int value)
@@ -172,25 +204,17 @@ namespace VRMR.App.ViewModels
                 }
 
                 HasBaseModels = _baseModels.Count > 0;
-                BaseModelIndex = match?.Entry == null ? -1 : _baseModels.FindIndex(e => e.Id == match.Entry.Id);
+                BaseModelIndex = match?.Entry == null || !match.Sure && !string.IsNullOrEmpty(rec.AvatarId) ? -1 : _baseModels.FindIndex(e => e.Id == match.Entry.Id);
             }
             finally { _syncing = false; }
 
             string worn = _live.WornAvatar;
-            Wearing = !CaptureOn ? "Live sources are off in this session." :
-                worn.Length > 0 ? worn : "VRChat has not reported an avatar yet";
-            WearingNote = !CaptureOn
-                ? ""
-                : worn.Length == 0
-                    ? "Turn OSC on in VRChat: Action Menu → Options → OSC → Enabled."
-                    : match?.Entry == null
-                        ? "No base model matches it. Add your avatar under Settings → Avatars."
-                        : match.Entry.BuiltIn && !match.Sure
-                            ? "None of your base models matches it, so the built-in mannequin stands in. Add your avatar under Settings → Avatars, or pick one below."
-                            : match.Sure
-                                ? $"Base model found {match.How}."
-                                : "The base model is a guess: pick the right one below. It is remembered for this avatar.";
-            WearingWarning = CaptureOn && worn.Length > 0 && (match?.Entry == null || !match.Sure);
+            bool running = rec.VrChatRunning || IsRecent(rec.LastOscTime) || rec.Log?.HumrActive == true;
+            if (!CaptureOn) AvatarStatus.Set(SourceLevel.Off, "Live capture off");
+            else if (!running) AvatarStatus.Set(SourceLevel.Error, "VRChat off");
+            else if (worn.Length == 0) AvatarStatus.Set(SourceLevel.Waiting, "VRChat running · waiting for avatar");
+            else if (match?.Sure == true) AvatarStatus.Set(SourceLevel.Ok, $"VRChat avatar linked: {worn}");
+            else AvatarStatus.Set(SourceLevel.Warning, $"Unknown avatar · {worn}");
 
             RefreshDevices(rec);
             RefreshFace();
@@ -202,16 +226,34 @@ namespace VRMR.App.ViewModels
             var ov = rec.OpenVR;
             var devices = _live.Devices().OrderBy(d => d.Class == 4 ? 9 : d.Class).ThenBy(d => d.Role)
                 .ThenBy(d => d.Serial).ToList();
-            DeviceStatus = !CaptureOn ? ""
-                : ov == null ? "SteamVR devices are switched off (Settings → Sources)."
-                : !ov.Connected ? "SteamVR is not connected: " + (ov.Status ?? "").TrimEnd('.').ToLowerInvariant() +
-                                  ". Start SteamVR; the app connects by itself."
-                : devices.Count == 0 ? "SteamVR is connected, but no device is switched on." : "";
-            DevicesSummary = ov == null ? "off" :
-                !ov.Connected ? "not connected" : $"{devices.Count(d => d.Valid)}/{devices.Count} tracked";
-            PlayArea = ov != null && ov.Connected
-                ? "Play area: " + (DeviceText.PlayArea(ov.PlayArea) ?? "not set up in SteamVR")
-                : "";
+            bool connected = CaptureOn && ov?.Connected == true;
+            bool enabled = CaptureOn && (SteamVrOn || ov != null);
+            string status = ov?.Status ?? "Waiting for SteamVR";
+            bool waiting = status is "Waiting for SteamVR" or "Not started" or "SteamVR exited" or "SteamVR: headset not found";
+            SteamVr.Set(!enabled ? SourceLevel.Off : connected ? SourceLevel.Ok : waiting ? SourceLevel.Waiting : SourceLevel.Error,
+                !enabled ? "SteamVR off" : connected ? "SteamVR connected" : status);
+            int tracked = devices.Count(d => d.Valid);
+            DevicesSummary = !enabled ? "off" : !connected ? "not connected" : $"{tracked}/{devices.Count} tracked";
+            var trackingLevel = !enabled ? SourceLevel.Off : devices.Count == 0 ? SourceLevel.Waiting :
+                devices.Any(d => d.TrackingLevel == 2) ? SourceLevel.Error :
+                tracked == devices.Count ? SourceLevel.Ok : SourceLevel.Waiting;
+            Tracking.Set(trackingLevel,
+                connected ? DevicesSummary : enabled ? "Waiting for devices" : "Device tracking off");
+            string area = connected ? DeviceText.PlayArea(ov.PlayArea) : null;
+            PlayArea.Set(area == null ? SourceLevel.Off : SourceLevel.Ok,
+                "Play area: " + (area ?? (connected ? "not set up" : "unavailable")));
+            string input = connected ? ov.InputStatus : "";
+            if (!enabled || !SteamVrOn || !FingerTracking) Fingers.Set(SourceLevel.Off, "Finger tracking off");
+            else if (!connected || input is "" or "off" or "waiting for hands")
+                Fingers.Set(SourceLevel.Waiting, "Waiting for hand input");
+            else if (input.StartsWith("fingers:", StringComparison.Ordinal))
+                Fingers.Set(SourceLevel.Ok, input);
+            else Fingers.Set(SourceLevel.Error, input);
+
+            SteamVrDiagnostics = $"Runtime: {ov?.Status ?? "not started"}\n" +
+                                 $"Recording devices: {(CaptureOn && SteamVrOn ? "on" : "off")}\n" +
+                                 $"Tracking: {Tracking.Summary}\n{PlayArea.Summary}\n{Fingers.Summary}";
+
             // keep the rows of devices that are still there, so the list does not flicker
             for (int i = Devices.Count - 1; i >= 0; i--)
                 if (!devices.Any(d => d.Serial + d.Index == Devices[i].Key))
@@ -232,11 +274,13 @@ namespace VRMR.App.ViewModels
 
         void RefreshFace()
         {
-            var values = CaptureOn ? _live.FaceValues() : null;
+            bool recent = CaptureOn && IsRecent(_live.Recorder.LastFaceTime);
+            FaceStatus.Set(recent ? SourceLevel.Ok : SourceLevel.Off,
+                recent ? "Receiving face data" : CaptureOn ? "No recent face data" : "Face tracking off");
+            var values = recent ? _live.FaceValues() : null;
             var top = values == null
                 ? new List<KeyValuePair<string, float>>()
                 : values.Where(k => k.Value > 0.02f).OrderByDescending(k => k.Value).Take(16).ToList();
-            NoFace = top.Count == 0;
             while (Face.Count > top.Count) Face.RemoveAt(Face.Count - 1);
             for (int i = 0; i < top.Count; i++)
             {
@@ -246,39 +290,84 @@ namespace VRMR.App.ViewModels
             }
         }
 
+        static bool IsRecent(double time)
+        {
+            return time > 0 && Clock.Now - time < 5;
+        }
+
         void RefreshConnections(Recorder rec)
         {
+            var http = rec.OscQuery?.VrcHttp;
+            bool discovering = CaptureOn && _host.Settings.UseOscQuery;
+            string route = CaptureOn ? rec.OscRoute : null;
+            bool osc = route != null && IsRecent(rec.LastOscTime);
+            Discovery.Set(!discovering ? SourceLevel.Off : http != null ? SourceLevel.Ok :
+                    rec.OscQuery == null ? SourceLevel.Error : SourceLevel.Waiting,
+                !discovering ? "Avatar discovery disabled" : http != null ? $"VRChat OSCQuery at {http.Address}:{http.Port}" :
+                rec.OscQuery == null ? "OSCQuery unavailable" : "Looking for avatar data via VRChat OSCQuery");
+            var fallback = rec.LegacyRx;
+            bool listening = CaptureOn && fallback != null;
+            bool standby = CaptureOn && LegacyPort;
+            string bindError = standby ? rec.LegacyPortError : "";
+            LegacyPortStatus.Set(listening ? SourceLevel.Ok : bindError.Length > 0 ? SourceLevel.Error :
+                    standby ? SourceLevel.Waiting : SourceLevel.Off,
+                listening ? $"Listening for OSC on UDP {fallback.Port}" :
+                bindError.Length > 0 ? $"Cannot listen on UDP {_host.Settings.LegacyPort}" :
+                standby ? "Fallback on standby" : "Fallback listener disabled");
+            bool canReceive = CaptureOn && (rec.OscQueryRx != null || listening || standby && bindError.Length == 0);
+            Osc.Set(osc ? SourceLevel.Ok : canReceive ? SourceLevel.Waiting : SourceLevel.Off,
+                osc ? $"Receiving VRChat OSC via {route}" : canReceive ? "Waiting for VRChat OSC messages" : "VRChat OSC reception disabled");
             if (!CaptureOn)
             {
                 Connections = "";
-                ConnectionsSummary = "off";
+                ConnectionsSummary = "Live capture off";
+                FaceDiagnostics = "Live capture off";
                 return;
             }
 
             var inv = CultureInfo.InvariantCulture;
             var sb = new StringBuilder();
-            sb.AppendLine($"OSCQuery: {(rec.OscQuery != null ? rec.OscQuery.InstanceName : "off")}");
+            sb.AppendLine(Discovery.Summary);
+            sb.AppendLine(Osc.Summary);
+            sb.AppendLine($"Recorder OSCQuery service: {rec.OscQuery?.InstanceName ?? "not advertised"}");
             if (rec.OscQueryRx != null)
-                sb.AppendLine($"  UDP {rec.OscQueryRx.Port}: {rec.OscQueryRx.Messages} messages");
-            if (rec.LegacyRx != null) sb.AppendLine($"  UDP {rec.LegacyRx.Port}: {rec.LegacyRx.Messages} messages");
-            var http = rec.OscQuery?.VrcHttp;
-            sb.AppendLine($"VRChat's OSCQuery: {(http != null ? http.Address + ":" + http.Port : "not found")}");
-            sb.AppendLine($"Avatar: {rec.AvatarName} {rec.AvatarId}");
-            sb.AppendLine(string.Format(inv, "Eye height: {0:0.000} m", rec.AvatarEyeHeight));
-            lock (rec.LiveLock) sb.AppendLine($"Parameters known: {rec.LiveParams.Count}");
-            var ov = rec.OpenVR;
-            sb.AppendLine($"SteamVR: {(ov == null ? "off" : ov.Status)}");
-            if (ov != null) sb.AppendLine($"  finger tracking: {ov.InputStatus}");
+                sb.AppendLine($"Advertised OSC input · UDP {rec.OscQueryRx.Port}: {rec.OscQueryRx.Messages} messages, {rec.OscQueryRx.Errors} errors");
+            sb.AppendLine(LegacyPortStatus.Summary);
+            if (fallback != null)
+                sb.AppendLine($"Fallback OSC input · UDP {fallback.Port}: {fallback.Messages} messages, {fallback.Errors} errors");
+            if (bindError.Length > 0) sb.AppendLine(bindError);
+            if (!string.IsNullOrEmpty(rec.AvatarId)) sb.AppendLine($"Reported avatar ID: {rec.AvatarId}");
+            if (rec.AvatarEyeHeight > 0) sb.AppendLine(string.Format(inv, "Reported eye height: {0:0.000} m", rec.AvatarEyeHeight));
+            RefreshFaceDiagnostics(rec, osc, sb);
             var log = rec.Log;
-            sb.AppendLine($"VRChat log: {(log?.CurrentFile != null ? Path.GetFileName(log.CurrentFile) : "none")}");
-            if (log != null)
-                sb.AppendLine(
-                    $"  world {log.WorldName}\n  VRChat IK frames {log.HumrFrames}{(log.HumrActive ? " (arriving)" : "")}");
+            sb.AppendLine($"World and HUMR log: {(log == null ? "reading disabled" : Path.GetFileName(log.CurrentFile) ?? "waiting for file")}");
+            if (!string.IsNullOrEmpty(log?.WorldName)) sb.AppendLine($"Last world in log: {log.WorldName}");
+            if (log != null) sb.AppendLine($"HUMR body frames read from log: {log.HumrFrames}");
             string text = sb.ToString().TrimEnd();
             if (text != Connections) Connections = text;
-            bool osc = rec.LastOscTime > 0 && Clock.Now - rec.LastOscTime < 5;
-            ConnectionsSummary = (osc ? "receiving OSC" : http != null ? "VRChat found, no OSC" : "VRChat not found") +
+            ConnectionsSummary = (osc ? "receiving OSC" : canReceive ? "Waiting for OSC" : "OSC input off") +
                                  (log?.HumrActive == true ? " · VRChat IK" : "");
+        }
+
+        void RefreshFaceDiagnostics(Recorder rec, bool osc, StringBuilder vrChat)
+        {
+            int known = 0, recent = 0;
+            lock (rec.LiveLock)
+            {
+                vrChat.AppendLine($"Avatar OSC parameters: {rec.LiveParams.Count}");
+                foreach (var entry in rec.LiveParams)
+                {
+                    if (!FaceKeys.IsFace(entry.Key)) continue;
+                    known++;
+                    if (IsRecent(entry.Value.Item3)) recent++;
+                }
+            }
+
+            string guidance = !osc ? "Waiting for VRChat OSC. Check that OSC is enabled in VRChat." :
+                known == 0 ? "VRChat OSC is arriving. Check the avatar’s face tracking setup and the parameter count in VRCFaceTracking." :
+                recent == 0 ? "Face parameters are known. Check whether moving your face changes the avatar in VRChat." : "";
+            string counts = $"Face parameters (FT/ or v2/): {known}\nUpdated in the last 5 seconds: {recent}";
+            FaceDiagnostics = guidance.Length == 0 ? counts : counts + "\n" + guidance;
         }
     }
 }

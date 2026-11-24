@@ -50,10 +50,22 @@ namespace VRMR
             }
             catch { }
 
-            _udp.Client.Bind(new IPEndPoint(loopbackOnly ? IPAddress.Loopback : IPAddress.Any, port));
+            try
+            {
+                _udp.Client.Bind(new IPEndPoint(loopbackOnly ? IPAddress.Loopback : IPAddress.Any, port));
+            }
+            catch
+            {
+                _udp.Dispose();
+                throw;
+            }
             Port = ((IPEndPoint)_udp.Client.LocalEndPoint).Port;
             _thread = new Thread(Loop)
-                { IsBackground = true, Name = "OSC rx " + name, Priority = ThreadPriority.AboveNormal };
+            {
+                IsBackground = true,
+                Name = "OSC rx " + name,
+                Priority = ThreadPriority.AboveNormal
+            };
             _thread.Start();
         }
 

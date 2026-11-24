@@ -18,13 +18,16 @@
     <Style Selector="Ellipse.dot.attention">
       <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
     </Style>
+    <Style Selector="Ellipse.dot.error">
+      <Setter Property="Fill" Value="{DynamicResource RecordBrush}" />
+    </Style>
     <Style Selector="TextBlock.fact">
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="LineHeight" Value="{DynamicResource StatusLineHeight}" />
     </Style>
   </UserControl.Styles>
   <Grid ColumnDefinitions="Auto,*">
-    <Ellipse Classes="dot" Classes.ok="{Binding IsOk}" Classes.attention="{Binding NeedsAttention}" />
+    <Ellipse Classes="dot" Classes.error="{Binding IsError}" Classes.ok="{Binding IsOk}" Classes.attention="{Binding NeedsAttention}" />
     <StackPanel Grid.Column="1">
       <TextBlock Text="{Binding Title}" FontWeight="Medium" Classes="fact" IsVisible="{Binding HasTitle}" />
       <TextBlock Text="{Binding Summary}" Classes="fact" Classes.secondary="{Binding HasTitle}" />

@@ -52,14 +52,15 @@ namespace VRMR.App.Tests
                 host.SettingsStore.Changed += changed.Add;
                 var s = host.Settings;
 
+                var devices = new DevicesViewModel(host);
                 settings.Recording.FollowHumr = !s.FollowHumrTakes;
                 settings.Recording.PreviewWhileRecording = false;
                 settings.Recording.SaveCalibrations = false;
                 settings.Recording.UseLatestCalibration = false;
                 settings.Recording.TriggerParameter = "  Menu/Record ";
-                settings.Sources.FingerTracking = false;
-                settings.Sources.LegacyPort = !s.ListenLegacyPort;
-                settings.Sources.SteamVrOn = false;
+                devices.FingerTracking = false;
+                devices.LegacyPort = !s.ListenLegacyPort;
+                devices.SteamVrOn = false;
 
                 Assert.True(s.FollowHumrTakes);
                 Assert.False(s.PreviewWhileRecording);
@@ -155,33 +156,23 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
-        public void SourcesSayWhatWasFoundAndWhatToDo()
+        public void DevicesKeepInactiveStatusesWhenCaptureIsOff()
         {
-            var (data, ui, host, settings) = Start();
+            var (data, _, host, _) = Start();
             using (data)
             using (host)
             {
-                WaitForEnvironment(ui, host);
-                var sources = settings.Sources;
-                Assert.True(sources.CaptureOff);
-                // an empty sandbox: SteamVR is on in the settings and not installed
-                Assert.True(sources.SteamVr.NeedsAttention);
-                Assert.Contains("not found", sources.SteamVr.Summary);
-                Assert.True(sources.SteamVr.HasAction);
-                // VRChat has never run here
-                Assert.True(sources.VrChat.NeedsAttention);
-                Assert.True(sources.VrChat.HasAction);
-                Assert.False(sources.ShowFingerState);
-
-                sources.SteamVrOn = false;
-                Assert.False(sources.SteamVr.NeedsAttention);
-                Assert.Contains("Switched off", sources.SteamVr.Summary);
-
-                // once VRChat has run, its row stops asking for it
-                Directory.CreateDirectory(new VrcFolders(host.Options.Paths.Machine).DataDir);
-                var again = host.Environment.RefreshAsync();
-                Assert.True(ui.WaitFor(() => again.IsCompleted));
-                Assert.DoesNotContain("has not been run", sources.VrChat.Summary);
+                var devices = new DevicesViewModel(host);
+                Assert.True(devices.SteamVrOn);
+                devices.SteamVrOn = false;
+                Assert.True(devices.FingerTracking);
+                devices.LegacyPort = true;
+                foreach (var row in new[] { devices.SteamVr, devices.Tracking, devices.PlayArea, devices.Fingers,
+                             devices.FaceStatus, devices.Discovery, devices.Osc, devices.LegacyPortStatus })
+                {
+                    Assert.Equal(SourceLevel.Off, row.Level);
+                    Assert.NotEmpty(row.Summary);
+                }
             }
         }
 
@@ -595,17 +586,21 @@ namespace VRMR.App.Tests
             using (data)
             using (host)
             {
-                Assert.Equal(SettingsCategory.Sources, settings.Category);
-                Assert.Equal(7, settings.Categories.Count);
+                Assert.Equal(SettingsCategory.Recording, settings.Category);
+                Assert.Equal(6, settings.Categories.Count);
+                host.UiState.Set("settings.category", 0);
+                Assert.Equal(SettingsCategory.Recording, new SettingsViewModel(host).Category);
+                host.UiState.Set("settings.category", 3);
+                Assert.Equal(SettingsCategory.Avatars, new SettingsViewModel(host).Category);
                 settings.Show(SettingsCategory.Avatars);
                 Assert.Equal("Avatars", settings.CategoryTitle);
                 Assert.NotEqual("", settings.CategoryIntro);
                 Assert.Equal(SettingsCategory.Avatars, new SettingsViewModel(host).Category);
 
                 settings.CategoryIndex = -1; // a list losing its selection for a moment
-                Assert.Equal(SettingsCategory.Sources, settings.Category);
+                Assert.Equal(SettingsCategory.Recording, settings.Category);
                 settings.CategoryIndex = 99;
-                Assert.Equal(SettingsCategory.Sources, settings.Category);
+                Assert.Equal(SettingsCategory.Recording, settings.Category);
             }
         }
 
@@ -689,7 +684,7 @@ namespace VRMR.App.Tests
                 TestAvatars.Save(host, "Test avatar two");
                 host.AvatarService.SetDefault(host.AvatarService.Entries[1]);
                 var settings = new SettingsViewModel(host);
-                settings.Show(SettingsCategory.Sources);
+                settings.Show(SettingsCategory.Recording);
                 var window = await Open(settings, host, scale);
                 var page = (SettingsPage)window.Content;
                 Assert.True(await HeadlessUi.WaitForAsync(() => host.Environment.Report != null));

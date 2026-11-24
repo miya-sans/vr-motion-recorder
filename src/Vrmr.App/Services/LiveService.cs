@@ -89,7 +89,7 @@ namespace VRMR.App.Services
             {
                 if (!CaptureOn) return false;
                 double now = Clock.Now;
-                return SteamVrConnected || Recorder.IsRecording
+                return Recorder.DeviceTrackingEnabled && SteamVrConnected || Recorder.IsRecording
                                         || (Recorder.VrcHeadTime > 0 && now - Recorder.VrcHeadTime < 1)
                                         || (Recorder.VrcCameraTime > 0 && now - Recorder.VrcCameraTime < 2);
             }

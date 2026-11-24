@@ -60,10 +60,6 @@
             <TextBlock Text="{Binding CategoryIntro}" Classes="note" Margin="{DynamicResource SettingsIntroGap}" />
 
             <Panel
-              IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Sources}}">
-              <s:SettingsSourcesView DataContext="{Binding Sources}" />
-            </Panel>
-            <Panel
               IsVisible="{Binding Category, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:SettingsCategory.Recording}}">
               <s:SettingsRecordingView DataContext="{Binding Recording}" />
             </Panel>

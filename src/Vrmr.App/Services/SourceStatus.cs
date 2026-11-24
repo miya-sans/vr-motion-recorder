@@ -4,8 +4,8 @@ using System.Linq;
 
 namespace VRMR.App.Services
 {
-    /// <summary>How a source is doing: grey off, amber waiting or needing attention, green receiving.</summary>
-    public enum SourceLevel { Off, Waiting, Ok, Warning }
+    /// <summary>The activity or fault reported by a source.</summary>
+    public enum SourceLevel { Off, Waiting, Ok, Warning, Error }
 
     /// <summary>
     ///     One source as the top bar shows it: a name, a word or two, and the details with the fix when something is
@@ -65,11 +65,11 @@ namespace VRMR.App.Services
 
             // SteamVR
             var ov = r.OpenVR;
-            if (ov == null)
+            if (!r.DeviceTrackingEnabled || ov == null)
                 list.Add(new SourceState
                 {
                     Id = SteamVr, Label = "SteamVR", StateText = "off", Level = SourceLevel.Off,
-                    Detail = "SteamVR devices are switched off.", Fix = "Turn them on under Settings → Sources."
+                    Detail = "SteamVR devices are switched off.", Fix = "Enable recording in the Devices panel."
                 });
             else if (!ov.Connected)
                 list.Add(new SourceState
@@ -88,7 +88,7 @@ namespace VRMR.App.Services
                     Id = SteamVr, Label = "SteamVR",
                     StateText = devs.Count == 0 ? "no devices" : $"{tracked}/{devs.Count} tracked",
                     Level = devs.Count > 0 && tracked == devs.Count ? SourceLevel.Ok : SourceLevel.Warning,
-                    Detail = DeviceText.Summary(devs) + "\nFinger tracking: " + ov.InputStatus +
+                    Detail = DeviceText.Summary(devs) + "\nFinger tracking: " + (r.FingerTrackingEnabled ? ov.InputStatus : "off") +
                              (area != null ? "\nPlay area: " + area : "\nPlay area: not set up"),
                     Fix = devs.Count == 0
                         ? "Switch on your headset, controllers and trackers."

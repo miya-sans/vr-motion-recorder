@@ -20,6 +20,11 @@ namespace VRMR.App.Viewport
 
         internal LiveIkPreview Ik { get; init; }
 
+        static string FingerCurls(float[] curls)
+        {
+            return $"\nCurl {curls[0]:0%} {curls[1]:0%} {curls[2]:0%} {curls[3]:0%} {curls[4]:0%}";
+        }
+
         /// <summary>Fills the view with the live state only.</summary>
         public void Show(IViewport view)
         {
@@ -35,7 +40,7 @@ namespace VRMR.App.Viewport
 
             scene.Markers.Clear();
             var ov = rec.OpenVR;
-            bool connected = ov != null && ov.Connected;
+            bool connected = rec.DeviceTrackingEnabled && ov != null && ov.Connected;
             var devices = connected ? ov.Devices() : null;
             OpenVRSource.Device headset = null;
             scene.PlayArea = connected ? ov.PlayArea : null;
@@ -45,6 +50,9 @@ namespace VRMR.App.Viewport
                 {
                     if (!d.HasPose) continue; // never tracked yet: listed in the Devices panel only
                     if (d.Class == 1 && d.Valid) headset = d;
+                    int side = d.Role - 1;
+                    bool showCurls = rec.FingerTrackingEnabled && d.Valid && d.Class == 2 && side is 0 or 1
+                                     && ov.LiveFingerTime[side] > 0 && Clock.Now - ov.LiveFingerTime[side] < 0.5;
                     scene.Markers.Add(new ViewMarker
                     {
                         Pose = new Pose(d.Pos, d.Rot), Faded = !d.Valid, Size = 1,
@@ -59,7 +67,8 @@ namespace VRMR.App.Viewport
                             d.Class == 2 ? MarkerKind.Controller :
                             d.Class == 4 ? MarkerKind.BaseStation : MarkerKind.Tracker,
                         Label = DeviceText.Name(d) + (d.Battery >= 0 ? $"  {d.Battery * 100:0}%" : "") +
-                                (d.Valid ? "" : "\n" + d.TrackingText),
+                                (d.Valid ? "" : "\n" + d.TrackingText) +
+                                (showCurls ? FingerCurls(ov.LiveFingers[side]) : ""),
                         FovL = d.FovL, FovR = d.FovR, FovT = d.FovT, FovB = d.FovB
                     });
                     shown++;
@@ -149,7 +158,7 @@ namespace VRMR.App.Viewport
             else if (scene.Profile != null) scene.SetProfile(null);
 
             string head = rec.IsRecording ? "● REC  " + TimeText.Format(rec.RecordingTime) : "LIVE";
-            string steamVr = ov == null ? "SteamVR: off (Settings → Sources)" :
+            string steamVr = !rec.DeviceTrackingEnabled || ov == null ? "SteamVR: off (Devices panel)" :
                 !connected ? "SteamVR: " + (ov.Status ?? "").ToLowerInvariant() :
                 "SteamVR: " + DeviceText.Summary(devices);
             if (!_live.CaptureOn) steamVr = "Live sources are off (started with --no-capture)";

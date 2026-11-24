@@ -26,6 +26,7 @@ namespace VRMR
         readonly List<double> _humrArrival = new(); // per HUMR frame: arrival (log tailer) minus the HUMR clock
         readonly List<Tuple<long, int>> _humrFrameTake = new();
         readonly Dictionary<long, double> _humrOffset = new(); // take -> min(arrival - humrTime)
+        readonly Lock _legacyLock = new();
         readonly Settings _settings;
         public float AvatarEyeHeight;
         public string AvatarId = "", AvatarName = "";
@@ -38,15 +39,18 @@ namespace VRMR
         public OpenVRSource OpenVR;
         public long OscMessages;
         public OscQueryService OscQuery;
-        public OscReceiver OscQueryRx, LegacyRx;
+        public OscReceiver OscQueryRx;
+        public volatile OscReceiver LegacyRx;
         public Pose VrcHead, VrcLeftWrist, VrcRightWrist, VrcCamera;
         public double VrcHeadTime = -1, VrcCameraTime = -1;
 
         volatile bool _disposed;
+        volatile bool _vrChatRunning;
         bool _humrTakeEnded;
         long _lastHumrTake = -1;
         string _lastVrc = "";
         double _recStart;
+        double _vrChatSince = -1;
 
         /// <summary>
         ///     Trigger edges (both / left / right / none, with hysteresis) go into the take as events: VRChat confirms its
@@ -71,6 +75,13 @@ namespace VRMR
         public CalibrationLibrary Calibrations { get; }
 
         // ---- recording ----
+        /// <summary>Why the fallback listener could not bind, when a bind is required.</summary>
+        public string LegacyPortError { get; private set; } = "";
+
+        public bool DeviceTrackingEnabled => _settings.EnableOpenVR;
+        public bool FingerTrackingEnabled => DeviceTrackingEnabled && _settings.CaptureFingers;
+        public bool VrChatRunning => _vrChatRunning;
+
         public Recording Current { get; private set; }
         public bool IsRecording => Current != null;
         public double RecordingTime => IsRecording ? Clock.Now - _recStart : 0;
@@ -83,8 +94,9 @@ namespace VRMR
                 double now = Clock.Now;
                 if (OscQueryRx != null && OscQueryRx.LastPacketTime > 0 && now - OscQueryRx.LastPacketTime < 5)
                     return "OSCQuery";
-                if (LegacyRx != null && LegacyRx.LastPacketTime > 0 && now - LegacyRx.LastPacketTime < 5)
-                    return "UDP " + LegacyRx.Port;
+                var fallback = LegacyRx;
+                if (fallback != null && fallback.LastPacketTime > 0 && now - fallback.LastPacketTime < 5)
+                    return "UDP " + fallback.Port;
                 return null;
             }
         }
@@ -99,8 +111,7 @@ namespace VRMR
             try { OscQueryRx?.Dispose(); }
             catch { }
 
-            try { LegacyRx?.Dispose(); }
-            catch { }
+            lock (_legacyLock) ReleaseLegacy();
 
             try { OpenVR?.Dispose(); }
             catch { }
@@ -131,14 +142,10 @@ namespace VRMR
 
             // legacy: VRChat's default output port, a fallback held only while OSCQuery does not deliver, so apps that
             // need the port (VRCFaceTracking modules and others) keep it
-            if (_settings.ListenLegacyPort)
-            {
-                if (OscQueryRx == null) TryBindLegacy();
-                new Thread(WatchLegacyPort) { IsBackground = true, Name = "udp fallback" }.Start();
-            }
+            ApplyOscFallbackSetting();
+            new Thread(WatchVrChat) { IsBackground = true, Name = "VRChat status" }.Start();
 
-            if (_settings.EnableOpenVR) StartOpenVR();
-            else AppLog.Info("SteamVR source is off (Settings → Sources)");
+            if (OpenVR == null) StartOpenVR();
             if (_settings.EnableHumr)
             {
                 Log = new VrcLogTailer { OnHumr = OnHumr, OnEvent = OnLogEvent };
@@ -167,27 +174,40 @@ namespace VRMR
             return vrchatRunning && vrchatSeconds >= LegacyGraceSeconds && oscQuerySilentSeconds >= LegacyGraceSeconds;
         }
 
-        void WatchLegacyPort()
+        void WatchVrChat()
         {
-            double vrchatSince = -1;
             while (!_disposed)
             {
-                double now = Clock.Now;
                 bool running = IsVrChatRunning();
-                if (!running) vrchatSince = -1;
-                else if (vrchatSince < 0) vrchatSince = now;
+                lock (_legacyLock)
+                {
+                    _vrChatRunning = running;
+                    if (!running) _vrChatSince = -1;
+                    else if (_vrChatSince < 0) _vrChatSince = Clock.Now;
+                }
+
+                ApplyOscFallbackSetting();
+                Thread.Sleep(5000);
+            }
+        }
+
+        /// <summary>Applies the UDP fallback setting to the running listener.</summary>
+        public void ApplyOscFallbackSetting()
+        {
+            lock (_legacyLock)
+            {
+                if (_disposed) return;
+                double now = Clock.Now;
                 var rx = OscQueryRx;
                 double silent = rx == null || rx.LastPacketTime <= 0 ? double.MaxValue : now - rx.LastPacketTime;
-                bool want = WantsLegacyPort(running, running ? now - vrchatSince : 0, rx != null, silent);
-                if (want && LegacyRx == null)
+                bool want = _settings.ListenLegacyPort &&
+                            WantsLegacyPort(_vrChatRunning, now - _vrChatSince, rx != null, silent);
+                if (want && LegacyRx == null) TryBindLegacy();
+                else if (!want)
                 {
-                    if (TryBindLegacy())
-                        AppLog.Info("OSCQuery has not delivered: listening on UDP " + _settings.LegacyPort +
-                                    " as a fallback");
+                    LegacyPortError = "";
+                    ReleaseLegacy();
                 }
-                else if (!want && LegacyRx != null) ReleaseLegacy();
-
-                Thread.Sleep(5000);
             }
         }
 
@@ -201,27 +221,29 @@ namespace VRMR
         void ReleaseLegacy()
         {
             var rx = LegacyRx;
+            if (rx == null) return;
             LegacyRx = null;
-            try { rx?.Dispose(); }
+            try { rx.Dispose(); }
             catch { }
 
             AppLog.Info("Released UDP " + _settings.LegacyPort + " for other apps");
         }
 
-        bool TryBindLegacy()
+        void TryBindLegacy()
         {
-            if (LegacyRx != null || !OscReceiver.IsPortFree(_settings.LegacyPort)) return LegacyRx != null;
             try
             {
                 LegacyRx = new OscReceiver("udp" + _settings.LegacyPort, _settings.LegacyPort)
-                    { OnMessage = OnOscLegacy };
-                AppLog.Info("Listening on UDP " + _settings.LegacyPort);
-                return true;
+                {
+                    OnMessage = OnOscLegacy
+                };
+                LegacyPortError = "";
+                AppLog.Info("Listening on UDP " + LegacyRx.Port + " as a fallback");
             }
             catch (Exception ex)
             {
-                AppLog.Warn("Port " + _settings.LegacyPort + ": " + ex.Message);
-                return false;
+                if (LegacyPortError != ex.Message) AppLog.Warn("Port " + _settings.LegacyPort + ": " + ex.Message);
+                LegacyPortError = ex.Message;
             }
         }
 
@@ -252,8 +274,7 @@ namespace VRMR
                     LiveParams[name] = Tuple.Create(type, v, m.Time);
                 }
 
-                if (name.StartsWith("FT/", StringComparison.Ordinal) ||
-                    name.StartsWith("v2/", StringComparison.Ordinal)) LastFaceTime = m.Time;
+                if (FaceKeys.IsFace(name)) LastFaceTime = m.Time;
                 if (name == "EyeHeightAsMeters" && v > 0.05f) AvatarEyeHeight = v;
                 if (name == "TrackingType") Calib?.OnTrackingType((int)Math.Round(v), m.Time);
                 if (!string.IsNullOrEmpty(_settings.RecordTriggerParam) && name == _settings.RecordTriggerParam &&
@@ -410,7 +431,7 @@ namespace VRMR
             {
                 OnPose = OnOpenVRPose, OnDevice = OnOpenVRDevice, OnHand = OnOpenVRHand, OnTriggers = OnOpenVRTriggers,
                 OnTracking = OnOpenVRTracking,
-                CaptureFingers = _settings.CaptureFingers, UseUtilityApp = _settings.OpenVRUtility
+                CaptureFingers = FingerTrackingEnabled, UseUtilityApp = _settings.OpenVRUtility
             };
             OpenVR.Start();
         }
@@ -428,26 +449,21 @@ namespace VRMR
             source.OnTriggers = OnOpenVRTriggers;
             source.OnTracking = OnOpenVRTracking;
             OpenVR = source;
+            ApplyTrackingSettings();
             try { old?.Dispose(); }
             catch { }
         }
 
-        /// <summary>Apply the SteamVR settings now (enable/disable, finger tracking) without restarting the app.</summary>
-        public void RestartOpenVR()
+        /// <summary>Applies the capture switches to the connected input source.</summary>
+        public void ApplyTrackingSettings()
         {
-            var old = OpenVR;
-            OpenVR = null;
-            try { old?.Dispose(); }
-            catch { }
-
-            if (_settings.EnableOpenVR && !_disposed) StartOpenVR();
-            AppLog.Info("SteamVR source " + (_settings.EnableOpenVR ? "restarted" : "turned off"));
+            OpenVR?.CaptureFingers = FingerTrackingEnabled;
         }
 
         void OnOpenVRDevice(OpenVRSource.Device d)
         {
             var rec = Current;
-            if (rec == null) return;
+            if (!DeviceTrackingEnabled || rec == null) return;
             PoseStream st;
             lock (rec.Sync)
             {
@@ -471,7 +487,7 @@ namespace VRMR
         void OnOpenVRHand(int side, double t, float[] summary, short[] bones)
         {
             var rec = Current;
-            if (rec == null) return;
+            if (!FingerTrackingEnabled || rec == null) return;
             double rt = t - _recStart;
             // the source reuses its arrays: the take keeps copies
             summary = (float[])summary.Clone();
@@ -482,6 +498,7 @@ namespace VRMR
 
         void OnOpenVRTriggers(double t, float l, float r)
         {
+            if (!DeviceTrackingEnabled) return;
             // the analog values too ("triggerValues" events when either moves by 0.05): which pull level VRChat confirms at
             // is not settled yet (the full press fits best on an 11-point test take, TakeCalibrations.TriggerPullLead)
             if (Current != null && (Math.Abs(l - _trigLogL) >= 0.05f || Math.Abs(r - _trigLogR) >= 0.05f))
@@ -517,7 +534,7 @@ namespace VRMR
         void OnOpenVRTracking(OpenVRSource.Device d, double t, int code)
         {
             var rec = Current;
-            if (rec == null || d.Class == 4) return;
+            if (!DeviceTrackingEnabled || rec == null || d.Class == 4) return;
             lock (rec.Sync)
                 rec.Events.Add(new RecEvent
                     { T = Math.Max(0, t - _recStart), Type = "tracking", Text = d.Serial + " " + code });
@@ -525,7 +542,7 @@ namespace VRMR
 
         void OnOpenVRPose(OpenVRSource.Device d, double t)
         {
-            if (Current == null) return;
+            if (!DeviceTrackingEnabled || Current == null) return;
             RecordPose(StreamKind.OpenVRDevice, d.Serial, DeviceInfo(d), t, new Pose(d.Pos, d.Rot));
         }
 
@@ -666,7 +683,7 @@ namespace VRMR
         public SteamVRRoom RoomNow(double t)
         {
             var ov = OpenVR;
-            if (ov == null || !ov.Connected) return null;
+            if (!DeviceTrackingEnabled || ov == null || !ov.Connected) return null;
             try
             {
                 var r = new SteamVRRoom { T = t };

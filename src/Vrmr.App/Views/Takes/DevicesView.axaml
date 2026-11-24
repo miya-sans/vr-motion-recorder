@@ -1,30 +1,52 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:VRMR.App.Controls"
+             xmlns:s="using:VRMR.App.Views.Settings"
              xmlns:vm="using:VRMR.App.ViewModels"
              x:Class="VRMR.App.Views.Takes.DevicesView"
              x:DataType="vm:DevicesViewModel">
   <!-- What VRChat and SteamVR send right now: the avatar worn, the devices with battery and tracking, the face. -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Views/Settings/SettingsMetrics.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="c|Section:expanded /template/ TextBlock#PART_Summary">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="{DynamicResource PadPanel}">
-      <c:Section Header="Avatar in VRChat" StateKey="live.avatar">
+      <TextBlock Text="Live capture is off" Classes="note" IsVisible="{Binding !CaptureOn}" />
+      <c:Section Header="Avatar" StateKey="live.avatar">
         <StackPanel>
-          <TextBlock Text="{Binding Wearing}" FontWeight="Medium" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding WearingNote}" Classes="note" Classes.warning="{Binding WearingWarning}"
-                     Margin="0,4,0,8"
-                     IsVisible="{Binding WearingNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <c:FieldRow Label="Base model" IsVisible="{Binding HasBaseModels}"
                       ToolTip.Tip="The avatar the live view and new takes are solved onto. Picking one links it to the avatar you wear now, and it is remembered.">
             <ComboBox ItemsSource="{Binding BaseModels}" SelectedIndex="{Binding BaseModelIndex}"
-                      PlaceholderText="None" />
+                      PlaceholderText="Select base model" />
           </c:FieldRow>
+          <s:StatusRow DataContext="{Binding AvatarStatus}" Margin="0,4,0,0" />
         </StackPanel>
       </c:Section>
 
       <c:Section Header="SteamVR devices" StateKey="live.devices" Summary="{Binding DevicesSummary}">
         <StackPanel>
-          <TextBlock Text="{Binding DeviceStatus}" Classes="note"
-                     IsVisible="{Binding DeviceStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <StackPanel>
+              <CheckBox Content="Record devices" IsChecked="{Binding SteamVrOn}" />
+              <s:StatusRow DataContext="{Binding SteamVr}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+              <CheckBox Content="Finger tracking" IsChecked="{Binding FingerTracking}" IsEnabled="{Binding SteamVrOn}"
+                        ToolTip.Tip="Preview finger curl from thumb to little finger and record skeletal hand motion." />
+              <s:StatusRow DataContext="{Binding Fingers}" />
+            </StackPanel>
+          </Grid>
+          <s:StatusRow DataContext="{Binding PlayArea}" Margin="0,8,0,0" />
+          <s:StatusRow DataContext="{Binding Tracking}" Margin="{DynamicResource SettingsBlockGap}" />
           <ItemsControl ItemsSource="{Binding Devices}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:DeviceRowViewModel">
@@ -38,9 +60,9 @@
                       <Ellipse Fill="{DynamicResource RaisedBrush}" Stroke="{DynamicResource TextFaintBrush}"
                                StrokeThickness="1.5" IsVisible="{Binding !Tracked}" />
                     </Panel>
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="Medium"
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" FontWeight="Medium"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="caption"
+                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" ToolTip.Tip="{Binding Detail}" Classes="secondary"
                                TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"
                                 IsVisible="{Binding HasBattery}">
@@ -59,14 +81,12 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <TextBlock Text="{Binding PlayArea}" Classes="secondary" Margin="{DynamicResource GapTopSmall}"
-                     IsVisible="{Binding PlayArea, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </c:Section>
 
-      <c:Section Header="Face tracking" StateKey="live.face">
+      <c:Section Header="Face tracking" StateKey="live.face" IsExpanded="False" Summary="{Binding FaceStatus.Summary}">
         <StackPanel>
-          <TextBlock Text="No face tracking data is arriving." Classes="note" IsVisible="{Binding NoFace}" />
+          <s:StatusRow DataContext="{Binding FaceStatus}" />
           <ItemsControl ItemsSource="{Binding Face}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:FaceValueViewModel">
@@ -82,9 +102,31 @@
         </StackPanel>
       </c:Section>
 
-      <c:Section Header="Connections" StateKey="live.connections" IsExpanded="False"
+      <c:Section Header="VRChat input" StateKey="live.connections" IsExpanded="False"
                  Summary="{Binding ConnectionsSummary}">
-        <SelectableTextBlock Text="{Binding Connections}" Classes="mono" TextWrapping="Wrap" LineHeight="16" />
+        <StackPanel>
+          <s:StatusRow DataContext="{Binding Discovery}"
+                       ToolTip.Tip="Finds VRChat locally to read the current avatar ID, eye height and parameters." />
+          <s:StatusRow DataContext="{Binding Osc}"
+                       ToolTip.Tip="Receives avatar changes, expression parameters and tracking poses from VRChat." />
+          <CheckBox Content="{Binding LegacyPortLabel}" IsChecked="{Binding LegacyPort}"
+                    ToolTip.Tip="Receives VRChat’s OSC output here if the advertised input receives no messages." />
+          <s:StatusRow DataContext="{Binding LegacyPortStatus}" Margin="{DynamicResource SettingsBlockGap}" />
+        </StackPanel>
+      </c:Section>
+
+      <c:Section Header="Diagnostics" StateKey="live.connectionDetails" IsExpanded="False" IsVisible="{Binding CaptureOn}">
+        <StackPanel>
+          <c:Section Header="VRChat" Level="2">
+            <SelectableTextBlock Text="{Binding Connections}" Classes="mono" TextWrapping="Wrap" LineHeight="16" />
+          </c:Section>
+          <c:Section Header="SteamVR" Level="2">
+            <SelectableTextBlock Text="{Binding SteamVrDiagnostics}" Classes="mono" TextWrapping="Wrap" LineHeight="16" />
+          </c:Section>
+          <c:Section Header="Face tracking" Level="2">
+            <SelectableTextBlock Text="{Binding FaceDiagnostics}" Classes="mono" TextWrapping="Wrap" LineHeight="16" />
+          </c:Section>
+        </StackPanel>
       </c:Section>
     </StackPanel>
   </ScrollViewer>

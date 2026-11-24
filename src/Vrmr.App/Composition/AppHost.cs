@@ -17,7 +17,10 @@ namespace VRMR.App.Composition
         ///     their own.
         /// </param>
         public AppHost(AppOptions options, IUiDispatcher ui, IGlobalHotkey hotkey,
-            Func<IParameterSender> faceSender = null)
+            Func<IParameterSender> faceSender = null) : this(options, ui, hotkey, faceSender, null) { }
+
+        public AppHost(AppOptions options, IUiDispatcher ui, IGlobalHotkey hotkey,
+            Func<IParameterSender> faceSender, OpenVRSource deviceSource)
         {
             Options = options;
             Ui = ui;
@@ -44,6 +47,7 @@ namespace VRMR.App.Composition
             // an avatar's face-tracking add-on, kept with it in the library, plays its own face shapes
             PoseBuilder.FaceAnimatorResolver = FaceAnimatorFiles.ForProfile;
             Recorder = new Recorder(Settings);
+            if (deviceSource != null) Recorder.AttachOpenVR(deviceSource);
             if (CaptureOn) Recorder.Start();
             else AppLog.Info("Live sources are off (--no-capture)");
 

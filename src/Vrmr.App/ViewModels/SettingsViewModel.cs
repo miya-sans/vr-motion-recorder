@@ -10,7 +10,7 @@ using VRMR.App.Services;
 namespace VRMR.App.ViewModels
 {
     /// <summary>The categories of the Settings page, in the order of its list.</summary>
-    public enum SettingsCategory { Sources, Recording, Folders, Avatars, CalibrationDefaults, View, About }
+    public enum SettingsCategory { Recording, Folders, Avatars, CalibrationDefaults, View, About }
 
     /// <summary>
     ///     The Settings page that opens over the workspace: app-wide settings only, one category at a time. What belongs
@@ -22,7 +22,6 @@ namespace VRMR.App.ViewModels
 
         static readonly string[] Intros =
         {
-            "What the app listens to. Each source shows what it finds right now, and what to do when it finds nothing.",
             "What starts and stops a recording, and what is saved along with it.",
             "Where your takes and avatars are kept, and the programs your exports go to.",
             "The base models your takes are solved onto. The avatar you wear in VRChat is matched to one by a linked avatar id, by its name, or by its eye height.",
@@ -40,15 +39,14 @@ namespace VRMR.App.ViewModels
         public SettingsViewModel(AppHost host)
         {
             _host = host;
-            Sources = new SettingsSourcesViewModel(host);
             Recording = new SettingsRecordingViewModel(host);
             Folders = new SettingsFoldersViewModel(host);
             Avatars = new SettingsAvatarsViewModel(host);
             View = new SettingsViewOptionsViewModel(host);
-            _categoryIndex = (int)Math.Max(0, Math.Min(Categories.Count - 1, host.UiState.GetNumber(CategoryKey, 0)));
+            // Stored indices reserve zero for the former Sources page.
+            _categoryIndex = (int)Math.Max(0, Math.Min(Categories.Count - 1, host.UiState.GetNumber(CategoryKey, 1) - 1));
         }
 
-        public SettingsSourcesViewModel Sources { get; }
         public SettingsRecordingViewModel Recording { get; }
         public SettingsFoldersViewModel Folders { get; }
         public SettingsAvatarsViewModel Avatars { get; }
@@ -56,7 +54,7 @@ namespace VRMR.App.ViewModels
 
         /// <summary>The category names, in the order of <see cref="SettingsCategory" />.</summary>
         public IReadOnlyList<string> Categories { get; } = new[]
-            { "Sources", "Recording", "Folders", "Avatars", "Calibration defaults", "View", "About" };
+            { "Recording", "Folders", "Avatars", "Calibration defaults", "View", "About" };
 
         /// <summary>The category on screen.</summary>
         public SettingsCategory Category => (SettingsCategory)CategoryIndex;
@@ -92,7 +90,7 @@ namespace VRMR.App.ViewModels
                 return;
             }
 
-            _host.UiState.Set(CategoryKey, value);
+            _host.UiState.Set(CategoryKey, value + 1);
             Activate();
         }
 
@@ -111,7 +109,6 @@ namespace VRMR.App.ViewModels
 
         void Activate()
         {
-            Sources.SetActive(_active && Category == SettingsCategory.Sources);
             Avatars.SetActive(_active && Category == SettingsCategory.Avatars);
             View.SetActive(_active && Category == SettingsCategory.View);
         }

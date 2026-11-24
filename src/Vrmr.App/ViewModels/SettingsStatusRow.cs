@@ -12,7 +12,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasAction))]
         string _action = "";
 
-        [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsOk), nameof(NeedsAttention))]
+        [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsOk), nameof(NeedsAttention), nameof(IsError))]
         SourceLevel _level;
 
         [ObservableProperty] string _summary = "";
@@ -25,6 +25,7 @@ namespace VRMR.App.ViewModels
 
         public bool HasTitle => !string.IsNullOrEmpty(Title);
         public bool HasAction => !string.IsNullOrEmpty(Action);
+        public bool IsError => Level == SourceLevel.Error;
         public bool IsOk => Level == SourceLevel.Ok;
         public bool NeedsAttention => Level == SourceLevel.Waiting || Level == SourceLevel.Warning;
 

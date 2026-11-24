@@ -38,7 +38,7 @@ namespace VRMR.App.Tests
             using var rig = new Rig();
             var steam = rig.Pill(SourceStatus.SteamVr);
             Assert.Equal("off", steam.StateText);
-            Assert.Contains("Settings → Sources", steam.Fix);
+            Assert.Contains("Devices panel", steam.Fix);
             Assert.Equal("waiting", rig.Pill(SourceStatus.VrChat).StateText);
             Assert.Equal("no data", rig.Pill(SourceStatus.Face).StateText);
             Assert.Null(rig.Pill(SourceStatus.Avatar));
@@ -166,15 +166,17 @@ namespace VRMR.App.Tests
             var panel = takes.Devices;
             Assert.Equal(8, panel.Devices.Count);
             Assert.Equal("8/8 tracked", panel.DevicesSummary);
-            Assert.Equal("Play area: 3.0 × 2.0 m", panel.PlayArea);
-            Assert.Equal("", panel.DeviceStatus);
+            Assert.Equal("Play area: 3.0 × 2.0 m", panel.PlayArea.Summary);
+            Assert.True(panel.SteamVr.IsOk);
             var right = Assert.Single(panel.Devices, d => d.Name == "Right hand");
             Assert.True(right.BatteryLow);
             Assert.Equal("15%", right.BatteryText);
             Assert.True(right.TrackingOk);
             Assert.StartsWith("Base station", panel.Devices[panel.Devices.Count - 1].Name); // base stations last
-            Assert.False(panel.NoFace);
+            Assert.True(panel.FaceStatus.IsOk);
             Assert.Contains("UDP " + rig.OscPort, panel.Connections);
+            Assert.Contains("Updated in the last 5 seconds: 1", panel.FaceDiagnostics);
+            Assert.Contains("Tracking: 8/8 tracked", panel.SteamVrDiagnostics);
             rig.Feed(5);
             rig.Ui.Advance(0.3);
             Assert.Equal("7/8 tracked", panel.DevicesSummary);
@@ -185,6 +187,137 @@ namespace VRMR.App.Tests
             takes.IsLive = false;
             Assert.True(takes.IsLive);
             Assert.True(rig.View.Animating);
+        }
+
+        [Fact]
+        public void CaptureSwitchesKeepDeviceRowsAndGateLiveAndRecordedSamples()
+        {
+            using var rig = new Rig();
+            var recorder = rig.Host.Recorder;
+            var panel = rig.Shell.Takes.Devices;
+            rig.Feed();
+            panel.Refresh(false);
+            var rows = panel.Devices.ToArray();
+            Assert.Equal(8, rows.Length);
+            var take = recorder.StartRecording(null);
+            float[] curls = new float[9];
+            short[] bones = new short[HandStream.PackedLength];
+
+            void Sample()
+            {
+                rig.Feed();
+                rig.SteamVr.LiveFingerTime[0] = Clock.Now;
+                rig.SteamVr.OnHand(0, Clock.Now, curls, bones);
+                rig.Host.LivePresenter.Show(rig.View);
+                Assert.Equal<DeviceRowViewModel>(rows, panel.Devices);
+            }
+
+            Sample();
+            Assert.Empty(rig.View.Scene.Markers);
+            Assert.Empty(take.Streams);
+            Assert.Equal(0, take.Hands[0].Count);
+            panel.SteamVrOn = true;
+            Sample();
+            Assert.Equal(8, rig.View.Scene.Markers.Count);
+            Assert.Contains(rig.View.Scene.Markers, m => m.Label.Contains("Curl"));
+            var headset = take.Streams.First(s => s.Name == "SIM-HMD");
+            Assert.Equal(1, headset.Count);
+            Assert.Equal(1, take.Hands[0].Count);
+            panel.FingerTracking = false;
+            Sample();
+            Assert.DoesNotContain(rig.View.Scene.Markers, m => m.Label.Contains("Curl"));
+            Assert.Equal(2, headset.Count);
+            Assert.Equal(1, take.Hands[0].Count);
+            panel.FingerTracking = true;
+            panel.SteamVrOn = false;
+            Sample();
+            Assert.Empty(rig.View.Scene.Markers);
+            Assert.Equal(2, headset.Count);
+            Assert.Equal(1, take.Hands[0].Count);
+            panel.SteamVrOn = true;
+            Sample();
+            Assert.Equal(3, headset.Count);
+            Assert.Equal(2, take.Hands[0].Count);
+            recorder.StopRecording();
+        }
+
+        [Fact]
+        public void AvatarStatusDistinguishesWaitingUnknownAndLinked()
+        {
+            using var rig = new Rig();
+            var panel = rig.Shell.Takes.Devices;
+            rig.Host.Recorder.LastOscTime = Clock.Now;
+            panel.Refresh(false);
+            Assert.Contains("VRChat running", panel.AvatarStatus.Summary);
+            Assert.True(panel.AvatarStatus.NeedsAttention);
+            rig.Host.Recorder.AvatarId = "avtr_test";
+            panel.Refresh(false);
+            Assert.Contains("Unknown avatar", panel.AvatarStatus.Summary);
+            Assert.True(panel.AvatarStatus.NeedsAttention);
+            panel.BaseModelIndex = 0;
+            Assert.StartsWith("VRChat avatar linked: ", panel.AvatarStatus.Summary);
+            Assert.True(panel.AvatarStatus.IsOk);
+        }
+
+        [Fact]
+        public void DevicesShowRuntimeStateAfterPreferenceChangesAndDisconnects()
+        {
+            using var rig = new Rig();
+            var panel = rig.Shell.Takes.Devices;
+            var recorder = rig.Host.Recorder;
+            rig.AttachSteamVr();
+            rig.Feed();
+            recorder.OpenVR.InputStatus = "input error: disconnected";
+            panel.Refresh(false);
+            Assert.True(panel.Fingers.IsError);
+            recorder.OpenVR.InputStatus = "fingers: 2 hand(s)";
+            panel.Refresh(false);
+            Assert.True(panel.Fingers.IsOk);
+            recorder.OpenVR.Connected = false;
+            recorder.OpenVR.Status = "Waiting for SteamVR";
+            recorder.LastFaceTime = Clock.Now;
+            panel.Refresh(false);
+            Assert.True(panel.FaceStatus.IsOk);
+            recorder.LastFaceTime = Clock.Now - 6;
+            panel.Refresh(false);
+            Assert.Equal(SourceLevel.Waiting, panel.SteamVr.Level);
+            Assert.Equal(SourceLevel.Waiting, panel.Fingers.Level);
+            Assert.Equal(SourceLevel.Off, panel.PlayArea.Level);
+            Assert.Equal(SourceLevel.Off, panel.FaceStatus.Level);
+            Assert.Empty(panel.Devices);
+            Assert.Empty(panel.Face);
+        }
+
+        [Fact]
+        public void FallbackCanReleaseItsPortAndRetryWhileTheRecorderRuns()
+        {
+            using var rig = new Rig();
+            var panel = rig.Shell.Takes.Devices;
+            var recorder = rig.Host.Recorder;
+            Assert.True(panel.LegacyPortStatus.IsOk);
+
+            panel.LegacyPort = false;
+            Assert.Null(recorder.LegacyRx);
+            Assert.Equal(SourceLevel.Off, panel.Osc.Level);
+            using (var otherReceiver = new OscReceiver("test", rig.OscPort))
+            {
+                panel.LegacyPort = true;
+                Assert.True(panel.LegacyPortStatus.IsError);
+                Assert.Null(recorder.LegacyRx);
+            }
+
+            panel.LegacyPort = false;
+            panel.LegacyPort = true;
+            Assert.Equal(rig.OscPort, recorder.LegacyRx.Port);
+            Assert.True(panel.LegacyPortStatus.IsOk);
+            rig.SendFloats("/avatar/parameters/GestureLeftWeight", 0.5f);
+            Assert.True(rig.WaitFor(() => recorder.LastOscTime > 0));
+            panel.Refresh(false);
+            Assert.Contains("Face parameters (FT/ or v2/): 0", panel.FaceDiagnostics);
+            Assert.Contains("VRChat OSC is arriving", panel.FaceDiagnostics);
+
+            panel.LegacyPort = false;
+            Assert.Equal(SourceLevel.Off, panel.Osc.Level);
         }
 
         [Fact]
@@ -739,9 +872,9 @@ namespace VRMR.App.Tests
                     Stamp + "User Authenticated: " + User + " (usr_1)\n" + Stamp +
                     "[Behaviour] Entering Room: Test World\n");
 
-                Host = new AppHost(AppOptions.Parse(new[] { "--data", Data.Root }), realUi ?? Ui, Hotkey, () => Sender);
+                Host = new AppHost(AppOptions.Parse(new[] { "--data", Data.Root }), realUi ?? Ui, Hotkey, () => Sender, SteamVr);
                 Assert.Equal(logDir, VrcPaths.LogDir);
-                Assert.Null(Host.Recorder.OpenVR); // SteamVR itself is never asked
+                Assert.Same(SteamVr, Host.Recorder.OpenVR); // SteamVR itself is never asked
                 Assert.Null(Host.Recorder.OscQuery); // nothing is advertised on the network
                 Shell = new ShellViewModel(Host);
                 if (realUi == null) Shell.Takes.AttachView(View);
@@ -758,7 +891,7 @@ namespace VRMR.App.Tests
             /// <summary>Connects the generated SteamVR devices.</summary>
             public void AttachSteamVr()
             {
-                Host.Recorder.AttachOpenVR(SteamVr);
+                Shell.Takes.Devices.SteamVrOn = true;
             }
 
             /// <summary>A headset, two controllers, three trackers and two base stations around a person standing with the arms out.</summary>
