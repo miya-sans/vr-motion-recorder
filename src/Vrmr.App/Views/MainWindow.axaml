@@ -68,10 +68,14 @@
       <!-- library -->
       <Border Grid.Column="0" x:Name="LibraryHost" Classes="panel" IsVisible="{Binding LibraryOpen}">
         <DockPanel>
-          <c:IconToggle DockPanel.Dock="Top" x:Name="LiveButton" Classes="liveMode" Margin="12,8,12,0"
-                        HorizontalAlignment="Stretch" Icon="{DynamicResource Icon.Live}" Content="Live"
-                        IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}" IsEnabled="{Binding !IsRecording}"
-                        ToolTip.Tip="Show live devices. Select a take to review it, or click Live again to return to the last take." />
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="12,8,12,0">
+            <c:IconToggle x:Name="LiveButton" Classes="liveMode"
+                          HorizontalAlignment="Stretch" Icon="{DynamicResource Icon.Live}" Content="Live"
+                          IsChecked="{Binding Takes.IsLive}" IsVisible="{Binding IsTakes}" IsEnabled="{Binding !IsRecording}"
+                          ToolTip.Tip="Show live devices. Select a take to review it, or click Live again to return to the last take." />
+            <c:IconButton Grid.Column="1" Icon="{DynamicResource Icon.PanelLeft}" Margin="6,0,0,0"
+                          Command="{Binding ToggleLibraryCommand}" ToolTip.Tip="Hide library (Ctrl+1)" />
+          </Grid>
           <v:LibraryPanel DataContext="{Binding Library}" />
         </DockPanel>
       </Border>

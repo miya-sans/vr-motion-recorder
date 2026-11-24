@@ -4,14 +4,23 @@
              xmlns:vm="using:VRMR.App.ViewModels"
              x:Class="VRMR.App.Views.LibraryPanel"
              x:DataType="vm:LibraryViewModel">
-  <!-- The library: search on top, takes newest first with what they contain, actions at the bottom. -->
-  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="{DynamicResource PadPanel}">
-    <Grid ColumnDefinitions="*,Auto,Auto" Margin="{DynamicResource GapRowSmall}" MinHeight="{DynamicResource ControlHeight}">
-      <TextBlock Text="Takes" Classes="title" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="1" Text="{Binding CountText}" Classes="caption" VerticalAlignment="Center" />
-      <c:IconButton Grid.Column="2" Icon="{DynamicResource Icon.PanelLeft}" Margin="6,0,0,0"
-                    Command="{Binding $parent[Window].((vm:ShellViewModel)DataContext).ToggleLibraryCommand}"
-                    ToolTip.Tip="Hide library (Ctrl+1)" />
+  <Grid RowDefinitions="Auto,Auto,*" Margin="{DynamicResource PadPanel}">
+    <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource GapRowSmall}" MinHeight="{DynamicResource ControlHeight}">
+      <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center" ToolTip.Tip="{Binding CountText}">
+        <TextBlock Text="Takes" Classes="title" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding CountText}" Classes="caption" VerticalAlignment="Center"
+                   Margin="{DynamicResource GapLeft}" TextTrimming="CharacterEllipsis" />
+      </Grid>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <c:IconButton Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenFolderCommand}"
+                      ToolTip.Tip="Open the recordings folder" />
+        <c:IconButton Icon="{DynamicResource Icon.File}" Command="{Binding OpenFileCommand}"
+                      ToolTip.Tip="Open a take file from anywhere (Ctrl+O)" />
+        <c:IconButton Icon="{DynamicResource Icon.Reveal}" Command="{Binding RevealCommand}"
+                      ToolTip.Tip="Show the selected take in its folder" />
+        <c:IconButton Icon="{DynamicResource Icon.Trash}" Command="{Binding DeleteCommand}"
+                      ToolTip.Tip="Move the selected take to the Recycle Bin" />
+      </StackPanel>
     </Grid>
     <TextBox Grid.Row="1" x:Name="SearchBox" Text="{Binding Search}" PlaceholderText="Search name, avatar or world"
              Margin="{DynamicResource GapRow}"
@@ -82,16 +91,5 @@
                   ActionLabel="Clear the search" Command="{Binding ClearSearchCommand}" />
     <TextBlock Grid.Row="2" Text="Reading the takes…" Classes="secondary" IsVisible="{Binding IsLoading}"
                HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="2" Margin="{DynamicResource GapTop}">
-      <c:IconButton Icon="{DynamicResource Icon.Folder}" Command="{Binding OpenFolderCommand}"
-                    ToolTip.Tip="Open the recordings folder" />
-      <c:IconButton Icon="{DynamicResource Icon.Import}" Command="{Binding OpenFileCommand}"
-                    ToolTip.Tip="Open a take file from anywhere (Ctrl+O)" />
-      <c:IconButton Icon="{DynamicResource Icon.Reveal}" Command="{Binding RevealCommand}"
-                    ToolTip.Tip="Show the selected take in its folder" />
-      <c:IconButton Icon="{DynamicResource Icon.Trash}" Command="{Binding DeleteCommand}"
-                    ToolTip.Tip="Move the selected take to the Recycle Bin" />
-    </StackPanel>
   </Grid>
 </UserControl>
