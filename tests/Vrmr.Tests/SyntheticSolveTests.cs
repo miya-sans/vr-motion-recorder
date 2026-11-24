@@ -164,6 +164,24 @@ namespace VRMR.Tests
         }
 
         [Fact]
+        public void ThumbstickLocomotionDefaultsToOff()
+        {
+            Assert.False(new Recording().Edits.IncludeLocomotion);
+            Assert.False(EditList.FromJson(null).IncludeLocomotion);
+            Assert.False(EditList.FromJson(Json.ParseObject("{}")).IncludeLocomotion);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ThumbstickLocomotionSurvivesSavingTheEditList(bool enabled)
+        {
+            var edits = new EditList { IncludeLocomotion = enabled };
+            var loaded = EditList.FromJson(Json.ParseObject(Json.Serialize(edits.ToJson())));
+            Assert.Equal(enabled, loaded.IncludeLocomotion);
+        }
+
+        [Fact]
         public void TrackerOffsetsSurviveSavingTheEditListPerCalibration()
         {
             var e = new EditList();

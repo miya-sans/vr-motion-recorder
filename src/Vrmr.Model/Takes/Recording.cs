@@ -519,7 +519,7 @@ namespace VRMR
         /// <summary>Keep VRChat's jumps (the avatar leaving the ground in VRChat's world) in the body; off by default (VrcJumps).</summary>
         public bool IncludeJumps;
 
-        public bool IncludeLocomotion = true;
+        public bool IncludeLocomotion;
         public double OriginTime; // the world is centred on the user at this source time
         public float OriginYawOffset, OriginOffsetX, OriginOffsetZ;
 
@@ -667,7 +667,7 @@ namespace VRMR
 
             e.CalibrationTime = d.GetNum("calibrationTime", -1);
             e.BodySource = d.GetStr("bodySource", "auto");
-            e.IncludeLocomotion = d.GetBool("locomotion", true);
+            e.IncludeLocomotion = d.GetBool("locomotion");
             e.IncludeJumps = d.GetBool("jumps");
             var cal = d.GetObj("calibration");
             if (cal != null) e.Calib = CalibrationSettings.FromJson(cal);
