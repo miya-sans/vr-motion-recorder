@@ -136,7 +136,7 @@ namespace VRMR.App.Controls
 
         void ApplyUserValue(double v)
         {
-            if (v == Value) return;
+            if (!IsEffectivelyEnabled || IsReadOnly || v == Value) return;
             SetCurrentValue(ValueProperty, v);
             ValueEdited?.Invoke(this, EventArgs.Empty);
         }

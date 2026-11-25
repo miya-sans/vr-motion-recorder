@@ -12,6 +12,7 @@ using VRMR.App.Services;
 using VRMR.App.ViewModels;
 using VRMR.App.Viewport;
 using VRMR.App.Views;
+using VRMR.App.Views.Takes;
 using Xunit;
 using VisualExtensions = Avalonia.VisualTree.VisualExtensions;
 
@@ -240,6 +241,65 @@ namespace VRMR.App.Tests
                 Assert.InRange(onScreen.Y, 0, view.Bounds.Height);
                 s.Shell.Takes.SetGizmo(false);
                 Assert.Null(view.Tool);
+            });
+        }
+
+        [Fact]
+        public async Task CalibrationOffsetsFollowVRChatOrSaveWithTheTake()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var session = s.Host.Session;
+                var settings = s.Shell.Takes.Inspector.Settings;
+                var sections = VisualExtensions.GetVisualDescendants(s.Window).OfType<Section>();
+                Assert.Single(sections, section => section.StateKey == "take.calibration").IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+                var view = VisualExtensions.GetVisualDescendants(s.Window).OfType<CalibrationSettingsView>()
+                    .Single(v => ReferenceEquals(v.DataContext, settings));
+                var advanced = VisualExtensions.GetVisualDescendants(view).OfType<Section>()
+                    .Single(section => section.StateKey == "take.cal.advanced");
+                advanced.IsExpanded = true;
+                await HeadlessUi.SettleAsync(50);
+                var offsets = VisualExtensions.GetVisualDescendants(view).OfType<NumberField>()
+                    .Where(f => f.Unit == "cm").ToArray();
+                Assert.Equal(5, offsets.Length);
+                Assert.All(offsets, f => Assert.False(f.Focus()));
+                double[] vrcValues = [.. offsets.Select(f => f.Value)];
+                Assert.Equal(new[] { 0d, -1.94, -2.1, 2.2, -10.32 }, vrcValues);
+
+                settings.VrcHands = false;
+                Assert.All(offsets, f => Assert.True(f.IsEffectivelyEnabled));
+                Assert.Equal(vrcValues, offsets.Select(f => f.Value));
+                offsets[0].SetCurrentValue(NumberField.ValueProperty, 3.25);
+                await WaitSolved(s);
+                Assert.Equal(0.0325f, session.Take.Edits.Calib.HeadOffset.Value.Y);
+                offsets[2].SetCurrentValue(NumberField.ValueProperty, -4.25);
+                await WaitSolved(s);
+                session.Undo();
+                await WaitSolved(s);
+                Assert.Equal(-2.1, offsets[2].Value);
+                offsets[2].SetCurrentValue(NumberField.ValueProperty, -4.25);
+                await WaitSolved(s);
+                Assert.Equal(-0.0425f, session.Take.Edits.Calib.HandOffset.Value.x);
+
+                Assert.True(offsets[0].Focus());
+                s.Window.KeyTextInput("5.50");
+                Assert.Equal("5.50", offsets[0].Text);
+                settings.VrcHands = true;
+                Assert.False(offsets[0].IsFocused);
+                Assert.All(offsets, f => Assert.False(f.Focus()));
+                Assert.Equal(vrcValues, offsets.Select(f => f.Value));
+                settings.VrcHands = false;
+                Assert.Equal(3.25, offsets[0].Value);
+                Assert.Equal(-4.25, offsets[2].Value);
+                Assert.True(await session.SaveAsync());
+                Assert.True(await session.OpenAsync(session.Take.FilePath, force: true));
+                await WaitSolved(s);
+                Assert.True(s.Host.SettingsStore.Value.CalibrationDefaults.VrcHands);
+                Assert.False(settings.VrcHands);
+                Assert.Equal(3.25, offsets[0].Value);
+                Assert.Equal(-4.25, offsets[2].Value);
             });
         }
 

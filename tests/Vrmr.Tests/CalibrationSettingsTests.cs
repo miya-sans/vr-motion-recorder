@@ -4,6 +4,18 @@ namespace VRMR.Tests
 {
     public class CalibrationSettingsTests
     {
+        [Fact]
+        public void OlderCalibrationKeepsItsHandRotationAndUsesLegacyOffsets()
+        {
+            var settings = CalibrationSettings.FromJson(
+                Json.ParseObject("{\"vrcHands\":false,\"handRotFix\":[1,2,3]}"));
+            Assert.False(settings.VrcHands);
+            Assert.Null(settings.HeadOffset);
+            Assert.Null(settings.HandOffset);
+            Assert.Equal(new Vec3(1, 2, 3), settings.HandRotFix);
+            Assert.True(settings.SameAs(CalibrationSettings.FromJson(settings.ToJson())));
+        }
+
         [Theory]
         [InlineData("{}", true)]
         [InlineData("{\"followVrc\":true}", true)]

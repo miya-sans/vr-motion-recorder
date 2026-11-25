@@ -108,6 +108,9 @@ namespace VRMR.Fbik
         /// </summary>
         public bool UseTrackedFloorEstimate = true;
 
+        /// <summary>VRMR port addition: controller-local left hand position in solver metres. Right mirrors X.</summary>
+        public Vector3? VrmrLeftControllerHandOffset;
+
         /// <summary>
         ///     VRMR port addition: no height-mode grounding lift. The caller puts the real floor at y = 0 and chooses the
         ///     calibration head height itself (VRChat hangs the avatar from the headset at calibration instead of standing it on
@@ -648,7 +651,12 @@ namespace VRMR.Fbik
                     var rotOffset = Quaternion.Euler(isLeft ? leftHandToIKRotationOffset : rightHandToIKRotationOffset);
                     var wristWorldPosUnscaled = unscaledPos - unscaledRot * wristLocalPos;
                     var posOffsetLocal = isLeft ? leftHandToIKPositionOffset : rightHandToIKPositionOffset;
-                    if (UseIKPositionOffset)
+                    if (VrmrLeftControllerHandOffset is { } manual)
+                    {
+                        if (!isLeft) manual.x = -manual.x;
+                        wristWorldPosUnscaled = unscaledPos + unscaledRot * manual;
+                    }
+                    else if (UseIKPositionOffset)
                     {
                         wristWorldPosUnscaled += unscaledRot * posOffsetLocal;
                     }

@@ -58,6 +58,7 @@ namespace VRMR
         float _deviceScale = 1f;
 
         CalLock _lock = CalLock.Head;
+        Vec3? _manualHandOffset;
         AvatarProfile _prof;
         Quat _restHandL = Quat.Identity, _restHandR = Quat.Identity;
         E.FbikBodySolver _s;
@@ -113,6 +114,10 @@ namespace VRMR
                 cal.ProceduralFeet; // foot IK (procedural steps; tracked feet always follow their trackers)
             _lock = cal.Lock;
             _vrcHands = cal.VrcHands;
+            _manualHandOffset = !_vrcHands && cal.HandOffset is { } hand
+                ? hand * (_avatarEye / VrcHandRefEye)
+                : null;
+            _s.Rig.VrmrLeftControllerHandOffset = _manualHandOffset is { } scaled ? V(scaled) : null;
         }
 
         public void SetDevice(BodyRole role, Pose pose, bool tracked, HandSourceKind kind)
@@ -132,7 +137,7 @@ namespace VRMR
                         ck = E.ControllerKind.Generic;
                         break;
                     case HandSourceKind.Index:
-                        if (_vrcHands)
+                        if (_vrcHands || _manualHandOffset.HasValue)
                         {
                             // VRChat's measured hand pose: the hand bone is given directly (the solver's "hand bone" source)
                             var hp = VrcIndexHand(left, new Pose(p, q), left ? _restHandL : _restHandR, _avatarEye);
@@ -147,6 +152,13 @@ namespace VRMR
                     case HandSourceKind.OculusTouch: ck = E.ControllerKind.OculusTouch; break;
                     case HandSourceKind.Generic: ck = E.ControllerKind.Generic; break;
                     default: ck = E.ControllerKind.Unknown; break;
+                }
+
+                if (kind != HandSourceKind.VrcWrist && ck == E.ControllerKind.Generic &&
+                    _manualHandOffset is { } manual)
+                {
+                    if (!left) manual.x = -manual.x;
+                    p = pose.pos + pose.rot.Normalized * manual;
                 }
             }
 
