@@ -14,6 +14,11 @@ namespace VRMR.App.ViewModels
     /// </summary>
     public partial class CalibrationSettingsViewModel : ObservableObject
     {
+        const string VrcRecordedSetting = "VRChat: Recorded setting";
+
+        static readonly string[] FixedMeasureModes = ["By height", "By arm span"];
+        static readonly string[] FixedSpineModes = ["Lock head", "Lock hips", "Lock both"];
+
         readonly CalibrationService _calibration;
         readonly Func<BakedClip> _clip;
 
@@ -22,7 +27,6 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] double _avatarScale;
         [ObservableProperty] bool _avatarScaleChanged;
         [ObservableProperty] bool _followAvatarScale;
-        [ObservableProperty] bool _followVrc;
         [ObservableProperty] bool _handRotChanged;
         [ObservableProperty] double _handRotX;
         [ObservableProperty] double _handRotY;
@@ -42,10 +46,12 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _heightValueUnit = "m";
         [ObservableProperty] bool _keepFeetPlanted;
         [ObservableProperty] int _measureIndex;
+        [ObservableProperty] IReadOnlyList<string> _measureModes = [.. FixedMeasureModes, VrcRecordedSetting];
         [ObservableProperty] bool _proceduralFeet;
         [ObservableProperty] bool _recordingOptionsEnabled = true;
         [ObservableProperty] bool _shoulderTracking;
         [ObservableProperty] int _spineIndex;
+        [ObservableProperty] IReadOnlyList<string> _spineModes = [.. FixedSpineModes, VrcRecordedSetting];
         bool _syncing;
         [ObservableProperty] bool _uprightCalibration;
         [ObservableProperty] bool _useChest;
@@ -70,9 +76,6 @@ namespace VRMR.App.ViewModels
         {
             "Measure at calibration", "My real height", "My eye height", "Tracking scale", "VRChat's User Real Height"
         };
-
-        public IReadOnlyList<string> SpineModes { get; } = new[] { "Lock head", "Lock hips", "Lock both" };
-        public IReadOnlyList<string> MeasureModes { get; } = new[] { "By height", "By arm span" };
 
         /// <summary>The ratio VRChat uses between body height and eye height, for the tooltips.</summary>
         public string EyeRatioText =>
@@ -119,9 +122,15 @@ namespace VRMR.App.ViewModels
                 }
                 else HeightReadout = "";
 
-                SpineIndex = (int)c.Lock;
-                MeasureIndex = (int)c.Measure;
-                FollowVrc = c.FollowVrc;
+                var (spine, measure) = _defaultsOnly ? (null, null) : _calibration.InitialVrcSettings();
+                string vrcSpine = spine.HasValue ? $"VRChat: {FixedSpineModes[(int)spine.Value]}" : VrcRecordedSetting;
+                string vrcMeasure = measure.HasValue
+                    ? $"VRChat: {FixedMeasureModes[(int)measure.Value]}"
+                    : VrcRecordedSetting;
+                if (SpineModes[FixedSpineModes.Length] != vrcSpine) SpineModes = [.. FixedSpineModes, vrcSpine];
+                if (MeasureModes[FixedMeasureModes.Length] != vrcMeasure) MeasureModes = [.. FixedMeasureModes, vrcMeasure];
+                SpineIndex = c.FollowVrcSpine ? FixedSpineModes.Length : (int)c.Lock;
+                MeasureIndex = c.FollowVrcMeasure ? FixedMeasureModes.Length : (int)c.Measure;
                 UseHips = c.UseHips;
                 UseChest = c.UseChest;
                 UseFeet = c.UseFeet;
@@ -181,17 +190,22 @@ namespace VRMR.App.ViewModels
 
         partial void OnSpineIndexChanged(int value)
         {
-            Edit(c => c.Lock = (CalLock)Math.Max(0, value));
+            if (value < 0 || value >= SpineModes.Count) return;
+            Edit(c =>
+            {
+                c.FollowVrcSpine = value == FixedSpineModes.Length;
+                if (!c.FollowVrcSpine) c.Lock = (CalLock)value;
+            });
         }
 
         partial void OnMeasureIndexChanged(int value)
         {
-            Edit(c => c.Measure = (CalMeasure)Math.Max(0, value));
-        }
-
-        partial void OnFollowVrcChanged(bool value)
-        {
-            Edit(c => c.FollowVrc = value);
+            if (value < 0 || value >= MeasureModes.Count) return;
+            Edit(c =>
+            {
+                c.FollowVrcMeasure = value == FixedMeasureModes.Length;
+                if (!c.FollowVrcMeasure) c.Measure = (CalMeasure)value;
+            });
         }
 
         partial void OnUseHipsChanged(bool value)

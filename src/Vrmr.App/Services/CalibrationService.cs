@@ -573,6 +573,14 @@ namespace VRMR.App.Services
             return _session.Take == null ? "" : VrcTimeline.For(_session.Take).Describe();
         }
 
+        /// <summary>VRChat's spine and measurement values at the start of the open take, when available.</summary>
+        public (CalLock? Spine, CalMeasure? Measure) InitialVrcSettings()
+        {
+            if (_session.Take == null) return (null, null);
+            VrcTimeline.For(_session.Take).SettingsAt(0, out int spine, out int measure);
+            return (spine < 0 ? null : VrcTimeline.LockOf(spine), measure < 0 ? null : VrcTimeline.MeasureOf(measure));
+        }
+
         /// <summary>Records that a VRChat setting changed at the playhead (for takes recorded before the app logged them).</summary>
         public void AddVrcChange(int kind)
         {

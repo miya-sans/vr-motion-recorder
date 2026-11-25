@@ -634,9 +634,10 @@ namespace VRMR
 
             var bounds = new SortedSet<double>();
             foreach (var src in sources.Skip(1)) bounds.Add(src.Item1);
-            if (cal.FollowVrc)
+            if (cal.FollowVrcSpine || cal.FollowVrcMeasure)
                 foreach (var c in tl.Changes)
-                    bounds.Add(c.T);
+                    if ((cal.FollowVrcSpine && c.Spine >= 0) || (cal.FollowVrcMeasure && c.Measure >= 0))
+                        bounds.Add(c.T);
             var edges = new List<double> { double.NegativeInfinity };
             edges.AddRange(bounds.Where(x => x > 0 && x < rec.Duration));
             edges.Add(double.PositiveInfinity);
@@ -651,11 +652,11 @@ namespace VRMR
                     if (sources[k].Item1 <= probe)
                         si = k;
                 var st = cal.Clone();
-                if (cal.FollowVrc)
+                if (cal.FollowVrcSpine || cal.FollowVrcMeasure)
                 {
                     tl.SettingsAt(Math.Max(0, probe), out int spine, out int meas);
-                    if (spine >= 0) st.Lock = VrcTimeline.LockOf(spine);
-                    if (meas >= 0) st.Measure = VrcTimeline.MeasureOf(meas);
+                    if (cal.FollowVrcSpine && spine >= 0) st.Lock = VrcTimeline.LockOf(spine);
+                    if (cal.FollowVrcMeasure && meas >= 0) st.Measure = VrcTimeline.MeasureOf(meas);
                 }
 
                 var last = plans.Count > 0 ? plans[plans.Count - 1] : null;

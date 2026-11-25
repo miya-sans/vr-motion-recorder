@@ -495,17 +495,32 @@ namespace VRMR.App.Tests
                 var inspector = s.Shell.Takes.Inspector;
                 Assert.Null(session.Take.Edits.Calib);
                 Assert.Equal("defaults", inspector.CalibrationSummary);
+                var view = s.Window.FindControl<UserControl>("TakesInspectorView").FindControl<UserControl>("TakeView");
+                var sections = VisualExtensions.GetVisualDescendants(view).OfType<Section>();
+                Assert.Single(sections, section => Equals(section.Header, "Calibration")).IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+                var combos = VisualExtensions.GetVisualDescendants(view).OfType<ComboBox>();
+                var spine = Assert.Single(combos, combo => ReferenceEquals(combo.ItemsSource, inspector.Settings.SpineModes));
+                var measure = Assert.Single(combos, combo => ReferenceEquals(combo.ItemsSource, inspector.Settings.MeasureModes));
+                Assert.Equal("VRChat: Recorded setting", spine.SelectedItem);
+
+                session.Edit("vrcChanges", edits => edits.VrcChanges.Add(new VrcChange { Spine = 0, Measure = 0 }));
+                await WaitSolved(s);
+                Assert.Equal("VRChat: Lock hips", spine.SelectedItem);
+                Assert.Equal("VRChat: By arm span", measure.SelectedItem);
                 var before = session.Clip;
-                inspector.Settings.SpineIndex = (int)CalLock.Both;
+                spine.SelectedIndex = (int)CalLock.Both;
                 Assert.NotNull(session.Take.Edits.Calib);
                 Assert.Equal(CalLock.Both, session.Take.Edits.Calib.Lock);
+                Assert.False(session.Take.Edits.Calib.FollowVrcSpine);
+                Assert.True(session.Take.Edits.Calib.FollowVrcMeasure);
                 Assert.Equal(CalLock.Head, s.Host.Settings.CalibrationDefaults.Lock); // the defaults are untouched
                 Assert.Equal("this take's own", inspector.CalibrationSummary);
                 await WaitSolved(s);
                 Assert.NotSame(before, session.Clip);
                 s.Shell.Takes.UndoCommand.Execute(null);
                 Assert.Null(session.Take.Edits.Calib);
-                Assert.Equal((int)CalLock.Head, inspector.Settings.SpineIndex);
+                Assert.Equal("VRChat: Lock hips", spine.SelectedItem);
             });
         }
 

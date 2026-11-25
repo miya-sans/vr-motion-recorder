@@ -73,8 +73,11 @@ namespace VRMR
         /// </summary>
         public bool FollowAvatarScale;
 
-        public bool
-            FollowVrc = true; // spine mode and avatar measurement follow VRChat's own settings as recorded in the take (and change when they changed); off = Lock / Measure below for the whole take
+        /// <summary>Use VRChat's recorded measurement when available, falling back to <see cref="Measure" />.</summary>
+        public bool FollowVrcMeasure = true;
+
+        /// <summary>Use VRChat's recorded spine mode when available, falling back to <see cref="Lock" />.</summary>
+        public bool FollowVrcSpine = true;
 
         public Vec3 HandRotFix = Vec3.Zero; // degrees, local to the hand target, mirrored for the right hand
 
@@ -134,7 +137,9 @@ namespace VRMR
                 ["useElbows"] = UseElbows,
                 ["shoulderTracking"] = ShoulderTracking, ["proceduralFeet"] = ProceduralFeet,
                 ["upright"] = UprightCalibration, ["keepFeetPlanted"] = KeepFeetPlanted, ["vrcHands"] = VrcHands,
-                ["hangFromHeadset"] = HangFromHeadset, ["followVrc"] = FollowVrc,
+                ["hangFromHeadset"] = HangFromHeadset,
+                ["followVrcSpine"] = FollowVrcSpine,
+                ["followVrcMeasure"] = FollowVrcMeasure,
                 ["followAvatarScale"] = FollowAvatarScale, ["handRotFix"] = Json.V3(HandRotFix)
             };
         }
@@ -159,7 +164,9 @@ namespace VRMR
             c.KeepFeetPlanted = d.GetBool("keepFeetPlanted", true);
             c.VrcHands = d.GetBool("vrcHands", true);
             c.HangFromHeadset = d.GetBool("hangFromHeadset", true);
-            c.FollowVrc = d.GetBool("followVrc", true);
+            bool followVrc = d.GetBool("followVrc", true);
+            c.FollowVrcSpine = d.GetBool("followVrcSpine", followVrc);
+            c.FollowVrcMeasure = d.GetBool("followVrcMeasure", followVrc);
             c.FollowAvatarScale = d.GetBool("followAvatarScale");
             c.HandRotFix = Json.ToV3(d.ContainsKey("handRotFix") ? d["handRotFix"] : null);
             return c;
@@ -187,8 +194,11 @@ namespace VRMR
                 default: h = "height measured at calibration"; break;
             }
 
-            return
-                $"{h}, by {(Measure == CalMeasure.ArmSpan ? "arm span" : "height")}, lock {Lock.ToString().ToLowerInvariant()}";
+            string measure = FollowVrcMeasure
+                ? "VRChat measurement"
+                : Measure == CalMeasure.ArmSpan ? "by arm span" : "by height";
+            string spine = FollowVrcSpine ? "VRChat spine" : $"lock {Lock.ToString().ToLowerInvariant()}";
+            return $"{h}, {measure}, {spine}";
         }
     }
 

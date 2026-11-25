@@ -14,7 +14,12 @@ namespace VRMR.Tests
         {
             BodySolverSetup.Register();
             var cal = new CalibrationSettings
-                { Height = CalHeightMode.RealHeight, HeightValue = SyntheticTake.Height, FollowVrc = false };
+            {
+                Height = CalHeightMode.RealHeight,
+                HeightValue = SyntheticTake.Height,
+                FollowVrcSpine = false,
+                FollowVrcMeasure = false
+            };
             return PoseBuilder.Bake(SyntheticTake.Create(), Mannequin.Profile(),
                 new BakeOptions { Fps = 60, Calibration = cal });
         });
@@ -133,7 +138,12 @@ namespace VRMR.Tests
             var rec = SyntheticTake.Create();
             rec.Edits.TrackerNudges[calibration] = new Dictionary<string, Vec3> { ["LeftFoot"] = leftFoot };
             var cal = new CalibrationSettings
-                { Height = CalHeightMode.RealHeight, HeightValue = SyntheticTake.Height, FollowVrc = false };
+            {
+                Height = CalHeightMode.RealHeight,
+                HeightValue = SyntheticTake.Height,
+                FollowVrcSpine = false,
+                FollowVrcMeasure = false
+            };
             return PoseBuilder.Bake(rec, Mannequin.Profile(), new BakeOptions { Fps = 60, Calibration = cal });
         }
 

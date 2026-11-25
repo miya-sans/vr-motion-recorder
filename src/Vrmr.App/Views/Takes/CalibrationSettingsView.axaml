@@ -20,17 +20,13 @@
       </Panel>
     </c:FieldRow>
     <c:FieldRow Label="Spine"
-                ToolTip.Tip="With a hip tracker. Lock head keeps the head on the headset and lets the hips leave their tracker; Lock hips does the opposite; Lock both bends the spine to keep both.">
+                ToolTip.Tip="With a hip tracker. Lock head keeps the head on the headset; Lock hips keeps the hips on their tracker; Lock both bends the spine to keep both. The VRChat option follows recorded changes and falls back to the last manual choice.">
       <ComboBox ItemsSource="{Binding SpineModes}" SelectedIndex="{Binding SpineIndex}" />
     </c:FieldRow>
     <c:FieldRow Label="Measure"
-                ToolTip.Tip="How the avatar is matched to you: by height (best for full-body tracking) or by arm span (controllers in the T-pose).">
+                ToolTip.Tip="Match the avatar by height or by arm span. The VRChat option follows recorded changes and falls back to the last manual choice.">
       <ComboBox ItemsSource="{Binding MeasureModes}" SelectedIndex="{Binding MeasureIndex}" />
     </c:FieldRow>
-    <CheckBox Content="Follow VRChat's spine and measurement" IsChecked="{Binding FollowVrc}"
-              IsEnabled="{Binding RecordingOptionsEnabled}"
-              Margin="{DynamicResource GapRowSmall}"
-              ToolTip.Tip="Use the spine mode and measurement VRChat had while recording, and switch when they changed during the take, as VRChat did. Spine and Measure above then only apply to takes without that information." />
     <c:FieldRow Label="Trackers"
                 ToolTip.Tip="Which trackers drive the body. Their roles stay as they are; a tracker that is off is ignored by the solve.">
       <WrapPanel>
