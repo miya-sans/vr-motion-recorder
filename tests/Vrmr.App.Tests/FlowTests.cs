@@ -783,7 +783,13 @@ namespace VRMR.App.Tests
                 using var s = await OpenTake(width: 1100);
                 var live = s.Window.FindControl<VRMR.App.Controls.IconToggle>("LiveButton");
                 var library = s.Window.FindControl<Border>("LibraryHost");
-                Assert.Equal(library.Bounds.Width - live.Margin.Left - live.Margin.Right, live.Bounds.Width);
+                var libraryButtons = VisualExtensions.GetVisualDescendants(library).OfType<Button>();
+                var hide = Assert.Single(libraryButtons, b => Equals(ToolTip.GetTip(b), "Hide library (Ctrl+1)"));
+                double liveRight = live.TranslatePoint(new Point(live.Bounds.Width, 0), library).Value.X;
+                var hideStart = hide.TranslatePoint(default, library).Value;
+                Assert.Equal(live.TranslatePoint(default, library).Value.Y, hideStart.Y);
+                Assert.True(liveRight <= hideStart.X);
+                Assert.True(hideStart.X + hide.Bounds.Width <= library.Bounds.Width);
                 Assert.True(live.TryFindResource("AccentBrush", live.ActualThemeVariant, out object accent));
                 Assert.Equal(accent, live.BorderBrush);
 
