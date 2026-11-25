@@ -34,7 +34,7 @@ namespace VRMR.App.Viewport
         public Pose PlacementDelta()
         {
             var r = _session.Take;
-            var c = _session.Clip;
+            var c = _session.Clip ?? _session.PlayheadClip;
             if (r == null || c == null) return Pose.Identity;
             return r.Edits.Placement * c.Placement.Inverse;
         }
@@ -100,14 +100,17 @@ namespace VRMR.App.Viewport
         /// <summary>Fills the view with the take at the playhead. Returns false when there is nothing solved to show.</summary>
         public bool Show(IViewport view, double? previewTime = null)
         {
-            var c = _session.Clip;
+            var timeline = _session.Clip;
+            var playheadClip = _session.PlayheadClip;
+            var c = timeline ?? playheadClip;
             var r = _session.Take;
             ShownCalibration = null;
             if (c == null || r == null || c.Profile == null) return false;
             var scene = view.Scene;
             scene.PlayArea = null; // the live play area doesn't apply to a replay; the take's own follows below
             int f;
-            if (previewTime is double time)
+            if (timeline == null) f = 0;
+            else if (previewTime is double time)
             {
                 f = NearestSourceFrame(c, time);
                 if (Math.Abs(c.SourceTime[f] - time) > 1 / c.Fps)
@@ -125,7 +128,6 @@ namespace VRMR.App.Viewport
 
             Frame = f;
             LastFrame = c.Frames - 1;
-            var playheadClip = _session.PlayheadClip;
             if (previewTime == null && playheadClip != null &&
                 Math.Abs(playheadClip.SourceTime[0] - _clock.Playhead) < 0.5 / playheadClip.Fps)
             {
@@ -151,7 +153,7 @@ namespace VRMR.App.Viewport
             string roomNote = ShowRoom(view, c, r, f);
             scene.Overlay = BodySourceText(c.BodySource) + (roomNote.Length > 0 ? "\n" + roomNote : "");
             scene.OverlayRight = "";
-            var d = PlacementDelta();
+            var d = r.Edits.Placement * c.Placement.Inverse;
             if (!IsIdentity(d)) scene.Transform(d);
             view.SceneChanged();
             return true;

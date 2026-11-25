@@ -117,6 +117,7 @@ namespace VRMR.App.ViewModels
             };
             Timeline.PreviewChanged += Present;
             _session.PreviewClipReady += Present;
+            _session.PendingPreviewMesh = () => _active && _view is GpuView gpu ? gpu.PendingSceneMesh : null;
             Timeline.SelectionChanged += () => HasSelection = Timeline.HasSelection;
             host.Recording.StateChanged += OnRecordingChanged;
             host.Recording.Stopped += rec =>
@@ -319,7 +320,15 @@ namespace VRMR.App.ViewModels
                 CalibrationViewChanged?.Invoke();
             }
 
-            FrameText = shown ? $"frame {_host.TakePresenter.Frame}/{_host.TakePresenter.LastFrame}" : "";
+            FrameText = shown && _session.Clip != null
+                ? $"frame {_host.TakePresenter.Frame}/{_host.TakePresenter.LastFrame}"
+                : "";
+            if (shown && !IsLive && !recording && !_framed && _view.Scene.Profile != null)
+            {
+                _view.FrameAll();
+                _framed = true;
+            }
+
             if (!shown && (IsLive || recording))
             {
                 _host.LivePresenter.Show(_view);
@@ -328,6 +337,9 @@ namespace VRMR.App.ViewModels
 
             if (!shown)
             {
+                _view.Scene.SetProfile(null);
+                _view.Scene.Markers.Clear();
+                _view.Scene.PlayArea = null;
                 _view.Scene.Overlay = "";
                 _view.Scene.OverlayRight = "";
                 _view.SceneChanged();
@@ -358,7 +370,7 @@ namespace VRMR.App.ViewModels
             bool nothing = _view.Scene.Profile == null && _view.Scene.Markers.Count == 0;
             if (take != null && !IsLive)
             {
-                var clip = _session.Clip;
+                var clip = _session.Clip ?? _session.PlayheadClip;
                 if (_session.Solve == SolveState.Failed)
                 {
                     ShowEmpty = true;
@@ -369,7 +381,7 @@ namespace VRMR.App.ViewModels
                 {
                     ShowEmpty = true;
                     EmptyTitle = _session.Opening ? "Opening…" : "Solving…";
-                    EmptyText = "The body appears here as soon as the solve is done.";
+                    EmptyText = "";
                 }
                 else if (clip.Profile == null)
                 {
@@ -434,7 +446,7 @@ namespace VRMR.App.ViewModels
         void OnFrameTick(TimeSpan elapsed)
         {
             if (!_active) return;
-            if (_clock.Playing && _session.Take != null && _session.Clip != null)
+            if (_clock.Playing && _session.Take != null)
             {
                 _clock.Advance(Math.Min(0.1, elapsed.TotalSeconds), _segments);
                 if (_host.FaceReplay.Enabled) _host.FaceReplay.Send(_session.Take, _clock.Playhead);
@@ -475,11 +487,6 @@ namespace VRMR.App.ViewModels
         {
             CanPlay = _session.Clip != null;
             Present();
-            if (_session.Clip?.Profile != null && !_framed && _view != null && !IsLive)
-            {
-                _view.FrameAll();
-                _framed = true;
-            }
         }
 
         void OnEditsChanged(string what)
@@ -513,7 +520,7 @@ namespace VRMR.App.ViewModels
         void OnPlayheadChanged()
         {
             UpdateTimeText();
-            if (!IsLive) Present();
+            if (!IsLive && _session.Clip != null) Present();
         }
 
         void OnRecordingChanged()
@@ -562,7 +569,7 @@ namespace VRMR.App.ViewModels
         [RelayCommand]
         void TogglePlay()
         {
-            if (_session.Take == null || _session.Clip == null) return;
+            if (_session.Take == null) return;
             if (_clock.Playing) _clock.Pause();
             else
             {

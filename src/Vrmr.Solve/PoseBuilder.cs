@@ -57,6 +57,9 @@ namespace VRMR
         public bool IncludeBinaryParams = false;
         public float Smoothing = 0.25f;
 
+        /// <summary>Optional callback between IK frames for cancellation or other work on the solve thread.</summary>
+        public Action SolveCheckpoint;
+
         /// <summary>
         ///     Solve this source range (take seconds {start, end}) instead of the take's edited timeline (trims and cuts
         ///     ignored): scenes solve whole takes.
@@ -194,6 +197,7 @@ namespace VRMR
             else if (src == "ik") universe = BakeIK(rec, prof, clip, opt, cal, avatarScale, progress);
             else BakeRest(prof, clip);
 
+            opt.SolveCheckpoint?.Invoke();
             if (src != "none") Smooth(clip, opt.Smoothing);
             // playspace jumps (reset / re-center) were undone for the solver and the smoothing: put them back, so the body
             // teleports in the same frame as the raw devices (and VRChat's avatar)
@@ -212,6 +216,7 @@ namespace VRMR
             if (src == "ik" && fsrc == "steamvr" && rec.HasFingers) ApplySteamVRFingers(rec, prof, clip);
             else if (src == "ik" && fsrc == "gestures" && opt.FingersFromGestures) ApplyGestureFingers(rec, prof, clip);
             if (src != "humr" && opt.EyesFromTracking) ApplyEyes(rec, prof, clip, opt);
+            opt.SolveCheckpoint?.Invoke();
             BakeFace(rec, clip, opt);
             BakeExtras(rec, clip, src);
             if (opt.ApplyPlacement && rec.Edits.HasPlacement) Place(clip, rec.Edits.Placement);
@@ -754,6 +759,7 @@ namespace VRMR
                 var ownFrames = new List<int>();
                 for (int f = fa; f <= fb; f++)
                 {
+                    if ((f & 7) == 0) opt.SolveCheckpoint?.Invoke();
                     double t = clip.SourceTime[f];
                     float step = f == fa ? dt : (float)Math.Max(1e-4, Math.Min(0.25, t - clip.SourceTime[f - 1]));
                     if (f > fa && t - clip.SourceTime[f - 1] > 0.25)

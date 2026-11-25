@@ -36,10 +36,18 @@ namespace VRMR.App.Tests
             using (host)
             {
                 var s = host.Session;
-                s.Show(SyntheticTake.Create());
+                var take = SyntheticTake.Create();
+                take.Edits.TrimIn = 0.5;
+                host.Clock.Playhead = take.Edits.TrimIn;
+                BakedClip preview = null;
+                s.PreviewClipReady += () => preview = s.PlayheadClip;
+                s.Show(take);
                 Assert.Equal(SolveState.Solving, s.Solve);
                 Assert.Null(s.Clip);
                 WaitSolved(ui, s);
+                Assert.NotNull(preview);
+                Assert.All(preview.SourceTime, time => Assert.Equal(0.5, time));
+                Assert.Null(s.PlayheadClip);
                 Assert.NotNull(s.Clip);
                 Assert.True(s.ClipIsCurrent);
                 Assert.True(s.Clip.Frames > 100);
@@ -105,6 +113,36 @@ namespace VRMR.App.Tests
                 Assert.Same(previous, timelineAtPreview);
                 Assert.NotSame(previous, session.Clip);
                 Assert.Null(session.PlayheadClip);
+            }
+        }
+
+        [Fact]
+        public void SolvingAPreviewDuringTheFullBakePreservesTheFullMotion()
+        {
+            var (data, _, host) = Start();
+            using (data)
+            using (host)
+            {
+                var take = SyntheticTake.Create(trackers: true);
+                var options = host.Session.MakeBakeOptions();
+                var expected = PoseBuilder.Bake(take, take.Profile, options);
+                var previewOptions = host.Session.MakeBakeOptions();
+                previewOptions.SourceRange = [1.25, 1.25];
+                BakedClip preview = null;
+                int checkpoints = 0;
+                options.SolveCheckpoint = () =>
+                {
+                    if (++checkpoints == 5)
+                        preview = PoseBuilder.Bake(take, take.Profile, previewOptions);
+                };
+
+                var actual = PoseBuilder.Bake(take, take.Profile, options);
+
+                Assert.NotNull(preview);
+                Assert.Equal(expected.SourceTime, actual.SourceTime);
+                Assert.Equal(expected.Hips, actual.Hips);
+                for (int frame = 0; frame < expected.Frames; frame++)
+                    Assert.Equal(expected.Rot[frame], actual.Rot[frame]);
             }
         }
 

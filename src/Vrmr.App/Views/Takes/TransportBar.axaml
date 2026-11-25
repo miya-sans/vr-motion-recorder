@@ -14,7 +14,7 @@
                     IsEnabled="{Binding CanPlay}" ToolTip.Tip="One frame back (←)" />
       <Panel>
         <c:IconButton x:Name="PlayButton" Classes="accent" Icon="{DynamicResource Icon.PlaySolid}" IconFilled="True"
-                      Command="{Binding TogglePlayCommand}" IsEnabled="{Binding CanPlay}"
+                      Command="{Binding TogglePlayCommand}" IsEnabled="{Binding HasTake}"
                       ToolTip.Tip="Play (Space)" MinWidth="40" IsVisible="{Binding !IsPlaying}" />
         <c:IconButton Classes="accent" Icon="{DynamicResource Icon.PauseSolid}" IconFilled="True"
                       Command="{Binding TogglePlayCommand}"

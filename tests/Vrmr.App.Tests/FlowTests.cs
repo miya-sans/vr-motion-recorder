@@ -27,7 +27,8 @@ namespace VRMR.App.Tests
     public class FlowTests
     {
         /// <summary>The window on a scratch data folder with one made-up take, opened and solved.</summary>
-        static async Task<Session> OpenTake(double seconds = 4, double width = 1400, bool trackers = false)
+        static async Task<Session> OpenTake(double seconds = 4, double width = 1400, bool trackers = false,
+            Action<Session> beforeOpen = null)
         {
             var s = new Session { Data = new ScratchData() };
             SyntheticTake.Save(s.Data.TakesDir, seconds, "Flow take", trackers);
@@ -37,6 +38,7 @@ namespace VRMR.App.Tests
             s.Window.Show();
             Assert.True(await HeadlessUi.WaitForAsync(() => s.Shell.Library.Items.Count == 1),
                 "the library did not list the take");
+            beforeOpen?.Invoke(s);
             s.Shell.Library.Selected = s.Shell.Library.Items[0];
             await WaitSolved(s);
             return s;
@@ -165,7 +167,26 @@ namespace VRMR.App.Tests
         {
             await HeadlessUi.RunAsync(async () =>
             {
-                using var s = await OpenTake();
+                bool previewShown = false, meshBeforeBakeProgress = false, sawBakeProgress = false;
+                using var s = await OpenTake(beforeOpen: opening =>
+                {
+                    var session = opening.Host.Session;
+                    var view = Assert.IsType<GpuView>(opening.Window.Viewport);
+                    session.PreviewClipReady += () =>
+                    {
+                        previewShown = session.Clip == null && session.Solve == SolveState.Solving &&
+                            view.Scene.Profile != null && !opening.Shell.Takes.ShowEmpty && !opening.Shell.Takes.CanPlay;
+                    };
+                    session.SolveChanged += () =>
+                    {
+                        if (sawBakeProgress || session.Solve != SolveState.Solving || session.SolveProgress <= 0)
+                            return;
+                        sawBakeProgress = true;
+                        meshBeforeBakeProgress = view.Frame.Actors.Count == 1 && view.Frame.Actors[0].Model != null;
+                    };
+                });
+                Assert.True(previewShown);
+                Assert.True(meshBeforeBakeProgress);
                 var takes = s.Shell.Takes;
                 Assert.True(takes.HasTake);
                 Assert.True(takes.CanPlay);
@@ -339,6 +360,59 @@ namespace VRMR.App.Tests
                 await HeadlessUi.SettleAsync(30);
                 Assert.Equal(before, inPanel.SelectedIndex);
                 Assert.True(scroller.Offset.Y > 0, "the panel did not scroll");
+            });
+        }
+
+        [Fact]
+        public async Task PlaybackAndSeekingWorkBeforeTheFirstSolveFinishes()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                var releaseBake = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                Task playback = null;
+                bool soughtFrameShown = false;
+                using var s = await OpenTake(beforeOpen: opening =>
+                {
+                    var session = opening.Host.Session;
+                    var pendingMesh = session.PendingPreviewMesh;
+                    session.PendingPreviewMesh = () => Task.WhenAll(pendingMesh?.Invoke() ?? Task.CompletedTask,
+                        releaseBake.Task);
+                    session.PreviewClipReady += () =>
+                    {
+                        if (playback == null) playback = PlayThenSeek(opening);
+                        else if (session.PlayheadClip.SourceTime[0] == 2)
+                            soughtFrameShown = session.Clip == null && session.Solve == SolveState.Solving;
+                    };
+                });
+
+                Assert.NotNull(playback);
+                await playback;
+                Assert.True(soughtFrameShown);
+                Assert.Equal(2, s.Host.Clock.Playhead);
+
+                async Task PlayThenSeek(Session opening)
+                {
+                    try
+                    {
+                        var play = VisualExtensions.GetVisualDescendants(opening.Window).OfType<IconButton>()
+                            .Single(button => button.Name == "PlayButton");
+                        Assert.True(play.IsEffectivelyEnabled);
+                        play.Command.Execute(null);
+                        Assert.True(opening.Shell.Takes.IsPlaying);
+                        for (int i = 0; i < 10; i++)
+                        {
+                            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                            await HeadlessUi.SettleAsync(20);
+                        }
+
+                        var clock = opening.Host.Clock;
+                        Assert.True(clock.Playhead > 0);
+                        Assert.Null(opening.Host.Session.Clip);
+                        clock.Seek(1, opening.Host.Session.Take.Duration);
+                        clock.Seek(2, opening.Host.Session.Take.Duration);
+                    }
+                    finally { releaseBake.TrySetResult(); }
+                }
             });
         }
 

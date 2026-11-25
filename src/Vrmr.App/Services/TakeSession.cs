@@ -43,6 +43,8 @@ namespace VRMR.App.Services
         int _editVersion, _solvedVersion = -1, _solveRun, _openRun;
         volatile float _progress;
         int _progressPosted;
+        bool _previewPlaying;
+        Action<double> _queuePlayhead;
         bool _restoring;
         CancellationTokenSource _previewCancel;
         CancellationTokenSource _solveCancel;
@@ -91,6 +93,7 @@ namespace VRMR.App.Services
 
         public EditHistory History { get; }
 
+        internal Func<Task> PendingPreviewMesh { get; set; }
         internal BakedClip PlayheadClip { get; private set; }
         internal Func<double> PreviewSourceTime { get; set; }
 
@@ -448,7 +451,16 @@ namespace VRMR.App.Services
         {
             _solveCancel?.Cancel();
             _solveCancel = null;
+            _queuePlayhead = null;
             PlayheadClip = null;
+        }
+
+        internal void RequestPlayheadPreview(double time, bool playing)
+        {
+            _previewPlaying = playing;
+            var rec = Take;
+            if (rec == null || _queuePlayhead == null) return;
+            _queuePlayhead(playing && Clip != null ? double.NaN : Math.Clamp(time, 0, rec.Duration));
         }
 
         void StartSolve()
@@ -460,37 +472,63 @@ namespace VRMR.App.Services
             var token = cancel.Token;
             int run = ++_solveRun, version = _editVersion;
             var options = MakeBakeOptions();
-            bool previewIk = Clip != null && (Clip.BodySource == "ik" || rec.Edits.BodySource == "ik" ||
+            bool previewIk = !_previewPlaying && Clip != null && (Clip.BodySource == "ik" || rec.Edits.BodySource == "ik" ||
                 rec.Edits.BodySource == "auto" && (rec.HasOpenVR || rec.HasVrcPoses));
-            double? playhead = previewIk ? PreviewSourceTime?.Invoke() : null;
+            bool firstSolve = Clip == null;
+            double? playhead = firstSolve
+                ? PreviewSourceTime?.Invoke() ?? rec.Edits.TrimIn
+                : previewIk ? PreviewSourceTime?.Invoke() : null;
             if (playhead.HasValue) playhead = Math.Clamp(playhead.Value, 0, rec.Duration);
+            double pendingTime = double.NaN;
+            _queuePlayhead = time => Interlocked.Exchange(ref pendingTime, time);
+            var previewOptions = MakeBakeOptions();
+            previewOptions.SourceRange = new double[2];
             Solve = SolveState.Solving;
             _progress = 0;
             SolveError = null;
             SolveChanged?.Invoke();
-            var thread = new Thread(() =>
+            StartWorker(playhead.HasValue);
+
+            void StartWorker(bool preview, AvatarProfile target = null)
+            {
+                var thread = new Thread(() => Bake(preview, target))
+                {
+                    IsBackground = true,
+                    Name = "take solve",
+                    Priority = ThreadPriority.BelowNormal
+                };
+                thread.Start();
+            }
+
+            void Bake(bool preview, AvatarProfile target)
             {
                 BakedClip clip = null;
                 string error = null;
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    var target = _avatars.TargetFor(rec, out _);
+                    target ??= _avatars.TargetFor(rec, out _);
                     lock (TakeCache.SolveLock)
                     {
                         lock (rec.Sync)
                         {
                             token.ThrowIfCancellationRequested();
                             sw.Restart();
-                            if (playhead is double time)
-                                BakePlayhead(rec, target, options, time, version, token);
-
-                            token.ThrowIfCancellationRequested();
-                            clip = PoseBuilder.Bake(rec, target, options, f =>
+                            if (preview)
                             {
-                                token.ThrowIfCancellationRequested();
-                                ReportProgress(f, run);
-                            });
+                                double time = Interlocked.Exchange(ref pendingTime, double.NaN);
+                                clip = BakePreview(target, double.IsNaN(time) ? playhead.Value : time);
+                            }
+                            else
+                            {
+                                options.SolveCheckpoint = SolvePendingFrame;
+                                SolvePendingFrame();
+                                clip = PoseBuilder.Bake(rec, target, options, f =>
+                                {
+                                    SolvePendingFrame();
+                                    ReportProgress(f, run);
+                                });
+                            }
                         }
                     }
                 }
@@ -498,39 +536,72 @@ namespace VRMR.App.Services
                 catch (Exception ex)
                 {
                     error = ex.Message;
-                    AppLog.Error("Solve: " + ex);
+                    if (preview) AppLog.Warn("Playhead solve: " + ex.Message);
+                    else AppLog.Error("Solve: " + ex);
                 }
 
                 long ms = sw.ElapsedMilliseconds;
                 _ui.Post(() =>
                 {
-                    if (!token.IsCancellationRequested) FinishSolve(rec, run, version, clip, error, ms);
-                });
-            }) { IsBackground = true, Name = "take solve", Priority = ThreadPriority.BelowNormal };
-            thread.Start();
-        }
+                    if (token.IsCancellationRequested) return;
+                    if (!preview)
+                    {
+                        FinishSolve(rec, run, version, clip, error, ms);
+                        return;
+                    }
 
-        void BakePlayhead(Recording rec, AvatarProfile target, BakeOptions options, double time, int version,
-            CancellationToken token)
-        {
-            options.SourceRange = [time, time];
-            try
-            {
-                var preview = PoseBuilder.Bake(rec, target, options, _ => token.ThrowIfCancellationRequested());
-                _ui.Post(() =>
-                {
-                    if (token.IsCancellationRequested || version != _editVersion) return;
-                    PlayheadClip = preview;
-                    PreviewClipReady?.Invoke();
+                    if (clip != null && version == _editVersion)
+                    {
+                        PlayheadClip = clip;
+                        PreviewClipReady?.Invoke();
+                    }
+
+                    var mesh = firstSolve && PlayheadClip != null ? PendingPreviewMesh?.Invoke() : null;
+                    _ = StartFullBakeAsync(mesh, clip?.Profile ?? target);
                 });
+
+                void SolvePendingFrame()
+                {
+                    token.ThrowIfCancellationRequested();
+                    double time = Interlocked.Exchange(ref pendingTime, double.NaN);
+                    if (double.IsNaN(time)) return;
+
+                    try
+                    {
+                        var frame = BakePreview(target, time);
+                        _ui.Post(() =>
+                        {
+                            if (token.IsCancellationRequested || version != _editVersion ||
+                                Solve != SolveState.Solving) return;
+                            if (_previewPlaying && Clip != null) return;
+                            if (!_previewPlaying && PreviewSourceTime?.Invoke() is double current &&
+                                Math.Abs(current - time) >= 0.5 / frame.Fps) return;
+                            PlayheadClip = frame;
+                            PreviewClipReady?.Invoke();
+                        });
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        AppLog.Warn("Playhead solve: " + ex.Message);
+                    }
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+
+            BakedClip BakePreview(AvatarProfile target, double time)
             {
-                AppLog.Warn("Playhead solve: " + ex.Message);
+                previewOptions.SourceRange[0] = time;
+                previewOptions.SourceRange[1] = time;
+                return PoseBuilder.Bake(rec, target, previewOptions, _ => token.ThrowIfCancellationRequested());
             }
-            finally
+
+            async Task StartFullBakeAsync(Task mesh, AvatarProfile target)
             {
-                options.SourceRange = null;
+                try
+                {
+                    if (mesh != null) await mesh.WaitAsync(token).ConfigureAwait(false);
+                    if (!token.IsCancellationRequested) StartWorker(false, target);
+                }
+                catch (OperationCanceledException) { }
             }
         }
 
@@ -597,6 +668,7 @@ namespace VRMR.App.Services
         void FinishSolve(Recording rec, int run, int version, BakedClip clip, string error, long ms)
         {
             if (run != _solveRun || Take != rec) return; // a newer solve or another take took over
+            _queuePlayhead = null;
             PlayheadClip = null;
             SolveMilliseconds = ms;
             if (clip != null)

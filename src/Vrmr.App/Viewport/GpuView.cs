@@ -122,6 +122,17 @@ namespace VRMR.App.Viewport
         /// <summary>Raised on the UI thread when an avatar's mesh finished loading (the mesh list in the settings refreshes).</summary>
         public event Action MeshLoaded;
 
+        internal Task PendingSceneMesh
+        {
+            get
+            {
+                if (!ShowMesh || Scene.Profile == null) return null;
+                foreach (var entry in _meshes)
+                    if (entry.Profile == Scene.Profile) return entry.Ready.Task;
+                return null;
+            }
+        }
+
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
             base.OnAttachedToVisualTree(e);
@@ -180,7 +191,7 @@ namespace VRMR.App.Viewport
 
             if (entry == null)
             {
-                entry = new MeshEntry { Profile = profile, Loading = true };
+                entry = new MeshEntry { Profile = profile };
                 _meshes.Add(entry);
                 var loading = entry;
                 Task.Run(() =>
@@ -199,15 +210,18 @@ namespace VRMR.App.Viewport
                     Dispatcher.UIThread.Post(() =>
                     {
                         loading.Model = model;
-                        loading.Loading = false;
-                        if (!_meshes.Contains(loading))
+                        try
                         {
-                            model?.Dispose();
-                            return;
-                        }
+                            if (!_meshes.Contains(loading))
+                            {
+                                model?.Dispose();
+                                return;
+                            }
 
-                        if (Scene.Profile == profile) SceneChanged();
-                        MeshLoaded?.Invoke();
+                            if (Scene.Profile == profile) SceneChanged();
+                            MeshLoaded?.Invoke();
+                        }
+                        finally { loading.Ready.TrySetResult(); }
                     });
                 });
             }
@@ -298,7 +312,7 @@ namespace VRMR.App.Viewport
 
         sealed class MeshEntry
         {
-            public bool Loading;
+            public readonly TaskCompletionSource Ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
             public MeshModel Model;
             public AvatarProfile Profile;
             public long Used;

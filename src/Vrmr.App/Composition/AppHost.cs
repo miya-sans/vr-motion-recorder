@@ -56,6 +56,8 @@ namespace VRMR.App.Composition
             Session = new TakeSession(SettingsStore, Avatars, ui, Status);
             Clock = new PlaybackClock();
             Session.PreviewSourceTime = () => Clock.Playhead;
+            Clock.PlayheadChanged += QueuePlayheadPreview;
+            Clock.StateChanged += QueuePlayheadPreview;
             TakePresenter = new TakePresenter(Session, Clock, Rooms);
             LivePresenter = new LivePresenter(Live) { Ik = new LiveIkPreview(Recorder.Calibrations, SettingsStore) };
             Placement = new PlacementService(Session, TakePresenter, Clock);
@@ -73,6 +75,11 @@ namespace VRMR.App.Composition
             AvatarService = new AvatarService(Avatars, SettingsStore, Live, Status, ui, Meshes);
             Environment = new EnvironmentService(paths, SettingsStore, ui);
             if (!CaptureOn) hotkey?.Dispose();
+        }
+
+        void QueuePlayheadPreview()
+        {
+            Session.RequestPlayheadPreview(Clock.Playhead, Clock.Playing);
         }
 
         public AppOptions Options { get; }
