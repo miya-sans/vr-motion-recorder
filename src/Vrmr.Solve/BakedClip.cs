@@ -66,6 +66,9 @@ namespace VRMR
         /// <summary>Scene editor: each device's influence on the solve per frame (input tracks), or null (all 1).</summary>
         public Dictionary<string, float[]> TrackerInfluence;
 
+        /// <summary>The uploaded-size multiplier before any manual override or in-game scaling.</summary>
+        public float UploadedAvatarScale = 1f;
+
         public List<string> Warnings = new();
         int[] _humanOfNode;
 

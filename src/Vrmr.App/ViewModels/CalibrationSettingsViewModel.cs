@@ -26,6 +26,7 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] string _advancedSummary = "";
         [ObservableProperty] double _avatarScale;
         [ObservableProperty] bool _avatarScaleChanged;
+        [ObservableProperty] string _avatarScaleReadout = "";
         [ObservableProperty] bool _followAvatarScale;
         [ObservableProperty] bool _handRotChanged;
         [ObservableProperty] double _handRotX;
@@ -88,6 +89,7 @@ namespace VRMR.App.ViewModels
             try
             {
                 var c = _defaultsOnly ? _calibration.Defaults : _calibration.Shown;
+                var clip = _defaultsOnly ? null : _clip();
                 var inv = CultureInfo.InvariantCulture;
                 HeightModeIndex = (int)c.Height;
                 HeightValueEditable = c.Height != CalHeightMode.Measure && c.Height != CalHeightMode.VRChat;
@@ -109,7 +111,7 @@ namespace VRMR.App.ViewModels
                                 : "The headset's height at the calibration moment, with any head tilt removed.";
                 if (c.Height == CalHeightMode.Measure)
                 {
-                    var res = _defaultsOnly ? null : _clip()?.Calibration;
+                    var res = clip?.Calibration;
                     HeightReadout = res != null ? res.RealEyeHeight.ToString("0.000", inv) + " m eye height" :
                         _defaultsOnly || !RecordingOptionsEnabled ? "measured at calibration" : "after the solve";
                 }
@@ -144,6 +146,7 @@ namespace VRMR.App.ViewModels
                 ProceduralFeet = c.ProceduralFeet;
                 FollowAvatarScale = c.FollowAvatarScale;
                 AvatarScale = c.AvatarScale;
+                AvatarScaleReadout = "At upload: " + (clip?.UploadedAvatarScale.ToString("0.000", inv) ?? "—");
                 HandRotX = c.HandRotFix.x;
                 HandRotY = c.HandRotFix.y;
                 HandRotZ = c.HandRotFix.z;

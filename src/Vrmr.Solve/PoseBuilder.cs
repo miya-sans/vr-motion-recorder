@@ -171,6 +171,7 @@ namespace VRMR
                 }
             }
 
+            clip.UploadedAvatarScale = avatarScale;
             if (cal.AvatarScale > 0.01f) avatarScale = cal.AvatarScale;
             clip.Scale = avatarScale * prof.Scale;
             if (vscale.Changes || vscale.AnyUncertain)

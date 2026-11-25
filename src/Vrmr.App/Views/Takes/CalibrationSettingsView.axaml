@@ -60,8 +60,12 @@
         <c:FieldRow Label="Avatar scale" CanReset="{Binding AvatarScaleChanged}"
                     ResetCommand="{Binding ResetAvatarScaleCommand}"
                     ToolTip.Tip="0 keeps the avatar's own size as uploaded. Any other value forces that size.">
-          <c:NumberField Value="{Binding AvatarScale}" Minimum="0" Maximum="20" Step="0.01" Decimals="3"
-                         HorizontalAlignment="Left" Width="110" />
+          <Grid ColumnDefinitions="Auto,*">
+            <c:NumberField Value="{Binding AvatarScale}" Minimum="0" Maximum="20" Step="0.01" Decimals="3"
+                           Width="110" />
+            <TextBlock Grid.Column="1" Text="{Binding AvatarScaleReadout}" Classes="secondary"
+                       Margin="{DynamicResource GapLeft}" VerticalAlignment="Center" />
+          </Grid>
         </c:FieldRow>
         <c:FieldRow Label="Hand rotation" CanReset="{Binding HandRotChanged}"
                     ResetCommand="{Binding ResetHandRotationCommand}"

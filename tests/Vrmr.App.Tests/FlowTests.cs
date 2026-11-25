@@ -599,6 +599,49 @@ namespace VRMR.App.Tests
         }
 
         [Fact]
+        public async Task AvatarScaleShowsTheUploadedMultiplierBesideTheNumericOverride()
+        {
+            await HeadlessUi.RunAsync(async () =>
+            {
+                using var s = await OpenTake();
+                var settings = s.Shell.Takes.Inspector.Settings;
+                Assert.Equal("At upload: 1.000", settings.AvatarScaleReadout);
+                Assert.Equal("At upload: —", s.Shell.CalibrationDefaults.AvatarScaleReadout);
+
+                var take = SyntheticTake.Create();
+                take.Profile.LibraryId = "";
+                take.AvatarEyeHeight = take.Profile.EyeHeight * 1.25f;
+                s.Host.Session.Show(take);
+                Assert.Equal("At upload: —", settings.AvatarScaleReadout);
+                await WaitSolved(s);
+                Assert.Equal("At upload: 1.250", settings.AvatarScaleReadout);
+
+                var view = s.Window.FindControl<UserControl>("TakesInspectorView").FindControl<UserControl>("TakeView");
+                var sections = VisualExtensions.GetVisualDescendants(view).OfType<Section>();
+                Assert.Single(sections, section => Equals(section.Header, "Calibration")).IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+                Assert.Single(sections, section => section.StateKey == "take.cal.advanced").IsExpanded = true;
+                await HeadlessUi.SettleAsync();
+                var controls = VisualExtensions.GetVisualDescendants(view);
+                var field = Assert.Single(controls.OfType<NumberField>(), control => control.Maximum == 20);
+                var label = Assert.Single(controls.OfType<TextBlock>(), control => control.Text == "At upload: 1.250");
+                Assert.True(label.IsEffectivelyVisible);
+                Assert.Equal("0.000", field.Text);
+
+                field.SetCurrentValue(NumberField.ValueProperty, 1.5);
+                settings.FollowAvatarScale = !settings.FollowAvatarScale;
+                await WaitSolved(s);
+                Assert.Equal("1.500", field.Text);
+                Assert.Equal("At upload: 1.250", label.Text);
+
+                settings.ResetAvatarScaleCommand.Execute(null);
+                await WaitSolved(s);
+                Assert.Equal("0.000", field.Text);
+                Assert.Equal("At upload: 1.250", label.Text);
+            });
+        }
+
+        [Fact]
         public async Task TakeInspectorKeepsLiveCalibrationAvailableAfterClosingTheTake()
         {
             await HeadlessUi.RunAsync(async () =>
