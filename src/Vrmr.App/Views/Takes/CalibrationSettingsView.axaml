@@ -47,8 +47,31 @@
                   ToolTip.Tip="Turns the head upright before the trackers are bound. A calibration is often confirmed while looking down at the menu." />
         <CheckBox Content="Hang from the headset, like VRChat" IsChecked="{Binding HangFromHeadset}"
                   ToolTip.Tip="VRChat binds the trackers with the avatar hanging from your headset, so its feet can end up a little below the floor with straight legs. Off: the avatar is stood on the floor at calibration and the knees bend instead." />
-        <CheckBox Content="VRChat's head and hand offsets" IsChecked="{Binding VrcHands}"
-                  ToolTip.Tip="Puts the hand bone where VRChat puts it relative to an Index controller, and the head bone 4 cm behind the headset. Off: SteamVR's own wrist pose and the avatar's eyes at the headset." />
+        <c:FieldRow Label="Head offset" CanReset="{Binding HeadOffsetChanged}" ResetCommand="{Binding ResetHeadOffsetCommand}"
+                    ToolTip.Tip="Headset-local eye target shift, in reference avatar centimeters.">
+          <Grid ColumnDefinitions="*,4,*,4,*">
+            <c:NumberField Grid.Column="2" Value="{Binding HeadOffsetY}" Step="0.1" Decimals="2" Unit="cm"
+                           ShowSign="True"
+                           ToolTip.Tip="Y · Up" />
+            <c:NumberField Grid.Column="4" Value="{Binding HeadOffsetZ}" Step="0.1" Decimals="2" Unit="cm"
+                           ShowSign="True"
+                           ToolTip.Tip="Z · Forward" />
+          </Grid>
+        </c:FieldRow>
+        <c:FieldRow Label="Hand offset" CanReset="{Binding HandOffsetChanged}" ResetCommand="{Binding ResetHandOffsetCommand}"
+                    ToolTip.Tip="{Binding HandOffsetTip}">
+          <Grid ColumnDefinitions="*,4,*,4,*">
+            <c:NumberField Value="{Binding HandOffsetX}" Step="0.1" Decimals="2" Unit="cm"
+                           ShowSign="True"
+                           ToolTip.Tip="X · Right" />
+            <c:NumberField Grid.Column="2" Value="{Binding HandOffsetY}" Step="0.1" Decimals="2" Unit="cm"
+                           ShowSign="True"
+                           ToolTip.Tip="Y · Up" />
+            <c:NumberField Grid.Column="4" Value="{Binding HandOffsetZ}" Step="0.1" Decimals="2" Unit="cm"
+                           ShowSign="True"
+                           ToolTip.Tip="Z · Forward" />
+          </Grid>
+        </c:FieldRow>
         <CheckBox Content="Shoulder movement" IsChecked="{Binding ShoulderTracking}"
                   ToolTip.Tip="Lets the shoulders shrug and reach with the arms." />
         <CheckBox Content="Steps without foot trackers" IsChecked="{Binding ProceduralFeet}"
@@ -65,18 +88,6 @@
                            Width="110" />
             <TextBlock Grid.Column="1" Text="{Binding AvatarScaleReadout}" Classes="secondary"
                        Margin="{DynamicResource GapLeft}" VerticalAlignment="Center" />
-          </Grid>
-        </c:FieldRow>
-        <c:FieldRow Label="Hand rotation" CanReset="{Binding HandRotChanged}"
-                    ResetCommand="{Binding ResetHandRotationCommand}"
-                    ToolTip.Tip="Corrects the hand angle for this take, X / Y / Z in degrees (mirrored for the right hand).">
-          <Grid ColumnDefinitions="*,4,*,4,*">
-            <c:NumberField Value="{Binding HandRotX}" Minimum="-60" Maximum="60" Step="1" Decimals="0" Unit="°"
-                           ShowSign="True" ToolTip.Tip="X" />
-            <c:NumberField Grid.Column="2" Value="{Binding HandRotY}" Minimum="-60" Maximum="60" Step="1" Decimals="0"
-                           Unit="°" ShowSign="True" ToolTip.Tip="Y" />
-            <c:NumberField Grid.Column="4" Value="{Binding HandRotZ}" Minimum="-60" Maximum="60" Step="1" Decimals="0"
-                           Unit="°" ShowSign="True" ToolTip.Tip="Z" />
           </Grid>
         </c:FieldRow>
       </StackPanel>

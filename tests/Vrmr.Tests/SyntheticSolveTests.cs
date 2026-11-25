@@ -95,6 +95,48 @@ namespace VRMR.Tests
             Assert.True(Bone(c, t, HumanBones.LeftHand).y < Bone(c, t, HumanBones.Head).y, "left hand stays down");
         }
 
+        [Theory]
+        [InlineData("index")]
+        [InlineData("vive_controller")]
+        [InlineData("generic")]
+        public void ManualOffsetsMoveTheHeadAndHandsInDeviceSpace(string controllerType)
+        {
+            BodySolverSetup.Register();
+            var take = SyntheticTake.Create();
+            foreach (var device in take.Devices)
+                if (device.DeviceClass == 2) device.Info["ctype"] = controllerType;
+            var profile = Mannequin.Profile();
+            var settings = new CalibrationSettings
+            {
+                Height = CalHeightMode.Scale,
+                HeightValue = 1,
+                FollowVrcSpine = false,
+                FollowVrcMeasure = false,
+                UseHips = false,
+                UseFeet = false,
+                HeadOffset = (0, 0),
+                HandOffset = new Vec3(0.12f, 0, 0)
+            };
+            var before = PoseBuilder.Bake(take, profile, new BakeOptions { Fps = 60, Calibration = settings });
+            settings.HeadOffset = (0.03f, 0.02f);
+            settings.HandOffset = new Vec3(0.17f, 0.025f, 0.03f);
+            var after = PoseBuilder.Bake(take, profile, new BakeOptions { Fps = 60, Calibration = settings });
+            float scale = profile.EyeHeight / FbikAdapter.VrcHandRefEye;
+
+            var headShift = new Vec3(0, 0.03f, 0.02f) * scale;
+            AssertShift(after.Calibration.Pose.Root.pos - before.Calibration.Pose.Root.pos, headShift);
+            AssertShift(Bone(after, 1, HumanBones.Head) - Bone(before, 1, HumanBones.Head), headShift);
+            var leftShift = new Vec3(0.05f, 0.025f, 0.03f) * scale;
+            var rightShift = new Vec3(-0.05f, 0.025f, 0.03f) * scale;
+            AssertShift(Bone(after, 1, HumanBones.LeftHand) - Bone(before, 1, HumanBones.LeftHand), leftShift);
+            AssertShift(Bone(after, 1, HumanBones.RightHand) - Bone(before, 1, HumanBones.RightHand), rightShift);
+
+            static void AssertShift(Vec3 actual, Vec3 expected)
+            {
+                Assert.True((actual - expected).Length < 0.002f, $"Expected {expected}, got {actual}");
+            }
+        }
+
         /// <summary>
         ///     Bone positions recorded from this solve when the test was written. They pin the result: a change to the
         ///     solver, the mannequin or the calibration that moves a bone by more than a millimetre fails here and has to be

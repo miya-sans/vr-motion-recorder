@@ -28,11 +28,15 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _avatarScaleChanged;
         [ObservableProperty] string _avatarScaleReadout = "";
         [ObservableProperty] bool _followAvatarScale;
-        [ObservableProperty] bool _handRotChanged;
-        [ObservableProperty] double _handRotX;
-        [ObservableProperty] double _handRotY;
-        [ObservableProperty] double _handRotZ;
+        [ObservableProperty] bool _handOffsetChanged;
+        [ObservableProperty] string _handOffsetTip = "";
+        [ObservableProperty] double _handOffsetX;
+        [ObservableProperty] double _handOffsetY;
+        [ObservableProperty] double _handOffsetZ;
         [ObservableProperty] bool _hangFromHeadset;
+        [ObservableProperty] bool _headOffsetChanged;
+        [ObservableProperty] double _headOffsetY;
+        [ObservableProperty] double _headOffsetZ;
 
         [ObservableProperty] int _heightModeIndex;
 
@@ -60,7 +64,6 @@ namespace VRMR.App.ViewModels
         [ObservableProperty] bool _useFeet;
         [ObservableProperty] bool _useHips;
         [ObservableProperty] bool _useKnees;
-        [ObservableProperty] bool _vrcHands;
 
         /// <param name="defaultsOnly">Edit the defaults whatever take is open (the Settings page).</param>
         public CalibrationSettingsViewModel(CalibrationService calibration, Func<BakedClip> clip,
@@ -141,28 +144,35 @@ namespace VRMR.App.ViewModels
                 KeepFeetPlanted = c.KeepFeetPlanted;
                 UprightCalibration = c.UprightCalibration;
                 HangFromHeadset = c.HangFromHeadset;
-                VrcHands = c.VrcHands;
                 ShoulderTracking = c.ShoulderTracking;
                 ProceduralFeet = c.ProceduralFeet;
                 FollowAvatarScale = c.FollowAvatarScale;
                 AvatarScale = c.AvatarScale;
                 AvatarScaleReadout = "At upload: " + (clip?.UploadedAvatarScale.ToString("0.000", inv) ?? "—");
-                HandRotX = c.HandRotFix.x;
-                HandRotY = c.HandRotFix.y;
-                HandRotZ = c.HandRotFix.z;
-                HandRotChanged = c.HandRotFix.SqrLength > 1e-6f;
+                var (headY, headZ) = c.HeadOffset ?? TrackingRig.VrcHeadOffset;
+                var hand = c.HandOffset ?? FbikAdapter.VrcIndexHandPosLeft;
+                HeadOffsetY = OffsetCentimeters(headY);
+                HeadOffsetZ = OffsetCentimeters(headZ);
+                HandOffsetX = OffsetCentimeters(hand.x);
+                HandOffsetY = OffsetCentimeters(hand.y);
+                HandOffsetZ = OffsetCentimeters(hand.z);
+                HeadOffsetChanged = c.HeadOffset.HasValue;
+                HandOffsetChanged = c.HandOffset.HasValue || c.UseLegacyIndexHandOffset;
+                HandOffsetTip = "Left hand position relative to the controller, in reference avatar centimeters. " +
+                                "X is mirrored for the right hand. VRChat's values are for Index controllers." +
+                                (c.UseLegacyIndexHandOffset ? " Editing or resetting applies the displayed values to Index controllers." : "");
                 AvatarScaleChanged = c.AvatarScale > 1e-4f;
                 var d = new CalibrationSettings();
                 int changed = 0;
                 if (c.KeepFeetPlanted != d.KeepFeetPlanted) changed++;
                 if (c.UprightCalibration != d.UprightCalibration) changed++;
                 if (c.HangFromHeadset != d.HangFromHeadset) changed++;
-                if (c.VrcHands != d.VrcHands) changed++;
                 if (c.ShoulderTracking != d.ShoulderTracking) changed++;
                 if (c.ProceduralFeet != d.ProceduralFeet) changed++;
                 if (c.FollowAvatarScale != d.FollowAvatarScale) changed++;
                 if (AvatarScaleChanged) changed++;
-                if (HandRotChanged) changed++;
+                if (HeadOffsetChanged) changed++;
+                if (HandOffsetChanged) changed++;
                 AdvancedSummary = changed == 0 ? "" : changed + " changed";
             }
             finally { _syncing = false; }
@@ -251,11 +261,6 @@ namespace VRMR.App.ViewModels
             Edit(c => c.HangFromHeadset = value);
         }
 
-        partial void OnVrcHandsChanged(bool value)
-        {
-            Edit(c => c.VrcHands = value);
-        }
-
         partial void OnShoulderTrackingChanged(bool value)
         {
             Edit(c => c.ShoulderTracking = value);
@@ -276,25 +281,72 @@ namespace VRMR.App.ViewModels
             Edit(c => c.AvatarScale = (float)Math.Max(0, value));
         }
 
-        partial void OnHandRotXChanged(double value)
+        static double OffsetCentimeters(float metres)
         {
-            Edit(c => c.HandRotFix = new Vec3((float)value, c.HandRotFix.y, c.HandRotFix.z));
+            return Math.Round(metres * 100d, 2);
         }
 
-        partial void OnHandRotYChanged(double value)
+        void EditOffset(double value, Action<CalibrationSettings, float> change)
         {
-            Edit(c => c.HandRotFix = new Vec3(c.HandRotFix.x, (float)value, c.HandRotFix.z));
+            if (_syncing) return;
+            float metres = (float)(value / 100);
+            if (!float.IsFinite(metres))
+            {
+                Sync();
+                return;
+            }
+
+            Edit(c => change(c, metres));
         }
 
-        partial void OnHandRotZChanged(double value)
+        partial void OnHeadOffsetYChanged(double value)
         {
-            Edit(c => c.HandRotFix = new Vec3(c.HandRotFix.x, c.HandRotFix.y, (float)value));
+            EditOffset(value, static (c, m) => c.HeadOffset = (m, (c.HeadOffset ?? TrackingRig.VrcHeadOffset).Z));
+        }
+
+        partial void OnHeadOffsetZChanged(double value)
+        {
+            EditOffset(value, static (c, m) => c.HeadOffset = ((c.HeadOffset ?? TrackingRig.VrcHeadOffset).Y, m));
+        }
+
+        void EditHandOffset(double value, Func<Vec3, float, Vec3> change)
+        {
+            EditOffset(value, (c, m) =>
+            {
+                c.HandOffset = change(c.HandOffset ?? FbikAdapter.VrcIndexHandPosLeft, m);
+                c.UseLegacyIndexHandOffset = false;
+            });
+        }
+
+        partial void OnHandOffsetXChanged(double value)
+        {
+            EditHandOffset(value, static (offset, m) => offset with { x = m });
+        }
+
+        partial void OnHandOffsetYChanged(double value)
+        {
+            EditHandOffset(value, static (offset, m) => offset with { y = m });
+        }
+
+        partial void OnHandOffsetZChanged(double value)
+        {
+            EditHandOffset(value, static (offset, m) => offset with { z = m });
         }
 
         [RelayCommand]
-        void ResetHandRotation()
+        void ResetHandOffset()
         {
-            Edit(c => c.HandRotFix = Vec3.Zero);
+            Edit(c =>
+            {
+                c.HandOffset = null;
+                c.UseLegacyIndexHandOffset = false;
+            });
+        }
+
+        [RelayCommand]
+        void ResetHeadOffset()
+        {
+            Edit(c => c.HeadOffset = null);
         }
 
         [RelayCommand]

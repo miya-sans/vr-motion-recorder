@@ -40,6 +40,9 @@ namespace VRMR
         /// </summary>
         public static float VrcEyeBehindHeadset = 0.0194f;
 
+        /// <summary>VRChat's headset-local eye target shift in reference avatar metres.</summary>
+        public static (float Y, float Z) VrcHeadOffset => (0, -VrcEyeBehindHeadset);
+
         // ------------------------------------------------------------------ trackers
 
         static readonly Dictionary<string, BodyRole> SteamRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -306,12 +309,14 @@ namespace VRMR
             Notes.Add("Scale: " + ScaleText);
             if (_ctrlL != null || _ctrlR != null)
             {
-                bool vrcHands = _cal.VrcHands && (_kindL == HandSourceKind.Index || _kindR == HandSourceKind.Index);
-                Notes.Add(vrcHands
-                    ? "Hands: VRChat's hand position on Index controllers (measured)"
-                    : "Controller -> wrist: " + (WristSource[0] == WristSource[1]
-                        ? WristSource[0]
-                        : $"left {WristSource[0]}, right {WristSource[1]}"));
+                bool vrcHands = !_cal.UseLegacyIndexHandOffset && (_kindL == HandSourceKind.Index || _kindR == HandSourceKind.Index);
+                Notes.Add(_cal.HandOffset.HasValue
+                    ? "Hands: manual controller offsets"
+                    : vrcHands
+                        ? "Hands: VRChat's hand position on Index controllers (measured)"
+                        : "Controller -> wrist: " + (WristSource[0] == WristSource[1]
+                            ? WristSource[0]
+                            : $"left {WristSource[0]}, right {WristSource[1]}"));
             }
         }
 
@@ -523,9 +528,10 @@ namespace VRMR
 
         Pose SolverEye(Pose hmd)
         {
-            if (!_cal.VrcHands || VrcEyeBehindHeadset == 0) return hmd;
+            var offset = _cal.HeadOffset ?? VrcHeadOffset;
+            if (offset == default) return hmd;
             float k = AvatarEyeHeight / FbikAdapter.VrcHandRefEye;
-            return new Pose(hmd.pos + hmd.rot * new Vec3(0, 0, -VrcEyeBehindHeadset * k), hmd.rot);
+            return new Pose(hmd.pos + hmd.rot * new Vec3(0, offset.Y * k, offset.Z * k), hmd.rot);
         }
 
         float AvatarWristSpan()

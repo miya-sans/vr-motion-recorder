@@ -4,6 +4,32 @@ namespace VRMR.Tests
 {
     public class CalibrationSettingsTests
     {
+        [Fact]
+        public void OlderCalibrationKeepsItsHandRotationAndUsesLegacyOffsets()
+        {
+            var settings = CalibrationSettings.FromJson(
+                Json.ParseObject("{\"vrcHands\":false,\"handRotFix\":[1,2,3]}"));
+            Assert.True(settings.UseLegacyIndexHandOffset);
+            Assert.Equal((0f, 0f), settings.HeadOffset);
+            Assert.Null(settings.HandOffset);
+            Assert.Equal(new Vec3(1, 2, 3), settings.HandRotFix);
+            Assert.True(settings.SameAs(CalibrationSettings.FromJson(settings.ToJson())));
+        }
+
+        [Theory]
+        [InlineData("\"vrcHands\":true,", false)]
+        [InlineData("\"vrcHands\":false,", true)]
+        [InlineData("", true)]
+        public void ReadsOnlyOffsetsThatWereInUse(string toggle, bool hasOffsets)
+        {
+            var settings = CalibrationSettings.FromJson(Json.ParseObject(
+                "{" + toggle + "\"headOffset\":{\"y\":0.01,\"z\":-0.02},\"handOffset\":[1,2,3]}"));
+            Assert.Equal(hasOffsets ? (0.01f, -0.02f) : ((float, float)?)null, settings.HeadOffset);
+            Assert.Equal(hasOffsets ? new Vec3(1, 2, 3) : (Vec3?)null, settings.HandOffset);
+            Assert.False(settings.UseLegacyIndexHandOffset);
+            Assert.True(settings.SameAs(CalibrationSettings.FromJson(settings.ToJson())));
+        }
+
         [Theory]
         [InlineData("{}", true)]
         [InlineData("{\"followVrc\":true}", true)]

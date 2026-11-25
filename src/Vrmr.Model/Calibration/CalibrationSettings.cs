@@ -45,8 +45,8 @@ namespace VRMR
     }
 
     /// <summary>
-    ///     Full-body calibration settings (VRChat-style). The headset and controllers are never calibrated: they map to
-    ///     head and hands through fixed per-device offsets. Body trackers are bound to their bones at the calibration
+    ///     Full-body calibration settings (VRChat-style). The headset and controllers map to head and hands through
+    ///     device-local offsets. Body trackers are bound to their bones at the calibration
     ///     moment, with the avatar standing in its T-pose on the floor under the headset.
     ///     Stored per clip (EditList.Calib, null = global defaults), as global defaults (Settings) and as named presets.
     /// </summary>
@@ -79,11 +79,17 @@ namespace VRMR
         /// <summary>Use VRChat's recorded spine mode when available, falling back to <see cref="Lock" />.</summary>
         public bool FollowVrcSpine = true;
 
+        /// <summary>Left controller to hand position in reference avatar metres. Right mirrors X. Null uses the device default.</summary>
+        public Vec3? HandOffset;
+
         public Vec3 HandRotFix = Vec3.Zero; // degrees, local to the hand target, mirrored for the right hand
 
         public bool
             HangFromHeadset =
                 true; // VRChat: at calibration the avatar hangs from the headset (feet may end up below / above the floor); off = stood on the floor (as the base solver does)
+
+        /// <summary>Headset-local eye target shift in reference avatar metres. Null uses VRChat's offset.</summary>
+        public (float Y, float Z)? HeadOffset;
 
         public CalHeightMode Height = CalHeightMode.VRChat;
         public float HeightValue; // metres (RealHeight / EyeHeight) or scale factor (Scale)
@@ -102,8 +108,8 @@ namespace VRMR
         public bool UprightCalibration = true; // remove head tilt at calibration and stand the avatar on the floor
         public bool UseHips = true, UseChest = true, UseFeet = true, UseKnees = true, UseElbows = true;
 
-        public bool
-            VrcHands = true; // Index controllers: hand bone where VRChat puts it (measured); off = SteamVR skeletal wrist + the base solver's offsets
+        /// <summary>Use the original Index controller mapping for older takes that disabled VRChat offsets.</summary>
+        public bool UseLegacyIndexHandOffset;
 
         public CalibrationSettings Clone()
         {
@@ -129,19 +135,28 @@ namespace VRMR
 
         public Dictionary<string, object> ToJson()
         {
-            return new Dictionary<string, object>
+            var json = new Dictionary<string, object>
             {
                 ["height"] = Height.ToString(), ["heightValue"] = (double)HeightValue, ["measure"] = Measure.ToString(),
                 ["avatarScale"] = (double)AvatarScale, ["lock"] = Lock.ToString(),
                 ["useHips"] = UseHips, ["useChest"] = UseChest, ["useFeet"] = UseFeet, ["useKnees"] = UseKnees,
                 ["useElbows"] = UseElbows,
                 ["shoulderTracking"] = ShoulderTracking, ["proceduralFeet"] = ProceduralFeet,
-                ["upright"] = UprightCalibration, ["keepFeetPlanted"] = KeepFeetPlanted, ["vrcHands"] = VrcHands,
+                ["upright"] = UprightCalibration, ["keepFeetPlanted"] = KeepFeetPlanted,
                 ["hangFromHeadset"] = HangFromHeadset,
                 ["followVrcSpine"] = FollowVrcSpine,
                 ["followVrcMeasure"] = FollowVrcMeasure,
                 ["followAvatarScale"] = FollowAvatarScale, ["handRotFix"] = Json.V3(HandRotFix)
             };
+            if (HeadOffset is { } head)
+                json["headOffset"] = new Dictionary<string, object>
+                {
+                    ["y"] = (double)head.Y,
+                    ["z"] = (double)head.Z
+                };
+            if (HandOffset is { } hand) json["handOffset"] = Json.V3(hand);
+            if (UseLegacyIndexHandOffset) json["legacyIndexHandOffset"] = true;
+            return json;
         }
 
         public static CalibrationSettings FromJson(Dictionary<string, object> d)
@@ -162,12 +177,25 @@ namespace VRMR
             c.ProceduralFeet = d.GetBool("proceduralFeet", true);
             c.UprightCalibration = d.GetBool("upright", true);
             c.KeepFeetPlanted = d.GetBool("keepFeetPlanted", true);
-            c.VrcHands = d.GetBool("vrcHands", true);
             c.HangFromHeadset = d.GetBool("hangFromHeadset", true);
             bool followVrc = d.GetBool("followVrc", true);
             c.FollowVrcSpine = d.GetBool("followVrcSpine", followVrc);
             c.FollowVrcMeasure = d.GetBool("followVrcMeasure", followVrc);
             c.FollowAvatarScale = d.GetBool("followAvatarScale");
+            bool hasLegacyToggle = d.ContainsKey("vrcHands");
+            bool useVrcOffsets = d.GetBool("vrcHands");
+            if (!useVrcOffsets)
+            {
+                if (d.GetObj("headOffset") is { } head) c.HeadOffset = (head.GetF("y"), head.GetF("z"));
+                if (d.TryGetValue("handOffset", out object hand) && hand != null) c.HandOffset = Json.ToV3(hand);
+            }
+
+            if (hasLegacyToggle && !useVrcOffsets)
+            {
+                c.HeadOffset ??= (0, 0);
+                c.UseLegacyIndexHandOffset = !c.HandOffset.HasValue;
+            }
+            else c.UseLegacyIndexHandOffset = d.GetBool("legacyIndexHandOffset");
             c.HandRotFix = Json.ToV3(d.ContainsKey("handRotFix") ? d["handRotFix"] : null);
             return c;
         }
