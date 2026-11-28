@@ -5,7 +5,7 @@ VR Motion Recorder cannot read VRChat's body pose in an ordinary world, so it so
 - **11-point tracking, standing: 1.66 cm** mean distance per bone. **6-point** (head, hands, hips, feet): **2.06 cm**.
 - **Three body trackers** (hips and feet): **0.70–1.55 cm** on the four reference takes, 0.77–2.75 cm on the four stretches of a take with several calibrations.
 - **Lying on the floor** (11-point): **5.17 cm**.
-- Everything here was measured on **one setup and one body**. Read the numbers as a careful single-rig result, not as a promise for yours. Measurements from other rigs are very welcome (see the end of this page).
+- These results come from a single tracking setup. [Measurement limits](#limits-one-setup)
 
 ## What is compared
 
@@ -13,7 +13,7 @@ VRChat exposes its IK result only to scripts that run inside a world. A world wi
 
 The number used throughout is the **mean distance between the same bone in both poses**, in avatar centimetres (VRChat's world units at the avatar's own size). Only still frames after VRChat's calibration confirm are scored: HUMR frames carry VRChat's clock, and on fast motion a small timing difference would count as distance. Rotations are given in degrees where they say more than positions.
 
-How the solve works is described in [Architecture](architecture.md); the settings named here are explained in [calibration.md](calibration.md).
+See [Architecture](architecture.md#the-body-solve) for how the solve works and [Calibration](../calibration.md) for the settings used here.
 
 ## The setup and the takes
 
@@ -87,7 +87,7 @@ The changes behind the columns, all on by default:
 - the 0.94 eye-height ratio;
 - VRChat's arm-span formula;
 - hanging the avatar from the headset at calibration (the feet were 1.9 cm too high before; 9.5 cm by arm span);
-- the feet and hips behaviour of each spine mode (see [calibration.md](calibration.md));
+- the feet and hips behaviour of each spine mode (see [calibration.md](../calibration.md));
 - the knee plane (below);
 - the spine for a tracked hip (below);
 - the arm for arms without elbow trackers (below).
@@ -144,7 +144,7 @@ Arms without an elbow or shoulder tracker use the arm model below instead of the
   - Fitted to VRChat (elbow *position* given VRChat's chest and hands, a grid over the three constants): **swivel offset 2°** (mirrored for the right arm), **wrist→palm at half weight**, palm→thumb at full weight.
   - Elbow 1.67 → 0.59 cm, swivel 5.6° → 2.3° (base solver: 2–13°, depending on the take).
 - **Forearm twist:** in the plain model the forearm follows the upper arm only. VRChat's forearm takes **0.55** of the wrist's twist (0.44–0.76 per take, 0.51–0.61 on the takes with wide wrist turns), as a twist relaxer would. That share is added: forearm rotation error 4–11° → 2–7°.
-- **Out of reach,** the arm points at the target and the hand stays short (no stretch), as in VRChat.
+- **Out of reach,** the arm points at the target. [Measured reach limits](#what-vrchat-does-with-the-devices)
 
 Folded arms: with the hand near the shoulder, VRChat's elbow flips sides quickly (the multi-calibration take, 51.44–51.59 s: 170° of swivel in 0.15 s). This arm follows it. The base solver's flip stabilisation held the elbow on the other side, 15–21 cm off VRChat.
 
@@ -154,17 +154,17 @@ Code: `src/Vrmr.Fbik/Limbs/VrcArm.cs`.
 
 ### Per bone, before and after the spine and arm
 
-Mean distance to VRChat, avatar cm, still frames. "Before" is the build that already had the knee plane. Bold = better. "MC" is the multi-calibration take.
+Mean distance to VRChat, avatar cm, still frames. "Before" is the build that already had the knee plane. Bold marks an improvement. "MC" is the multi-calibration take. The all-bone scores are in the [reference take summary](#the-solve-against-vrchat-with-three-body-trackers) and [multi-calibration results](#several-calibrations-in-one-take).
 
-| Window                               | All bones       | Chest           | Shoulders L / R                   | Elbows L / R                      | Neck            | Head            |
-| ------------------------------------ | --------------- | --------------- | --------------------------------- | --------------------------------- | --------------- | --------------- |
-| R1 Lock Hip                          | 1.53 → **1.18** | 3.16 → **1.75** | 2.10 → **1.65** / 2.73 → **1.66** | 1.64 → **1.50** / 2.67 → **1.28** | 2.23 → **1.37** | 2.01 → **1.30** |
-| R2 Lock Head                         | 1.14 → **0.70** | 1.60 → **0.71** | 1.34 → **1.31** / 1.44 → **0.71** | 1.71 → **0.88** / 1.64 → **0.62** | 0.96 → 0.98     | 0.34 → 0.34     |
-| R3 Lock Both                         | 1.79 → **1.55** | 1.95 → 1.96     | 2.30 → **1.79** / 1.96 → **1.41** | 3.41 → **2.85** / 3.15 → **1.53** | 1.61 → 1.82     | 1.58 → **1.51** |
-| R4 Lock Both, arm span               | 1.80 → **1.37** | 2.24 → **1.11** | 2.53 → **1.44** / 2.55 → **1.11** | 2.15 → **1.59** / 2.77 → **1.17** | 2.21 → **1.50** | 1.43 → **1.22** |
-| MC 10.8–13.9 s (Lock Both, arm span) | 2.65 → **2.44** | 2.70 → **2.40** | 3.60 → **1.94** / 2.83 → **1.57** | 1.49 → 1.94 / 2.45 → **1.53**     | 2.83 → **2.16** | 0.46 → 1.56     |
-| MC 16.1–63.7 s (Lock Hip)            | 1.80 → **1.21** | 3.57 → **1.14** | 2.65 → **1.50** / 2.64 → **1.68** | 2.77 → **1.32** / 2.56 → **1.68** | 3.03 → **1.49** | 2.76 → **1.74** |
-| MC 70.6–96 s (Lock Hip)              | 0.80 → **0.56** | 2.89 → **0.87** | 0.49 → 0.58 / 1.97 → **0.54**     | 0.86 → **0.76** / 1.43 → **0.57** | 0.56 → 0.77     | 0.52 → 0.55     |
+| Window                               | Chest           | Shoulders L / R                   | Elbows L / R                      | Neck            | Head            |
+| ------------------------------------ | --------------- | --------------------------------- | --------------------------------- | --------------- | --------------- |
+| R1 Lock Hip                          | 3.16 → **1.75** | 2.10 → **1.65** / 2.73 → **1.66** | 1.64 → **1.50** / 2.67 → **1.28** | 2.23 → **1.37** | 2.01 → **1.30** |
+| R2 Lock Head                         | 1.60 → **0.71** | 1.34 → **1.31** / 1.44 → **0.71** | 1.71 → **0.88** / 1.64 → **0.62** | 0.96 → 0.98     | 0.34 → 0.34     |
+| R3 Lock Both                         | 1.95 → 1.96     | 2.30 → **1.79** / 1.96 → **1.41** | 3.41 → **2.85** / 3.15 → **1.53** | 1.61 → 1.82     | 1.58 → **1.51** |
+| R4 Lock Both, arm span               | 2.24 → **1.11** | 2.53 → **1.44** / 2.55 → **1.11** | 2.15 → **1.59** / 2.77 → **1.17** | 2.21 → **1.50** | 1.43 → **1.22** |
+| MC 10.8–13.9 s (Lock Both, arm span) | 2.70 → **2.40** | 3.60 → **1.94** / 2.83 → **1.57** | 1.49 → 1.94 / 2.45 → **1.53**     | 2.83 → **2.16** | 0.46 → 1.56     |
+| MC 16.1–63.7 s (Lock Hip)            | 3.57 → **1.14** | 2.65 → **1.50** / 2.64 → **1.68** | 2.77 → **1.32** / 2.56 → **1.68** | 3.03 → **1.49** | 2.76 → **1.74** |
+| MC 70.6–96 s (Lock Hip)              | 2.89 → **0.87** | 0.49 → 0.58 / 1.97 → **0.54**     | 0.86 → **0.76** / 1.43 → **0.57** | 0.56 → 0.77     | 0.52 → 0.55     |
 
 - Hips, legs and hands are unchanged or better in every window (R2: hips 1.36 → 0.64, knees 1.26 / 1.65 → 1.07 / 0.80).
 - Worse:
@@ -172,7 +172,6 @@ Mean distance to VRChat, avatar cm, still frames. "Before" is the build that alr
   - the left elbow and the head in MC 10.8–13.9 s (the calibration there puts the hips too high, see "What is left");
   - the left shoulder in MC 70.6–96 s (+0.09 cm);
   - the chest's p95 in R3: 2.3 → 4.7 cm (the forward lean, see "What is left").
-- The last two MC windows moved a little after this table was made: the stricter segmenting gives 1.23 cm for 16.1–63.7 s, and the later change of the confirm moment gives 0.77 cm for 70.6–96 s (see "The calibration moment").
 
 Bone rotations, mean difference to VRChat, before → now:
 
@@ -220,8 +219,7 @@ Joint speeds on the multi-calibration take did not change with the spine and arm
 - The chest's *rotation*: 5–8° off VRChat in every mode. (It was 1–4° in Lock Head and Lock Both and 9–12° in Lock Hip, with the chest's *position* 1.6–3.6 cm off.) The same spine model driven by VRChat's own hip, head and hand targets is 2–8° off, so the difference lies in the model, not in the inputs.
 - A strong forward lean in Lock Both: in R3 (9.0–9.6 s) VRChat bends the lower spine about 38° and puts the chest 4–5 cm further forward than the solve does. The base solver's spine was closer there.
 - Thigh rotations: 10–18° of twist, mostly constant. It is an axis convention difference; the positions agree.
-- The confirm moment: the full press fits the 11-point take (1 cm per bone better), but the start of the pull fitted the multi-calibration take's second calibration 0.2 cm better. New takes record the analog trigger values to settle it.
-- The extra trackers: the left elbow 2.9–5.5 cm, the chest's rotation 3.5–9.8°, knee twist up to 19° when crouching; lying on the floor 5.2 cm per bone.
+- Calibration timing and extra trackers have their own results. [Calibration moment](#the-calibration-moment) · [11-point results by window](#per-window)
 - The arm-span scale: VRChat's own fits are −0.5 … +1.9 % of the formula's value across the takes. Also, the arm-span calibration of the multi-calibration take (10.8–13.9 s) puts the solve's hips 2.4 cm above VRChat's, so the spine there is compressed and the head stays 1.7 cm above the headset point (head 0.46 → 1.56 cm in that stretch).
 
 ## Extra trackers: the 11-point take
@@ -299,7 +297,8 @@ Mean distance of all bones to VRChat (still frames; thumbstick moves and turns e
 - After a measurement change VRChat applies the same calibration again at the new scale: with the 10.1 s calibration rescaled, the solve's feet stay within 0.9–1.0 cm of VRChat's.
 - Stretches are crossfaded over 0.3 s.
 - In calibration mode you stand in the calibration pose with the trackers strapped as at the confirm, so the new calibration is applied from the click on. Joint speeds in those stretches stay at p95 0.75–1.25 m/s, like the rest of the take.
-- The playspace reset is found as one jump at 49.15 s: 83 cm, all 6 devices, rigid within 1.8 cm. No false jumps were found in the other takes. The thresholds (every device ≥ 12 cm or a common yaw ≥ 8°, rigid within 3 cm) were set on this one setup.
+- The detector found one playspace reset at 49.15 s. All 6 devices jumped 83 cm and stayed rigid within 1.8 cm. The other takes had no false detections. [Detection thresholds](architecture.md#the-playspace-moves)
+- Later changes gave 1.23 cm for 16.1–63.7 s with stricter window segmentation and changed the last window’s score after adjusting the confirm moment. [Calibration timing](#the-calibration-moment)
 
 ## The calibration moment
 
@@ -309,6 +308,7 @@ VRChat's "Calibrate FBT" reloads the avatar; the confirm with both triggers foll
 - On the multi-calibration take nothing moved during the second confirm, and the start of the pull fitted 0.2 cm better there (70.6–96 s: 0.56 → 0.77 cm). This is the one regression of the change.
 - The detector found the confirm within 0.07 s of an independent trigger probe on R1, R2 and R4 (9.59 s, 4.99 s and 6.45 s into the takes; R3 has no confirm of its own and uses R2's calibration). On the binding take the confirm is at 18.15 s; an earlier detector had picked the menu click at 2.62 s.
 - Replaying a full day's VRChat log through the live detector finds exactly the 5 confirms in it and none of the 5 other avatar loads.
+- New takes store analog trigger values for further checks of the confirm moment.
 
 ## Avatar scaling: the scaling take
 
@@ -338,18 +338,24 @@ Mean distance of all bones to VRChat's IK per window of constant size, each with
 - At ×1.36 VRChat applies its calibration at a tracking scale up to 2 % smaller than ×1.36 would give, so its feet sit about 5 cm lower and the difference is mostly a constant offset.
 - The ×1 windows are 2.4–2.9 cm, against 1.4–1.9 cm on the first test avatar's own skeleton. Two reasons: VRChat's bones are computed here on the base model, not on the edited avatar (VRChat's fitted tracking scale is 2 % below the base model's), and the HUMR frames had to be re-timed (next section).
 - What had gone wrong on this take before: the hip tracker was taken for an elbow, so the solve had no hips; VRChat's frames drifted up to 0.8 s late; and the height changes were not handled.
-- The other takes did not change with this work: the 11-point take's standing windows are 1.66 cm as before (1.47 / 1.35 / 1.87 / 1.91 / 1.74 / 1.64), the multi-calibration take 2.44 / 1.23 / 0.77 cm.
+- This work left the [11-point standing windows](#per-window) and the last three [multi-calibration windows](#several-calibrations-in-one-take) at their earlier scores.
 
 ## Other measurements
 
-- **Timing of VRChat's IK frames.** HUMR stamps the frames with VRChat's game clock, which falls behind real time on long frames (avatar reloads, calibrations, height changes). On the scaling take the frames were in step for the first 31 s, then 0.6 s late at 110–141 s and 0.8 s late at 151–167 s. New takes are timed against a sliding minimum (±4 s) of the frames' arrival. Older takes are re-aligned when loaded: VRChat's head height against the headset's, in 16 s windows every 4 s, interpolated. On the first test avatar's takes the shift stays under 0.06 s and nothing changes.
-- **Tracker roles from VRChat's IK.** A tracker on a bone keeps its distances to the headset and controllers changing like that bone's distances to VRChat's head and hands. On the 11-point take all 8 trackers are matched to the right bone, each 1.3–2.9 cm clearer than its next-best bone.
-- **Tracker roles from motion alone.** On the binding take a method that used heights at the calibration moment had the feet swapped; the left-foot tracker sits 11 cm left of the head over the whole take, and the current method gets them right. An elbow tracker must keep a steady distance to its controller (10–90 % spread under 7 % of the eye height). On the scaling take the hip tracker (35 cm from a resting left hand, spread 41 cm) had been taken for the left elbow without that test.
+- **Timing of VRChat’s IK frames.** On the scaling take the frames were in step for the first 31 s, then 0.6 s late at 110–141 s and 0.8 s late at 151–167 s. On the first test avatar’s takes the alignment shift stays under 0.06 s. [Timing and alignment](architecture.md#vrchats-own-pose-arriving-late)
+- **Tracker roles from VRChat’s IK.** On the 11-point take all 8 trackers matched the right bone, each 1.3–2.9 cm clearer than its next-best bone. [Role assignment](architecture.md#tracker-roles)
+- **Tracker roles from motion alone.** The calibration-height method swapped the feet on the binding take. Over the whole take the left-foot tracker sits 11 cm left of the head, and the motion-based method gets them right. On the scaling take the hip tracker was mistaken for the left elbow without the distance-spread check. It was 35 cm from the resting left hand with a 41 cm spread. [Role assignment](architecture.md#tracker-roles)
 - **Tracking loss.** On the 11-point take the repair found 19 losses, 10.3 s in all: hips 2.5 s and chest 2.0 s while lying on them, a knee frozen for 1.1 s and then jumping 55 cm, the left elbow for 0.5 s and 1.0 s, and single-sample foot glitches of up to 78 cm.
 - **VRChat jumps.** On the 11-point take: one jump, 11.36–12.24 s, 43 cm.
-- **The live view's mapping.** While recording in a HUMR world the live view draws VRChat's skeleton in the playspace, with the mapping estimated from the last 3 s. On recorded takes replayed as if live, VRChat's head bone lands 4.3 cm (median) from where its headset says it should be, the hands 3.3 cm (the 11-point take). On takes with thumbstick moves it is 6–10 cm, and the mapping catches up within 3 s.
+- **Live view mapping.** Replaying the 11-point take as if live puts the head 4.3 cm (median) from the expected headset position and the hands 3.3 cm away. With thumbstick moves the error is 6–10 cm and the mapping catches up within 3 s. [Live view coordinates](architecture.md#live-view-coordinates)
 
-Numbers for scenes (the transition match score, the foot lock) are in [scenes.md](scenes.md); round-trip accuracy in Blender and Unity is in [export-and-pipeline.md](export-and-pipeline.md).
+### Scene measurements
+
+- **Transition matching.** Cuts 0.1 s apart in the same take scored 83. Random cuts between takes scored 21. The match score tracked the extra joint speed from the crossfade with a rank correlation of 0.81. **Find best cut** improved eight cuts from 31 to 55 on average. None of those crossfades produced a centre-of-mass jump.
+- **Device keys.** A 10 cm move of the left foot tracker moved the solved foot 10.0 cm and left the other bones in place. A 12 s input strip solved in about 0.1 s in the background.
+- **Foot lock.** On two test takes, average foot slide during contacts went from 0.73 cm and 0.71 cm to 0.00 cm, with the other bones unchanged.
+
+See the [Scene workspace design](tab-ui-design.md#scene-workspace) for planned controls and [Scene export](../export-and-pipeline.md#scenes) for round-trip accuracy in Blender and Unity.
 
 ## What is and is not in the code
 
@@ -362,8 +368,6 @@ The body solver these parts sit in (the "base solver" on this page) is derived f
 - the knee-plane block in `src/Vrmr.Fbik/Limbs/IkLegSolveCore.cs`;
 - `src/Vrmr.Solve/`: calibration (offsets, scale, hang, the confirm moment), tracker roles, repairs, jumps and avatar scaling.
 
-The project layout is described in [architecture.md](architecture.md).
-
 ## Reproduce it on your own takes
 
 1. In VRChat, switch OSC on and set logging to Full (HUMR writes to VRChat's log).
@@ -373,7 +377,7 @@ The project layout is described in [architecture.md](architecture.md).
 
 The measurement harness itself (the world fit and the per-bone scoring) is not in the repository yet, so the tables on this page cannot be regenerated from the repository alone today.
 
-`vrmr dump` together with `tools/compare_dumps.py` is a different tool: it is the regression check that a code change did not alter the motion. It says nothing about how close the motion is to VRChat. See [CONTRIBUTING.md](../CONTRIBUTING.md).
+For checking whether a change altered solved output, see the [motion regression procedure](../../CONTRIBUTING.md#checking-solved-motion).
 
 Takes are personal data (your motion, your avatar's id and name, the world's name). Share one only if you are comfortable with that.
 
@@ -385,4 +389,4 @@ Every constant and every number on this page comes from one person, one set of s
 - the head offset, the 0.94 eye-height ratio and the spine, elbow and twist constants are fitted on a single test avatar and one body;
 - the playspace-jump thresholds and the confirm timing are set on one tracking system.
 
-If you have a different headset, other controllers or trackers, or a very different avatar, your measurements would help most. Use the [device report form](../.github/ISSUE_TEMPLATE/device.yml) and include what you measured and how.
+If you have a different headset, other controllers or trackers, or a very different avatar, your measurements would help most. Use the [device report form](../../.github/ISSUE_TEMPLATE/device.yml) and include what you measured and how.

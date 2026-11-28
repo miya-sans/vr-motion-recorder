@@ -56,7 +56,7 @@ Per take, the avatar is *Auto* (the one the take was recorded with) or any libra
 
 **Changing avatar during a take** splits it into stretches by avatar (reloading the same avatar, as a calibration does, is not a change). The solve keeps one skeleton for the take; the export can write one clip per avatar, each solved onto that avatar's base model.
 
-**Size.** An avatar keeps its own size: the base model's skeleton, scaled when the avatar you wore was uploaded at another size than its base model (more than 2 % apart). Resizing the avatar inside VRChat is a separate matter, described in [Architecture](architecture.md).
+**Size.** An avatar keeps its own size: the base model's skeleton, scaled when the avatar you wore was uploaded at another size than its base model (more than 2 % apart). Resizing the avatar inside VRChat is a separate matter, described in [Architecture](dev/architecture.md#resizing-the-avatar-in-vrchat).
 
 ## The face
 
@@ -96,6 +96,6 @@ With a base model, the 3D view shows the avatar's own meshes with their skin wei
 
 ## See also
 
-- [Architecture](architecture.md): the solve, and avatar resizing in VRChat.
+- [Architecture](dev/architecture.md#resizing-the-avatar-in-vrchat): the solve, and avatar resizing in VRChat.
 - [export-and-pipeline.md](export-and-pipeline.md): what the exported FBX contains.
-- [file-formats.md](file-formats.md): the avatar library entry in detail.
+- [file-formats.md](dev/file-formats.md): the avatar library entry in detail.

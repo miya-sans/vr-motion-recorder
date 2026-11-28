@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:VRMR.App.Controls"
              x:Class="VRMR.App.Views.Scene.SceneWorkspaceView">
-  <!-- Placeholder: the scene editor is being moved over from the previous version. See docs/dev/app-structure.md, "The Scene seam". -->
+  <!-- Scene editor placeholder. See docs/dev/tab-ui-design.md, "Scene workspace". -->
   <Border Background="{DynamicResource ViewBackgroundBrush}">
     <c:EmptyState Icon="{DynamicResource Icon.Scene}" Title="The scene editor is on its way"
                   Text="Arranging takes on tracks, blending and keyframing is being moved to this version. Until then, scenes open in the previous version of the app; your takes and scenes are shared between the two." />

@@ -4,52 +4,46 @@ The goal is a standalone SteamVR recorder and editor. The [current action](STATU
 
 ## SteamVR core and optional integrations
 
+Make SteamVR the only required external runtime. The core owns device capture, avatar selection, tracker assignment, calibration, recording, review and generic export. Optional modules provide workflows for VRChat, HUMR, Blender, Unity, Basis, Resonite and Chillout.
+
 - [ ] Audit dependencies on VRChat, HUMR, Blender and Unity across startup, settings, capture, calibration, avatar loading, solving and export. Identify the platform-specific behaviour to move into optional modules.
-- [ ] Make SteamVR the only required external runtime for live recording. Keep local avatar selection, tracker roles, calibration, raw take storage, review and generic exports available with integrations disabled.
-- [ ] Define module enablement, settings and lifecycle. Start only enabled modules, report unavailable applications or failed connections per module, and keep core recording operational when a module fails.
-- [ ] Move VRChat-specific OSC/OSCQuery discovery, logs, avatar identity, settings and calibration events, face replay and video-player events behind the VRChat module.
-- [ ] Make HUMR an optional motion source with explicit timing and coordinate mapping. Enable its VRChat log input only when that integration is selected.
-- [ ] Keep Blender import/export handoff and Unity project discovery, avatar metadata and clip/Timeline handoff in their optional modules. Generic recording and file export must work with neither application installed.
-- [ ] Define the supported workflows and data exchange for separate Basis, Resonite and Chillout modules. Check each platform's available integration mechanisms before selecting an implementation.
-- [ ] Verify the core with every module disabled and the integration applications absent. Then verify individual modules and failure cases, including unavailable applications, disconnection and recording through a module failure.
-- [ ] Update setup, source indicators and documentation to expose integration availability and enablement separately from SteamVR capture readiness.
+The SteamVR-only workflow and integration lifecycle are described in the [tab UI design](tab-ui-design.md#work-across-tabs).
+
+- [ ] Check the available integration mechanisms for Basis, Resonite and Chillout before choosing an implementation.
+- [ ] Verify the core workflow with every module disabled and the integration applications absent. Check that each enabled module reports its own availability and that core recording continues when a module is unavailable, disconnects or fails.
+- [ ] Verify setup, source indicators and documentation show integration availability and enablement separately from SteamVR capture readiness.
 
 ## Privacy improvements
 
-- [ ] Exclude avatar IDs and names, world names, VRChat display names and device serial numbers from recorded takes.
-- [ ] Store this identifying information and its local associations in the application's AppData directory.
-- [ ] Use take-local device identifiers for recorded streams, tracker bindings and calibration data. Resolve physical device serial numbers through the AppData mapping.
-- [ ] Keep playback, solving and generic export functional when a take is opened without its AppData associations.
+The take data and local associations are described in the [recording privacy design](tab-ui-design.md#work-across-tabs).
+
 - [ ] Audit take headers, embedded profiles, stream metadata, events and calibration snapshots for copies of identifying information, including data supplied by optional integration modules.
 - [ ] Verify that newly recorded and saved takes contain none of the excluded information, while local avatar and device associations remain available through AppData.
 
 ## Standalone capture
 
-- [ ] Select the mannequin or a local capture avatar and confirm tracker assignments with VRChat closed. The live [device panel](../../src/Vrmr.App/ViewModels/DevicesViewModel.cs) currently requires a VRChat avatar ID to select a base model.
-- [ ] Make standalone calibration reproducible. Store scale, bindings and calibration inputs with the take. Check VRChat settings reads in the recorder, calibration watcher and tracking rig when integrations are disabled.
+The open avatar-selection and calibration work is described in the [Record design](tab-ui-design.md#record).
+
+- [ ] Add a button to recenter calibration before recording.
+- [ ] Let users name a take before recording, with optional placeholders for the date and avatar name.
+- [ ] Check VRChat settings reads in the recorder, calibration watcher and tracking rig when integrations are disabled.
 - [ ] Verify SteamVR connection, device roles, play area, base stations, controller/finger input and reconnection after a restart.
 - [ ] With VRChat closed, record a performance including a tracker dropout, reopen it and export it. Measure preview CPU cost and check for lost samples.
 
 ## Scene editing
 
-A source audit against the WinForms UI immediately before removal commit `a8fd40d` found the following desktop functionality still missing in Avalonia. The [Scene workspace flag](../../src/Vrmr.App/Composition/AppFeatures.cs) is off and its [view](../../src/Vrmr.App/Views/Scene/SceneWorkspaceView.axaml) is a placeholder. The shared scene engine already implements much of the underlying behaviour.
-
-- [ ] Restore scene management and preview. Provide a scene library with new, open, save, rename and delete, unsaved-change handling, scene playback and scrubbing, undo/redo, actor selection and scene frame-range controls.
-- [ ] Restore the NLA timeline and inspectors. Support adding takes from the library, managing actors and tracks, selecting and moving strips, trimming, splitting, duplicating and deleting strips, speed and source timing, snapping and markers. Expose track ordering, mute/solo/lock, strip influence and blend ramps, root placement, body masks and Replace/Add blending. The [scene operations](../../src/Vrmr.Scene/SceneOps.cs) already edit strips that reference takes without changing the recordings.
-- [ ] Restore transition editing and search. Expose crossfade length and curve, centre-of-mass/hips/feet alignment, facing and travel-direction matching, suggested lengths, Find best cut, Best entry into B and the transition match map. Show pose/velocity differences and output foot-slide and centre-of-mass discontinuity measurements alongside the preview. These calculations remain in the scene engine.
-- [ ] Restore keyframe-only animation and corrective posing. Expose bone and device modes, limb and spine IK, hand/foot pins, hips moves, key insertion/removal, channel selection and interpolation. Support device-only takes, additive pose keys, animated tracker offsets and keyed device influence through the existing pose and input-layer engine.
-- [ ] Restore scene layer controls and partial-body recording. Let the user choose an actor and body/input mask, arm at the playhead or record immediately, set pre-roll and count-in, measure timing by trigger taps, and manage repeated attempts. Expose per-device weights and input alignment. The [punch-in engine](../../src/Vrmr.Scene/PunchIn.cs) already builds the recorded layers.
-- [ ] Restore modifier controls for actors, pose strips and device layers, including enable/reorder/remove, body masks and repair ranges. Expose foot locking, smoothing, tracker gap filling and glitch detection through the existing cleanup implementations.
-- [ ] Restore scene export from the desktop. Expose multi-actor scene baking, format options, export to a folder or linked Unity project, progress/results, opening the export folder and Export + open in Blender. The take export panel already works, and the [scene exporter](../../src/Vrmr.Export/SceneExport.cs) remains in the library.
+The [Scene workspace design](tab-ui-design.md#scene-workspace) tracks the desktop features identified in the WinForms parity audit and links to the existing engine code.
 
 ## Export and import
 
+- [ ] Add an export folder setting to the project settings.
 - [ ] Verify imports from the current build in Blender and Unity against the preview, including scene exports from the engine. Earlier measurements are in the [export guide](../export-and-pipeline.md).
-- [ ] Verify the experimental app-written Humanoid clip on the recorded avatar and a second avatar against Generic FBX, Humanoid FBX and Unity's own clip. Only then enable it by default for takes and update the Unity integration.
+- [ ] Verify the experimental app-written Humanoid clip on the recorded avatar and a second avatar against Generic FBX, Humanoid FBX and Unity's own clip. [Export design](tab-ui-design.md#export)
 - [ ] Measure compound-pose body rotation error in the Humanoid converter. Earlier experiments found 0.014° mean error at half muscle range and 0.12° at full range. Unity muscle space cannot express every solved pose, so use Generic playback as the exact-pose reference.
 
 ## Desktop verification and rendering
 
+- [ ] Add folders to the recording library so users can organise takes.
 - [ ] Exercise library pickers/deletion, export folder/options controls, avatar import/link/export and calibration presets/library actions in a real window.
 - [ ] Check second-instance activation and following the system theme.
 - [ ] Check placement-gizmo dragging with the mouse in a real window.
@@ -59,6 +53,30 @@ A source audit against the WinForms UI immediately before removal commit `a8fd40
 - [ ] Offer multisampling in view settings.
 - [ ] Implement the remaining scene/pose gizmos alongside the Scene workspace.
 
+## Documentation
+
+### Export documentation
+
+Update these in order when the app-written Humanoid clip ships. The [Export design](tab-ui-design.md#export) describes the planned workflow.
+
+- [ ] Update the export guide’s opening note, file table and App → Unity steps. Identify who writes the Humanoid clip and whether `_body.anim`, `_face.anim` and `.vrmr.json` are still written or optional. Measure the generated clip’s accuracy, key reduction and size before replacing the older Unity-package figures (0.9 mm mean and 35 MB for 39 s). [Export guide](../export-and-pipeline.md)
+- [ ] Document the new clip’s manifest keys and the sidecar’s remaining role. [File formats](file-formats.md#export-manifests-and-sidecars)
+- [ ] Update the Unity bridge import behaviour and menu reference, add a changelog entry and bump its package version together with the Blender add-on’s. Update the Blender and integration guides if **Send to Unity** changes. [Unity bridge](../../integrations/unity/com.vrmr.motion-bridge/README.md) · [Blender add-on](../../integrations/blender/README.md) · [Integrations](../../integrations/README.md)
+- [ ] Update the README export feature summary and the usage guide’s export steps. [README](../../README.md#features) · [Usage](../usage.md#record-review-and-export)
+
+### Desktop documentation
+
+Check labels, defaults and shortcuts against the final UI. Add locations when they are stable. Scene-specific documentation work is in the [Scene design](tab-ui-design.md#desktop-integration).
+
+- [ ] Add a main-window screenshot to the README using non-personal content. Check first-run steps, the release ZIP name, the Windows warning if releases are signed, and the recording, trimming and export quick start. [README](../../README.md)
+- [ ] Check recording controls and defaults, live view toggles and the device list, **Include VRChat jumps**, tracking-loss actions and where avatar resize ranges appear. [Usage](../usage.md)
+- [ ] Check calibration inspector and defaults paths, **Capture now**, **Save to library**, **Delete**, watching and automatic linking switches, setting labels, timeline events and modes, list match marks and warnings, and the solve result summary. [Calibration guide](../calibration.md)
+- [ ] Verify package and BlendShare imports, **Add avatar…**, library and default selection, the worn avatar’s base-model picker, face-shape FBX export, mesh hiding and the shipped mannequin description. [Avatar guide](../avatars.md)
+- [ ] Check export option labels, **Origin**, **Turn**, **Reset**, the placement gizmo and face replay. [Export guide](../export-and-pipeline.md)
+- [ ] Check source settings, the height setting and **Hang the avatar from the headset at calibration**. Add troubleshooting entries for issues surfaced by first-run setup. [Troubleshooting](../troubleshooting.md)
+- [ ] Check how to switch body sources and follow the in-world HUMR recording button. If the measurement harness is added to the repo, replace its availability note with run instructions. [Accuracy guide](accuracy.md#reproduce-it-on-your-own-takes)
+- [ ] Keep the live connection guidance aligned with the OSC and OSCQuery implementations when source or port behaviour changes. [Security](../../SECURITY.md#live-connections)
+
 ## Optional VRChat hardware verification
 
 - [ ] Verify the record hotkey while VRChat has focus and the record parameter from a real avatar menu.
@@ -66,44 +84,35 @@ A source audit against the WinForms UI immediately before removal commit `a8fd40
 - [ ] Check the live view with actual devices, base stations and HUMR avatar motion, then verify synchronization of HUMR and SteamVR recordings.
 - [ ] Measure recording alongside VRChat and SteamVR with the skeleton preview at 15 fps, including CPU cost and sample loss.
 - [ ] Verify automatic VRChat calibration capture and manual Capture now with real trackers.
+- [ ] Investigate intermittent failures with **Sync with VRChat** calibration. Test pressing both controller triggers together and with a delay between presses.
 - [ ] Verify face replay arriving in VRChat.
 
 ## Capture and motion quality
 
 - [ ] Develop controller-specific hand and head offset profiles as measurements become available for more hardware.
 - [ ] Use optional HUMR recordings to measure per-bone error and evaluate changes to the arm, spine and knee solve. Measure planted-foot travel in HUMR, the solve, FBX and Unity Humanoid playback with foot IK on and off, on both the recorded and a second avatar, to locate the source of sliding.
-- [ ] Add optional VRChat video player support. Detect song changes in the log, turn timestamps into clip boundaries within a continuous recording, and play the reference video alongside a take using yt-dlp with an adjustable sync offset.
+
+Reference-video playback and sync are described in the [View design](tab-ui-design.md#view).
 
 ## Virtual camera crane
 
-- [ ] Build the authored camera workflow. Camera export and import already carry recorded motion. The [scene model](../../src/Vrmr.Scene/SceneModel.cs) reserves space for authored cameras. The proposed workflow is to key a camera path, use an optional in-world station to move the performer along it, capture handheld motion relative to the path, then smooth and steer that motion with corrective keys.
+The authored camera workflow is described in the [Scene workspace design](tab-ui-design.md#scene-workspace).
+
+## Code cleanup
+
+- [ ] Share the identical `Num`, `Check` and `Choice` modifier factories between pose and device cleanup. [Pose cleanup](../../src/Vrmr.Scene/Cleanup.cs) · [Device cleanup](../../src/Vrmr.Scene/CleanupDevice.cs)
+- [ ] Remove the private `FbxExporter.NonZero` helper. Its declaration is its only occurrence in tracked source. [FBX avatar exporter](../../src/Vrmr.Export/FbxExporter.Avatar.cs)
+- [ ] Review the duplicated add-on loading logic in the direct-FBX `OpenScript` and manifest-based `OpenSceneScript`. The audit found no in-repository callers for either `OpenScript` or `OpenExport`, which uses `OpenSceneScript`. The manifest launcher corresponds to the planned **Export + open in Blender** action. [Blender launcher](../../src/Vrmr.Export/BlenderLocator.cs) · [Export design](tab-ui-design.md#export)
+- [ ] Verify whether the public `ExportCsv` method has external callers or a planned use before deciding whether to keep it. The audit found no in-repository caller or desktop export catalog entry. [CSV exporter](../../src/Vrmr.Export/MiscExporters.cs) · [Export catalog](../../src/Vrmr.App/Services/ExportCatalog.cs)
 
 ## Before a public release
 
-- [ ] Verify CI and release workflow runs.
+- [ ] Verify CI runs, including the Linux build and tests. Exercise the tagged release workflow with a throwaway tag in a fork or private copy before the first public release. [CI](../../.github/workflows/ci.yml) · [Release workflow](../../.github/workflows/release.yml)
+- [ ] Recheck third-party notices when dependency versions change. Ensure the release ZIP includes the Inter SIL Open Font License 1.1 text at `licenses/Inter/OFL.txt`. [Third-party notices](../../THIRD_PARTY_NOTICES.md)
+- [ ] Decide whether the Unity and Blender integrations, currently both at `1.4.0`, should follow the app’s version from 1.0 onward.
+- [ ] Verify that GitHub Discussions is available, or remove its link from the issue template chooser. [Issue template configuration](../../.github/ISSUE_TEMPLATE/config.yml)
 - [ ] Review the provenance and structure of the VRChat-matched arm, spine and knee solver code before making the repository public.
 
 ## Open question for later: collision and physics
 
 - [ ] Revisit physics if editing real takes reveals a need. The [pose rig](../../src/Vrmr.Scene/ScenePose.cs) already estimates centre of mass using human segment masses. Possible experiments include generating collision shapes for intersection cleanup or adding rigid bodies with soft joint limits for posing selected limbs and the spine. [Ragdoll reference](https://youtu.be/yY6vck8SuCY)
-
-## Previous validation
-
-The following records were carried over from STATUS and describe earlier runs through commit `8edcb8e`, not checks repeated during this documentation update. The interim release was `2c0c8d7`, and `a8fd40d` removed the WinForms app. The parity audit compared source only.
-
-- [x] Build. `dotnet build VRMotionRecorder.slnx -c Release` builds every project on .NET 10.
-- [x] Tests. `tests/Vrmr.Tests`: 97 pass. `tests/Vrmr.Render.Tests`: 16 pass. `tests/Vrmr.App.Tests`: 179 pass (7 of them need copies of real takes through `VRMR_PRIVATE_DATA` and are skipped without).
-- [x] Desktop app. `src/Vrmr.App` (Avalonia). Run it with `dotnet run --project src/Vrmr.App -c Release`. Take recording, review, editing and export are implemented; the Scene workspace is unavailable.
-- [x] Solve. Unchanged by the refactor: bit-identical results before and after on ten takes and a test scene (`vrmr dump` + `tools/compare_dumps.py`). About 1.7 times faster on .NET 10 than on .NET Framework.
-- [x] Exports. FBX, Unity `.anim` (transform, face, parameters) and the manifests are identical in content to those of the previous build.
-- [x] Historical renderer baseline. The removed desktop UI drew only when something changed, with timer-paced playback at about 35 frames per second. On a 1100 x 640 view it used 1.4 CPU cores for take playback and 0.7 for scene playback after optimisation.
-- [x] Engine structure. Libraries with one-way dependencies: Core, Fbik, Model, Avatars, Solve, Capture, Scene, Export. See `docs/architecture.md`.
-- [x] Generalisation. One paths service, no fixed install folders, detection of SteamVR, VRChat, Blender and Unity projects, settings with a schema version, avatar name aliases stored with each library entry, a built-in mannequin for users without an avatar. See `docs/dev/platform-api.md`.
-- [x] Capture. The VRChat log is followed with one open handle instead of being reopened many times a second; cheaper SteamVR waiting.
-- [x] Repository. MIT licence, third-party notices, README and docs, CI and release workflows, issue forms, original icon, the Unity editor scripts as a package, the Blender add-on with an extension manifest.
-- [x] Command line. `vrmr info`, `vrmr dump` (regression check), `vrmr humanoid` (experimental).
-- [x] Compare GPU silhouettes with the previous renderer on a real take in nine frame/camera pairs. Recorded intersection over union was at least 0.9999, with average colour differences within 3/255. Paused usage was 0.001–0.003 CPU cores, and playback held 60 fps at about 0.1 cores in the demo and 0.26 in the app.
-- [x] Exercise exports, settings and first-run setup in the window using a take copy and scratch data folder. All nine export choices wrote files, the body clip matched an engine bake, and changed settings survived restart.
-- [x] Exercise live-source wiring with synthetic devices through OpenVRSource.Feed, private-port OSC packets and a scratch VRChat log in LiveSourceTests. These runs used neither SteamVR nor VRChat.
-- [x] Implement the GPU renderer, render demo benchmark and offscreen screenshots through ANGLE.
-- [x] Implement the experimental Humanoid converter, key reducer and writer. Earlier Unity experiments measured the muscle-to-rotation model within 0.00007° over 871 poses on 24 skeletons, including rest axes, twist sharing, optional bones, human scale, mass weights and IK goal curves. Playback verification of the generated clip remains open above. ClipExportOptions.HumanoidAnim defaults to false, and the existing Unity package obtains Humanoid clips from imported FBX.

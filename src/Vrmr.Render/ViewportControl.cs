@@ -23,7 +23,7 @@ namespace VRMR.Render
     /// <summary>
     ///     The 3D view: avatars (GPU-skinned mesh and skeleton), devices, the floor and tool overlays, drawn with OpenGL ES
     ///     inside Avalonia's compositor. It draws only when something changed: a submitted frame, the camera, a toggle, a
-    ///     tool, its size. Paused means no frames and no CPU. See docs/dev/render-api.md.
+    ///     tool, its size. Paused means no frames and no CPU. See the Renderer API in docs/dev/app-platform.md.
     /// </summary>
     public class ViewportControl : OpenGlControlBase, ICustomHitTest
     {

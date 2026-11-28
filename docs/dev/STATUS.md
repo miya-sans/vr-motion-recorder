@@ -1,9 +1,7 @@
 # Current action
 
-- [ ] Make SteamVR the recorder's only required external runtime, with optional integration modules for VRChat, HUMR, Blender, Unity, Basis, Resonite and Chillout.
+- [ ] Investigate missed calibrations when **Sync with VRChat** is selected.
 
-The core owns device capture, avatar selection, tracker assignment, calibration, recording, review and generic export. Integration modules add platform-specific data sources and workflows.
+With real trackers, calibrate in VRChat several times with both controller triggers pressed together, then repeat with a short delay between presses. For each attempt, check whether VRChat completed calibration and whether the recorder captured it.
 
-Complete this action when the core workflow works with all integration modules disabled and their applications absent, and each enabled module can report its own availability without blocking core recording.
-
-[Implementation checklist](TODO.md#steamvr-core-and-optional-integrations)
+Record the results for both trigger timings and any steps that reproduce a missed capture. [Hardware verification checklist](TODO.md#optional-vrchat-hardware-verification)

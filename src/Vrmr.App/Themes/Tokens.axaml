@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
-  <!-- The design tokens of docs/dev/ui-design.md. Views use these keys only: no colour, size or font literals in views. -->
+  <!-- The design tokens of docs/dev/ui-style.md. Views use these keys only: no colour, size or font literals in views. -->
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">

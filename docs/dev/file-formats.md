@@ -15,11 +15,17 @@ What the app reads and writes, where each file lives, and what is inside. The co
 | `profiles\*.vrmskel.json`       | `%APPDATA%\VRMotionRecorder`           | Avatar skeletons written by the Unity package.        | Avatar name and blueprint id.                                                                                              |
 | `steamvr_room.json`             | `%APPDATA%\VRMotionRecorder`           | The last SteamVR play area and base stations seen.    | Base station serial numbers.                                                                                               |
 | `vrmr-<timestamp>-<pid>.log`      | `%APPDATA%\VRMotionRecorder\logs`      | One log per run, with ISO 8601 UTC timestamps.         | Paths, avatar and world names.                                                                                             |
-| export files                    | where you export                       | See [export-and-pipeline.md](export-and-pipeline.md). | Avatar id and name; avatar meshes in the model FBX.                                                                        |
+| export files                    | where you export                       | See [export-and-pipeline.md](../export-and-pipeline.md). | Avatar id and name; avatar meshes in the model FBX.                                                                        |
 
 Both folders can be moved in Settings. Started with `--data <folder>`, the app keeps everything under that one folder instead, which is how tests and trial runs stay away from your real files.
 
 None of these files belongs in the repository, in a bug report without a second look, or in a pull request.
+
+## App settings
+
+`settings.json` stores a `schema` number. The current version is 2. The app treats files without a `schema` as version 1 and upgrades them on load. The version 2 migration moves custom `realEyeHeight` into `calibrationDefaults` when no calibration defaults are present, updates untouched version 1 calibration defaults, and clears the old `Body` default for `faceMeshPath` so each avatar can use its own face mesh. [Settings and migrations](../../src/Vrmr.Model/Settings.cs)
+
+With `--data <folder>`, the `AppData` subfolder holds settings, calibrations, profiles and logs. The `Documents` subfolder holds takes, avatars, scenes and exports by default. [Portable path layout](app-platform.md#apppaths)
 
 ## Take: `.vrmr`
 
@@ -94,7 +100,7 @@ Everything you change about a take, and nothing else:
 | `placePos`, `placeRot`                          | Where the solved take is placed: a move in metres and a turn as a quaternion, applied after the solve.                                             |
 | `originTime`, `originYaw`, `originX`, `originZ` | An older way of placing a take, still read.                                                                                                        |
 | `calibrationTime`                               | Which calibration the take uses: a time in the take, or a code for "best T-pose", "the linked snapshot", "VRChat's calibrations as they happened". |
-| `calibration`                                   | The take's own calibration settings (absent: the global defaults). See [calibration.md](calibration.md).                                           |
+| `calibration`                                   | The take's own calibration settings (absent: the global defaults). See [calibration.md](../calibration.md).                                           |
 | `calibrationSnapshot`                           | A copy of the calibration snapshot the take is linked to, so the take stays self-contained.                                                        |
 | `vrcChanges`                                    | VRChat setting changes added by hand.                                                                                                              |
 | `trackerGaps`                                   | Tracking-loss marks you added or switched off.                                                                                                     |
@@ -114,7 +120,7 @@ Defined in `src/Vrmr.Scene/SceneModel.cs`. Readable JSON, `"kind": "scene"`, `"f
 | Key                           | Content                                                                                                                                                                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`, `fps`, `start`, `end` | The scene's name, frame rate and range.                                                                                                                                                                                      |
-| `takes`                       | The takes used: id, path relative to the scene file, name, creation time, duration. A take that moved is found again by its creation time.                                                                                   |
+| `takes`                       | Take references with id, path (relative to the scene file when possible), name, creation time and duration.                                                                                                                  |
 | `actors`                      | One per performer: the avatar, modifiers, and `tracks`.                                                                                                                                                                      |
 | `actors[].tracks`             | `kind` (`pose` or `input`), mute, solo, lock, `strips`, `transitions`.                                                                                                                                                       |
 | `strips`                      | `kind` (`take` or `action`), source, start, `srcIn` / `srcOut`, speed, blend mode, influence, blend in and out, the body-part `mask`, input settings (`inputs`, `inputAlign`, per-device weights), a root offset, modifiers. |
@@ -137,7 +143,7 @@ Defined in `src/Vrmr.Avatars/AvatarLibrary.cs` and `src/Vrmr.Model/Avatars/Avata
 
 ## Calibration snapshot
 
-Defined in `src/Vrmr.Model/Calibration/CalibrationSnapshot.cs`. One JSON file per calibration: when and how it was taken, the raw pose, serial number, role and model of every device, SteamVR's skeletal wrists, VRChat's User Real Height and IK settings, the avatar's id, name and eye height, and the SteamVR session. See [calibration.md](calibration.md).
+Defined in `src/Vrmr.Model/Calibration/CalibrationSnapshot.cs`. One JSON file per calibration: when and how it was taken, the raw pose, serial number, role and model of every device, SteamVR's skeletal wrists, VRChat's User Real Height and IK settings, the avatar's id, name and eye height, and the SteamVR session. See [calibration.md](../calibration.md).
 
 Calibration presets (`calibrations\*.json`) hold only the settings of the table in that document.
 

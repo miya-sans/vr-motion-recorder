@@ -74,7 +74,7 @@ that log format and can write a HUMR-compatible log on export. No HUMR code is i
 ## 4. Behaviour matched to VRChat
 
 The arm, spine and knee behaviour is matched to VRChat's IK 2.0 by measurement on recorded takes; no third-party IK
-source code is included. See [docs/accuracy.md](docs/accuracy.md).
+source code is included. See [docs/dev/accuracy.md](docs/dev/accuracy.md).
 
 ## 5. NuGet packages
 

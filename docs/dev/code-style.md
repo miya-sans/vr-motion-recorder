@@ -29,6 +29,12 @@ The standard rules in [`.editorconfig`](../../.editorconfig) and the SDK checks 
 
 Apply these conventions to changed code. Preserve the existing solver layout and naming exceptions in `Vrmr.Fbik`.
 
+## Avalonia conventions
+
+- Use theme tokens through `{DynamicResource …}` for colours, sizes and fonts. Use the text classes in `Styles.axaml` for titles, captions and other stock text styles. [UI style](ui-style.md)
+- Use compiled bindings with `x:DataType` on every view and template.
+- Use `[ObservableProperty]` and `[RelayCommand]` in view-models. Keep control references in the view. For actions that need a window, such as file pickers and confirmation dialogs, have the view set a `Func<…>` property on its view-model.
+
 ## Verify from the command line
 
 Run the following from the repository root with the SDK selected by [`global.json`](../../global.json). The Release build runs the compiler, the SDK's .NET analyzers and applicable project analyzers, including xUnit analyzers in the test projects.

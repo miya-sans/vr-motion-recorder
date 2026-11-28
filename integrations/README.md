@@ -3,14 +3,12 @@
 The app exports files that Blender and Unity can open on their own. These two add-ons make the round trip
 comfortable. Both are optional, live outside the .NET solution, and are written in their host's language.
 
-| Folder | What | Install |
-|---|---|---|
-| [`blender/`](blender/README.md) | Blender add-on (Python, Blender 4.2 to 5.3): import takes and scenes, retarget, send edits to Unity. | Extension zip from a release, or `vrmr_bridge.py` as a single-file add-on. |
-| [`unity/com.vrmr.motion-bridge/`](unity/com.vrmr.motion-bridge/README.md) | Unity editor package (C#, Unity 2022.3+): Humanoid set-up, clips and Timelines from exports. | Package Manager, by Git URL: `https://github.com/miya-sans/vr-motion-recorder.git?path=integrations/unity/com.vrmr.motion-bridge` |
+- The Blender add-on imports takes and scenes, retargets motion and sends edits to Unity. [Blender requirements and installation](blender/README.md#install)
+- The Unity bridge sets up Humanoid rigs and creates clips and Timelines from exports. [Unity requirements and installation](unity/com.vrmr.motion-bridge/README.md#install)
 
 The two share one version number (the Blender add-on's `bl_info` and manifest, the Unity package's `package.json`),
 because they exchange files with each other. The file formats they read are described in
-[docs/file-formats.md](../docs/file-formats.md), the whole pipeline in
+[File formats](../docs/dev/file-formats.md), the whole pipeline in
 [docs/export-and-pipeline.md](../docs/export-and-pipeline.md).
 
 ## Packaging

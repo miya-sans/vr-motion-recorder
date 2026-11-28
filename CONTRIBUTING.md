@@ -20,9 +20,22 @@ On Windows, `build.cmd` builds the app into `dist\VRMotionRecorder.exe`, and `bu
 
 Choose checks that exercise the change. For library tests, use `dotnet test --project tests/Vrmr.Tests/Vrmr.Tests.csproj -c Release`. Check the cross-platform CLI with `dotnet build src/Vrmr.Cli/Vrmr.Cli.csproj -c Release` and integration packaging with `python integrations/package.py dist`. For documentation-only edits, check the affected links and diff.
 
+### Desktop app checks
+
+Use a scratch data folder to try the desktop app in isolation. The app test project covers services and renders the window off-screen with Avalonia.Headless and Skia. [Launch options](docs/usage.md#launch-options)
+
+```powershell
+dotnet build src/Vrmr.App -c Release
+dotnet run --project src/Vrmr.App -c Release -- --data artifacts/app-scratch --no-capture
+dotnet test --project tests/Vrmr.App.Tests -c Release
+```
+
+- Set `VRMR_PRIVATE_DATA` for tests that need real takes. Put copies of `.vrmr` takes at the root of that folder or in its `Recordings` subfolder. Tests that load avatar meshes also need an `Avatars` subfolder. On Windows, the tests check the user-level setting if the process setting yields no takes.
+- Set `VRMR_SHOTS` to an output folder to save PNGs from the screenshot tests. Keep personal takes and screenshots containing avatar assets or take names out of commits.
+
 ## Project boundaries
 
-See the [architecture guide](docs/architecture.md) for the project map and data flow. Keep shared libraries independent of the apps and keep the CLI buildable across platforms. Desktop UI work belongs in the Avalonia app. Read the [Blender](integrations/blender/README.md) or [Unity](integrations/unity/com.vrmr.motion-bridge/README.md) integration guide before changing its package.
+See the [architecture guide](docs/dev/architecture.md) for the project map and data flow. Keep shared libraries independent of the apps and keep the CLI buildable across platforms. Desktop UI work belongs in the Avalonia app. Read the [Blender](integrations/blender/README.md) or [Unity](integrations/unity/com.vrmr.motion-bridge/README.md) integration guide before changing its package.
 
 - Design the main capture workflow for SteamVR alone, including avatar selection, tracker assignment, calibration, recording and export. VRChat OSC, HUMR and video player integration are optional. Keep device and settings access read-only and preserve explicitly enabled face replay.
 - Preserve raw recordings and deterministic solves. Store the calibration inputs needed to reproduce standalone motion in the take. The take format may change during development without supporting earlier files.
@@ -42,4 +55,4 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) with a short im
 
 ## Reporting a problem
 
-Use the issue templates. For anything about tracking or the solve, the most useful attachment is a short take that shows the problem, but only share one if you are comfortable with it: a take contains your motion, your avatar's id and name, and the world name.
+Use the issue templates. For tracking or solve problems, a short take can help reproduce the issue. Review the [recording privacy guidance](SECURITY.md#sharing-a-recording) before attaching one.

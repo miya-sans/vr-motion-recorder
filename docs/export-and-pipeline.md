@@ -38,7 +38,7 @@ Exports are written from the take **as placed** (see "Placing a take" below) and
 | `<name>_osc.json`       | Parameter replay as OSC messages.                                                                                                                                                                                                                             | app                                                            | Optional, for OSC replay tools.                                                                                                              |
 | `output_log_<name>.txt` | A HUMR-compatible log of the solved body.                                                                                                                                                                                                                     | app                                                            | Optional, for tools that load HUMR logs.                                                                                                     |
 
-The JSON files are described in [file-formats.md](file-formats.md).
+The JSON files are described in [file-formats.md](dev/file-formats.md#export-manifests-and-sidecars).
 
 **Split at avatar changes** writes one set of files per avatar when you changed avatar during the take, each solved onto that avatar's base model.
 
@@ -71,7 +71,7 @@ Every take export carries the placement. Checked on a copy (Origin, a turn, then
 ### App → Blender
 
 1. Export with an FBX switched on.
-2. In Blender (4.2 to 5.3), either use *File → Import → FBX*, or install the [add-on](../integrations/blender/README.md) and use **Import VRMR Scene** on `<name>.vrmrscene.json`.
+2. In Blender, either use *File → Import → FBX*, or install the [add-on](../integrations/blender/README.md#install) and use **Import VRMR Scene** on `<name>.vrmrscene.json`.
 
 With the add-on you get:
 
@@ -101,7 +101,7 @@ Enter Play mode and physics components simulate on top, because only humanoid bo
 
 ### Scenes
 
-A scene exports the same files once per actor (`<scene>_<actor>…`) and one `<scene>.vrmrscene.json` with the frame rate, range, markers, actors, the track layout, and a camera list that is reserved for later.
+The scene engine combines takes on tracks with transitions, body-part layers, keyframes, re-recording and foot lock. A scene exports the same files once per actor (`<scene>_<actor>…`) and one `<scene>.vrmrscene.json` with the frame rate, range, markers, actors, the track layout, and a camera list that is reserved for later.
 
 - **Blender:** **Import VRMR Scene** gives a collection per actor, the frame range, frame rate and markers, and the strips as muted NLA tracks for reference. Bones are within 0.008 mm of the app.
 - **Unity:** **Create Timeline From Scene** gives one Timeline with body and face per actor, bound to the avatars in the open scene by actor name and then by base model, with markers as signals. The humanoid clips retarget onto any avatar, but Unity's muscle space can move the arms in some poses (up to 25 cm for a few frames of a reaching layer in one test). **Create Timeline From Scene (exact pose, Generic)** plays the transform clips instead: 1.5 mm on the same avatar.
@@ -115,7 +115,7 @@ A scene exports the same files once per actor (`<scene>_<actor>…`) and one `<s
 
 ## See also
 
-- [file-formats.md](file-formats.md): the manifest, the sidecar and the face file in detail.
-- [scenes.md](scenes.md): the scene editor.
+- [file-formats.md](dev/file-formats.md#export-manifests-and-sidecars): the manifest, the sidecar and the face file in detail.
+- [Scene workspace plan](dev/tab-ui-design.md#scene-workspace): scene engine and planned desktop controls.
 - [avatars.md](avatars.md): where the avatar's model comes from.
-- [accuracy.md](accuracy.md): how close the solve itself is to VRChat.
+- [accuracy.md](dev/accuracy.md): how close the solve itself is to VRChat.
