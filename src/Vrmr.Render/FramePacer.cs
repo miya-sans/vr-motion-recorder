@@ -4,8 +4,8 @@ namespace VRMR.Render
 {
     /// <summary>
     ///     Decides on which display frames an animating view ticks, so that it runs at the frame cap: every display frame
-    ///     when the cap is at or above the display's rate, every second one for half of it, and so on. Pure arithmetic on
-    ///     the times it is given, so it can be tested without a display.
+    ///     when the cap is at or above the display's rate, every second one for half of it, and so on. The callbacks need
+    ///     not be evenly spaced. Pure arithmetic on the times it is given, so it can be tested without a display.
     /// </summary>
     sealed class FramePacer
     {
@@ -45,9 +45,9 @@ namespace VRMR.Render
                 due = now + DisplayInterval * 0.5 >= _nextDue;
                 if (due)
                 {
-                    _nextDue += interval;
-                    if (_nextDue < now + interval * 0.5)
-                        _nextDue = now + interval; // fell behind: do not catch up in a burst
+                    // a late tick is followed by the next callback, so unevenly spaced callbacks still reach the cap,
+                    // but lateness beyond that is dropped: no catching up in a burst
+                    _nextDue = Math.Max(_nextDue + interval, now);
                 }
             }
 
@@ -55,7 +55,10 @@ namespace VRMR.Render
             return due;
         }
 
-        /// <summary>Tracks the display interval as the median gap of the recent callbacks.</summary>
+        /// <summary>
+        ///     Tracks the display interval as the mean gap of the recent callbacks: callbacks that arrive in short and long
+        ///     pairs still average to the rate they come at, where a median would pick one of the two.
+        /// </summary>
         void Observe(double gap)
         {
             if (gap < 0.002 || gap > 0.1) return; // a hitch or a pause tells nothing about the display
@@ -63,12 +66,9 @@ namespace VRMR.Render
             _gapNext = (_gapNext + 1) % Window;
             if (_gapCount < Window) _gapCount++;
             if (_gapCount < 8) return;
-            // the median shrugs off both early and late callbacks
-            Span<double> sorted = stackalloc double[Window];
-            _gaps.AsSpan(0, _gapCount).CopyTo(sorted);
-            sorted = sorted.Slice(0, _gapCount);
-            sorted.Sort();
-            DisplayInterval = sorted[_gapCount / 2];
+            double sum = 0;
+            for (int i = 0; i < _gapCount; i++) sum += _gaps[i];
+            DisplayInterval = sum / _gapCount;
         }
     }
 

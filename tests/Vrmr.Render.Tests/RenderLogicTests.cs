@@ -34,6 +34,38 @@ namespace VRMR.Render.Tests
             Assert.InRange(ticks, cap * 10 * 0.9, cap * 10 * 1.1);
         }
 
+        [Theory]
+        [InlineData(0.008, 0.022, 60)]
+        [InlineData(0.008, 0.022, 30)]
+        [InlineData(0.004, 0.010, 60)]
+        public void ThePacerHoldsTheCapWhenCallbacksComeInUnevenPairs(double shortGap, double longGap, double cap)
+        {
+            var pacer = new FramePacer();
+            int ticks = 0;
+            double now = 0;
+            for (int i = 0; now < 10; i++)
+            {
+                if (pacer.Tick(now, cap, out _)) ticks++;
+                now += i % 2 == 0 ? shortGap : longGap;
+            }
+
+            Assert.InRange(ticks, cap * 10 * 0.9, cap * 10 * 1.05);
+        }
+
+        [Fact]
+        public void ThePacerDoesNotCatchUpAfterAHitch()
+        {
+            var pacer = new FramePacer();
+            double now = 0;
+            for (int i = 0; i < 144; i++, now += 1 / 144.0) pacer.Tick(now, 30, out _);
+            now += 0.5;
+            int ticks = 0;
+            for (int i = 0; i < 144; i++, now += 1 / 144.0)
+                if (pacer.Tick(now, 30, out _))
+                    ticks++;
+            Assert.InRange(ticks, 29, 32);
+        }
+
         [Fact]
         public void ThePacerReportsTheTimeSinceTheLastTick()
         {
