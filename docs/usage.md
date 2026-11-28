@@ -22,6 +22,14 @@ When starting the app with `dotnet run`, pass app options after `--`. For exampl
 
 The app rejects unrecognised arguments before opening its data.
 
+### Viewport benchmarks
+
+- Run `dotnet run --project src/Vrmr.App -c Release -- --bench <take.vrmr>` to measure a paused take with the mesh, playback with the mesh, playback with the skeleton only, and playback with the mesh and 14 simulated devices. Capture sources stay off. Use a take whose avatar mesh the app can load.
+- Use `--bench-live` in place of `--bench <take.vrmr>` to measure the real Live preview with SteamVR or VRChat input. With `--data`, the app uses that folder for its files and the real machine for source discovery.
+- Use `--bench-seconds <seconds>` to change the sample duration per scenario from the default of 10 seconds. The app writes FPS, frame times, CPU use and allocations to its [log](troubleshooting.md) and exits.
+
+Close any running instance that uses the same data folder before starting the benchmark.
+
 ## Recording
 
 - The app records SteamVR device poses and tracking-state changes, plus finger motion through SteamVR Skeletal Input on supported controllers. It writes samples during recording and timestamps them on the same clock as any VRChat inputs.

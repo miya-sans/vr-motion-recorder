@@ -41,11 +41,39 @@ namespace VRMR.App.Tests
             Assert.Equal(Path.GetFullPath(tmp.Root), o.DataDir);
         }
 
+        [Fact]
+        public void TakeBenchmarkDisablesCapture()
+        {
+            var o = AppOptions.Parse(["--bench", "take.vrmr", "--bench-seconds", "1.5", "--data", "scratch"]);
+            Assert.Null(o.Error);
+            Assert.Equal(Path.GetFullPath("take.vrmr"), o.BenchmarkTake);
+            Assert.Equal(1.5, o.BenchmarkSeconds);
+            Assert.True(o.NoCapture);
+            Assert.True(o.Paths.Isolated);
+        }
+
+        [Fact]
+        public void LiveBenchmarkUsesRealSourcesWithPortableFiles()
+        {
+            var o = AppOptions.Parse(["--bench-live", "--data", "scratch"]);
+            Assert.Null(o.Error);
+            Assert.True(o.BenchmarkLive);
+            Assert.False(o.NoCapture);
+            Assert.False(o.Paths.Isolated);
+            Assert.Equal(Path.GetFullPath("scratch"), o.Paths.DataRoot);
+        }
+
         [Theory]
         [InlineData("--data")]
         [InlineData("--data", "--no-capture")]
         [InlineData("--nocapture")]
         [InlineData("some.vrmr")]
+        [InlineData("--bench")]
+        [InlineData("--bench-live", "--no-capture")]
+        [InlineData("--bench-live", "--bench", "take.vrmr")]
+        [InlineData("--bench-seconds", "1")]
+        [InlineData("--bench-live", "--bench-seconds", "NaN")]
+        [InlineData("--bench-live", "--bench-seconds", "0")]
         public void AnythingElseIsAnErrorSoATypoNeverOpensRealData(params string[] args)
         {
             Assert.NotNull(AppOptions.Parse(args).Error);

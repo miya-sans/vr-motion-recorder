@@ -141,7 +141,8 @@ namespace VRMR.App.ViewModels
             _sourceTimer = host.CaptureOn
                 ? host.Ui.Every(TimeSpan.FromSeconds(1), UpdateSources)
                 : host.Ui.Every(TimeSpan.FromMinutes(1), UpdateCalibration);
-            host.Session.TakeChanged += () => host.UiState.Set("lastTake", host.Session.Take?.FilePath ?? "");
+            if (!host.Options.Benchmark)
+                host.Session.TakeChanged += () => host.UiState.Set("lastTake", host.Session.Take?.FilePath ?? "");
         }
 
         public AppHost Host { get; }

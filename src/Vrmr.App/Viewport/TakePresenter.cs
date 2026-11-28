@@ -30,6 +30,8 @@ namespace VRMR.App.Viewport
         public int Frame { get; private set; }
         public int LastFrame { get; private set; }
 
+        internal SimulatedBenchmarkDevices BenchmarkDevices { get; set; }
+
         /// <summary>What the view adds to the last solve: the take's placement now relative to the one it was solved with.</summary>
         public Pose PlacementDelta()
         {
@@ -155,6 +157,7 @@ namespace VRMR.App.Viewport
             scene.OverlayRight = "";
             var d = r.Edits.Placement * c.Placement.Inverse;
             if (!IsIdentity(d)) scene.Transform(d);
+            if (BenchmarkDevices is { } devices) devices.Fill(scene, Clock.Now);
             view.SceneChanged();
             return true;
         }

@@ -302,7 +302,7 @@ namespace VRMR.App.ViewModels
 
         void SaveChip(string what, Action<Settings> change)
         {
-            _settings.Update(what, change);
+            if (!_host.Options.Benchmark) _settings.Update(what, change);
             ApplyViewOptions();
         }
 

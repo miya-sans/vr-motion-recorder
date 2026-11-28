@@ -17,7 +17,4 @@
     <Project Path="tests/Vrmr.App.Tests/Vrmr.App.Tests.csproj"/>
     <Project Path="tests/Vrmr.Render.Tests/Vrmr.Render.Tests.csproj"/>
   </Folder>
-  <Folder Name="/tools/">
-    <Project Path="tools/Vrmr.RenderDemo/Vrmr.RenderDemo.csproj"/>
-  </Folder>
 </Solution>

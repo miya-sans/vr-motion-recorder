@@ -2,7 +2,7 @@
 
 ## Codebase audit
 
-- The Release solution rebuild passed with one existing warning, `AVA2003`, for an unchecked application-lifetime cast in RenderDemo. It emitted no obsolete API warnings. [RenderDemo entry point](../../tools/Vrmr.RenderDemo/Program.cs)
+- The Release solution rebuild passed with one existing warning, `AVA2003`, for an unchecked application-lifetime cast in the former RenderDemo project. It emitted no obsolete API warnings.
 - All 409 tests passed, with none skipped.
 - The Blender and Unity integrations received a source review only. No motion changes were made during the audit, so no dump comparison was needed.
 

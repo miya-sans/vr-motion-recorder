@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -10,6 +11,7 @@ using VRMR.App.Composition;
 using VRMR.App.Platform;
 using VRMR.App.Services;
 using VRMR.App.ViewModels;
+using VRMR.App.Viewport;
 using VRMR.App.Views;
 
 namespace VRMR.App
@@ -49,7 +51,9 @@ namespace VRMR.App
                 var shell = new ShellViewModel(_host);
                 var window = new MainWindow(shell) { ShowActivated = !Program.Options.Background };
                 desktop.MainWindow = window;
-                if (!shell.FirstRun.OpenIfFirstRun()) shell.ReopenLastTake();
+                if (Program.Options.Benchmark)
+                    window.Opened += async (_, _) => await RunBenchmarkAsync(desktop, window, shell);
+                else if (!shell.FirstRun.OpenIfFirstRun()) shell.ReopenLastTake();
                 _host.Session.SolveChanged += () =>
                 {
                     if (_host.Session.Solve == SolveState.Done) LogDrawCounts(window, "after a solve");
@@ -61,6 +65,32 @@ namespace VRMR.App
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        static async Task RunBenchmarkAsync(IClassicDesktopStyleApplicationLifetime desktop,
+            MainWindow window, ShellViewModel shell)
+        {
+            using var cancellation = new CancellationTokenSource();
+            window.Closing += Cancel;
+            int exitCode = 0;
+            try { await new ViewportBenchmark(window, shell).RunAsync(cancellation.Token); }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                AppLog.Warn("Benchmark cancelled.");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Benchmark: " + ex.Message);
+                exitCode = 1;
+            }
+            finally { window.Closing -= Cancel; }
+
+            if (!cancellation.IsCancellationRequested) desktop.Shutdown(exitCode);
+
+            void Cancel(object sender, WindowClosingEventArgs e)
+            {
+                cancellation.Cancel();
+            }
         }
 
         /// <summary>"dark", "light" or "system".</summary>

@@ -88,6 +88,8 @@ namespace VRMR.App.Views
         /// <summary>The 3D view in the centre.</summary>
         public IViewport Viewport => View;
 
+        internal GpuView RenderViewport => View;
+
         /// <summary>The take timeline under the transport.</summary>
         public TimelineControl TimelineView => Timeline;
 
