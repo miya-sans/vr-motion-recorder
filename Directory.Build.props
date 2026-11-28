@@ -19,7 +19,7 @@
     <Product>VR Motion Recorder</Product>
     <Authors>VR Motion Recorder contributors</Authors>
     <Copyright>Copyright (c) VR Motion Recorder contributors. MIT License.</Copyright>
-    <VersionPrefix>0.9.0</VersionPrefix>
+    <VersionPrefix>0.10.0</VersionPrefix>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
